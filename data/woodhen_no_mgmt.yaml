@@ -1,1 +1,13 @@
-# woodhen_no_mgmt.yaml
+# Lord Howe Island woodhen – Scenario A (no management)
+name: woodhen_no_mgmt
+years: 40
+reps: 10
+
+surv:   [0.35, 0.75, 0.75, 0.75, 0.75, 0.75]   # stage-specific survival
+fecund: [0, 2.25, 2.25, 2.25, 2.25, 2.25]      # mean fledglings per ♀
+
+n0:   [10, 5, 5, 0, 0, 0]                      # starting stage vector
+env_sd:  0.15                                   # σ_env (log-normal)
+demo_sd: 0.05                                   # σ_demo (binomial/pois)
+
+K: 50                                           # not used until Checkpoint 3

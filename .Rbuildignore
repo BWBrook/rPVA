@@ -1,3 +1,7 @@
+^renv$
+^renv\.lock$
 ^docs$
 ^data/tutorial$
 ^\.github$
+^.*\.Rproj$
+^\.Rproj\.user$
