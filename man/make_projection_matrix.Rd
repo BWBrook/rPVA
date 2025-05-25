@@ -3,33 +3,34 @@
 \name{make_projection_matrix}
 \alias{make_projection_matrix}
 \title{make_projection_matrix
-Build a projection matrix (Leslie or Lefkovitch) from basic inputs.}
+Construct a stage-structured projection matrix (Leslie or Lefkovitch form)}
 \usage{
-make_projection_matrix(surv_prog, fecund, stasis = NULL)
+make_projection_matrix(surv_prog, fecund, stasis = NULL, tol = 1e-09)
 }
 \arguments{
-\item{surv_prog}{numeric length n-1; probability of moving from stage i to i+1}
+\item{surv_prog}{numeric, length n-1. Probability of progressing from stage *i* to *i+1* (0–1).}
 
-\item{fecund}{numeric length n;  per-capita fecundity by stage}
+\item{fecund}{numeric, length n. Per-capita fecundity for each stage (>= 0).}
 
-\item{stasis}{numeric length n (optional); probability of remaining in the
-same stage. If NULL (default) stasis = 0 for all stages.}
+\item{stasis}{numeric, length n (optional). Probability of remaining in stage *i* (defaults to 0).
+Classic Leslie: all 0. Classic Lefkovitch: stasis[n] = adult survival, earlier stasis usually 0.}
+
+\item{tol}{numeric, numerical tolerance for sum-to-one checks (default 1e-9).}
 }
 \value{
-n × n projection matrix
+n × n matrix with row/col names `stage1`, ..., `stagen`.
 }
 \description{
 make_projection_matrix
-Build a projection matrix (Leslie or Lefkovitch) from basic inputs.
+Construct a stage-structured projection matrix (Leslie or Lefkovitch form)
 }
 \examples{
-# 3-stage pure Leslie
+# 3-stage Leslie (no stasis)
 make_projection_matrix(surv_prog = c(0.35, 0.75),
-                       fecund     = c(0, 2.2, 2.2))
+                       fecund    = c(0, 2.2, 2.2))
 
-# Lefkovitch with adult stasis
+# Lefkovitch with 15\% adult stasis
 make_projection_matrix(surv_prog = c(0.35, 0.60),
-                       fecund     = c(0, 2.2, 2.2),
-                       stasis     = c(0, 0, 0.15))
+                       fecund    = c(0, 2.2, 2.2),
+                       stasis    = c(0, 0, 0.15))
 }
-\keyword{internal}

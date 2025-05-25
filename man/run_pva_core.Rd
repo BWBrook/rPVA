@@ -3,31 +3,40 @@
 \name{run_pva_core}
 \alias{run_pva_core}
 \title{run_pva_core
-Project a stage-structured population with demographic and
-environmental stochasticity. **Checkpoint 2 version** –
-  • no density dependence
-  • no catastrophes
-  • no releases}
+Stage-structured PVA engine with robust stochastic fate assignment.}
 \usage{
-run_pva_core(spec, years = spec$years, reps = spec$reps, keep_traj = FALSE)
+run_pva_core(
+  spec,
+  years = spec$years,
+  reps = spec$reps,
+  keep_traj = FALSE,
+  stasis = NULL,
+  seed = NULL,
+  verbose = FALSE
+)
 }
 \arguments{
-\item{spec}{list produced by read_spec()}
+\item{spec}{list; must include surv, fecund, n0, env_sd, demo_sd.}
 
-\item{years}{integer, projection length}
+\item{years}{integer. Projection length.}
 
-\item{reps}{integer, number of Monte-Carlo repetitions}
+\item{reps}{integer. Number of Monte Carlo repetitions.}
 
-\item{keep_traj}{logical, return full trajectories?}
+\item{keep_traj}{logical. If TRUE, returns full population trajectory.}
+
+\item{stasis}{numeric vector (optional); stage-specific stasis probabilities.}
+
+\item{seed}{integer or NULL; set for reproducibility.}
+
+\item{verbose}{logical; progress indicator.}
 }
 \value{
-list with Nend (vector) and, if keep_traj=TRUE, traj array
+list with Nend, traj, and params (full inputs used).
 }
 \description{
-run_pva_core
-Project a stage-structured population with demographic and
-environmental stochasticity. **Checkpoint 2 version** –
-  • no density dependence
-  • no catastrophes
-  • no releases
+Core PVA simulation, supporting both Leslie and Lefkovitch forms.
+Assumes: progression probability (`surv`) and stasis probability (`stasis`)
+are distinct, and for the last stage ("adults"), survival is via `stasis[n]`
+(typically set `surv[n] = 0, stasis[n] = adult survival`). If both are zero,
+adults die each step.
 }
