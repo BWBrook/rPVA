@@ -70,7 +70,7 @@ run_pva_core <- function(
       N_next <- integer(n_stage)
       # 1. Recruits (stage 1): Poisson offspring from all adults
       lambda <- sum(fec_t * N)
-      N_next[1] <- if (spec$demo_sd > 0) rpois(1, lambda) else as.integer(round(lambda))
+      N_next[1] <- if (spec$demo_sd == 1) rpois(1, lambda) else as.integer(round(lambda))
 
       # 2. Survivors in all other stages
       if (n_stage > 1) {
@@ -81,9 +81,9 @@ run_pva_core <- function(
           if (total_surv > 1 + 1e-8)
             stop(sprintf("surv_t + stasis_t > 1 in stage %d; check inputs.", i))
 
-          n_alive <- if (spec$demo_sd > 0) rbinom(1, N[i], total_surv) else round(N[i] * total_surv)
+          n_alive <- if (spec$demo_sd == 1) rbinom(1, N[i], total_surv) else round(N[i] * total_surv)
           n_prog  <- if (n_alive > 0 && total_surv > 0) {
-            if (spec$demo_sd > 0) rbinom(1, n_alive, prog_prob / max(total_surv, 1e-12))
+            if (spec$demo_sd == 1) rbinom(1, n_alive, prog_prob / max(total_surv, 1e-12))
             else round(n_alive * prog_prob / max(total_surv, 1e-12))
           } else 0
           n_stay  <- n_alive - n_prog
@@ -94,7 +94,7 @@ run_pva_core <- function(
         # 3. Last stage (adults): only stasis, no progression
         n_adult <- N[n_stage]
         stasis_p <- stasis_t[n_stage]
-        n_adult_surv <- if (spec$demo_sd > 0) rbinom(1, n_adult, stasis_p) else round(n_adult * stasis_p)
+        n_adult_surv <- if (spec$demo_sd == 1) rbinom(1, n_adult, stasis_p) else round(n_adult * stasis_p)
         N_next[n_stage] <- N_next[n_stage] + n_adult_surv
       }
 
