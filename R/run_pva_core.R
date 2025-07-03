@@ -40,24 +40,33 @@ run_pva_core <- function(
   if (is.null(stasis)) stasis <- rep(0, n_stage)
   stopifnot(is.numeric(stasis), length(stasis) == n_stage,
             all(stasis >= 0 & stasis <= 1, na.rm = TRUE))
+  if (is.null(spec$sex_ratio_init)) spec$sex_ratio_init <- 0.5
+  if (is.null(spec$monogamy))       spec$monogamy       <- FALSE          
 
   if (!is.null(seed)) set.seed(seed)
 
   Nend <- numeric(reps)
+
   if (keep_traj) {
-    traj <- array(NA_integer_,
-      dim = c(years + 1, n_stage, reps),
-      dimnames = list(time = 0:years,
-                      stage = paste0("stage", seq_len(n_stage)),
-                      rep = NULL))
+    traj <- array(NA_integer_, c(years + 1, n_stage, reps),
+                  dimnames = list(time = 0:years,
+                                  stage = paste0("stage", seq_len(n_stage)),
+                                  rep = NULL))
+    traj_sr <- matrix(NA_real_, nrow = years + 1, ncol = reps,
+                      dimnames = list(time = 0:years, rep = NULL))
   } else {
-    traj <- NULL
+      traj <- NULL
   }
 
   for (r in seq_len(reps)) {
     N <- as.integer(spec$n0)
-    if (keep_traj) traj[1, , r] <- N
+    sr <- spec$sex_ratio_init
 
+    if (keep_traj) {
+      traj[1, , r]   <- N
+      traj_sr[1, r]  <- sr
+    }
+    
     for (t in seq_len(years)) {
       # --- Environmental stochasticity ---
       env_surv <- if (spec$env_sd > 0) exp(rnorm(n_stage, 0, spec$env_sd)) else rep(1, n_stage)
@@ -66,13 +75,39 @@ run_pva_core <- function(
       fec_t    <- pmax(0, spec$fecund * env_fec)
       stasis_t <- pmin(1, stasis)
 
+      # --- Catastrophe pulse -------------------------------------------------
+      cat_res <- maybe_apply_catastrophe(surv_t, fec_t, spec)
+      surv_t  <- cat_res$surv
+      fec_t   <- cat_res$fec
+      # (cat_res$happened could be stored later if we want summaries)
+
       # --- Demographic stochasticity: fate-assignment for each stage ---
       N_next <- integer(n_stage)
-      # 1. Recruits (stage 1): Poisson offspring from all adults
-      lambda <- sum(fec_t * N)
-      N_next[1] <- if (spec$demo_sd == 1) rpois(1, lambda) else as.integer(round(lambda))
 
-      # 2. Survivors in all other stages
+      # --- 1. Recruits (stage 1) -------------------------------------------------
+      # constrain reproduction if monogamy and females limiting
+      fec_eff <- if (isTRUE(spec$monogamy)) {
+                  fec_t * pmin(1, sr / 0.5)          # sr < 0.5 reduces fecundity
+                } else {
+                  fec_t
+                }
+
+      lambda <- sum(fec_eff * N)                      # expected offspring
+
+      recruits <- if (isTRUE(spec$demo_sd)) {
+                    rpois(1, lambda)
+                  } else {
+                    as.integer(round(lambda))
+                  }
+
+      # draw sex of recruits, update global sex ratio
+      n_f <- if (recruits > 0) rbinom(1, recruits, sr) else 0
+      n_m <- recruits - n_f
+      N_next[1] <- recruits                        # juvenile stage receives all
+
+      sr <- (sr * sum(N) + n_f) / (sum(N) + recruits + 1e-9)  # weight-update
+
+      # --- 2. Survivors (all other stages) ---------------------------------------
       if (n_stage > 1) {
         for (i in seq_len(n_stage - 1)) {
           prog_prob   <- surv_t[i]
@@ -81,7 +116,7 @@ run_pva_core <- function(
           if (total_surv > 1 + 1e-8)
             stop(sprintf("surv_t + stasis_t > 1 in stage %d; check inputs.", i))
 
-          n_alive <- if (spec$demo_sd == 1) rbinom(1, N[i], total_surv) else round(N[i] * total_surv)
+          n_alive <- if (isTRUE(spec$demo_sd)) rbinom(1, N[i], total_surv) else round(N[i] * total_surv)
           n_prog  <- if (n_alive > 0 && total_surv > 0) {
             if (spec$demo_sd == 1) rbinom(1, n_alive, prog_prob / max(total_surv, 1e-12))
             else round(n_alive * prog_prob / max(total_surv, 1e-12))
@@ -98,6 +133,9 @@ run_pva_core <- function(
         N_next[n_stage] <- N_next[n_stage] + n_adult_surv
       }
 
+      # --- Supplementation ---------------------------------------------------
+      N_next <- apply_releases(N_next, t, spec)
+
       # --- Density ceiling ---
       if (!is.null(spec$K) && is.finite(spec$K)) {
         N_next <- apply_ceiling_K(N_next, spec$K)
@@ -105,7 +143,11 @@ run_pva_core <- function(
       N_next[N_next < 0] <- 0 # numerical guard
 
       N <- N_next
-      if (keep_traj) traj[t + 1, , r] <- N
+
+      if (keep_traj) {
+        traj[t + 1, , r] <- N
+        traj_sr[t + 1, r] <- sr
+      }
     }
     Nend[r] <- sum(N)
     if (verbose && r %% max(1, reps %/% 20) == 0) cat(".")
@@ -115,6 +157,7 @@ run_pva_core <- function(
   list(
     Nend   = Nend,
     traj   = traj,
+    sr_traj = if (keep_traj) traj_sr else NULL,
     params = c(spec, list(years = years, reps = reps, stasis = stasis, seed = seed))
   )
 }

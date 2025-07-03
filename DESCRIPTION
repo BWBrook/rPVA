@@ -1,16 +1,19 @@
 Package: woodhenPVA
 Title: KPZ308 Woodhen Population Viability Simulator
 Version: 0.0.0.9000
-Authors@R: person("Barry", "Brook", email = "barry,brook@utas.edu.au", role = c("aut", "cre"))
+Authors@R: person("Barry", "Brook", email = "barry.brook@utas.edu.au", role = c("aut", "cre"))
 Description: Internal teaching package to replace VORTEX in KPZ308 practicals.
 License: MIT
 Encoding: UTF-8
 Depends: R (>= 4.0)
 RoxygenNote: 7.3.2
 Imports:
+    dplyr,
     yaml,
     ggplot2,
-    future
+    future,
+    reshape2,
+    patchwork
 Suggests:
     testthat,
     popbio,

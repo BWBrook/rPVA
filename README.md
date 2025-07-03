@@ -1,19 +1,16 @@
 # Woodhen PVA
 
-This repository houses **woodhenPVA**, an internal R package used in the UTAS
-unit KPZ308 to replace the old VORTEX based practical.  The goal is a
-cross&#8209;platform, fully reproducible population viability analysis (PVA) tool
-for the Lord Howe Island woodhen case study.
+This repository houses **woodhenPVA**, an internal R package used in the UTAS unit KPZ308 to replace the old VORTEX based practical.  
+The goal is a cross-platform, fully reproducible population viability analysis (PVA) tool for the Lord Howe Island woodhen case study.  
 
 The code currently implements:
 
-* a stage&#8209;structured stochastic simulation engine (`run_pva_core()`)
-* optional carrying&#8209;capacity ceiling via `apply_ceiling_K()`
+* a stage-structured stochastic simulation engine (`run_pva_core()`)
+* optional carrying-capacity ceiling via `apply_ceiling_K()`
+* demographic and environmental stochasticity, catastrophes, inbreeding depression
+* removals and release supplementation
 * convenience helpers to read YAML scenario files (`read_spec()`)
 * plotting functions for trajectories and summaries (`plot_pva_*`)
-
-Catastrophes and release supplementation are planned but not yet in the code
-base.
 
 ## Getting started
 

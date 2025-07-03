@@ -6,12 +6,16 @@ reps: 1000
 surv:    [0.35, 0.75, 0.75, 0.75, 0.75, 0.5, 0.5]  # stage-specific survival
 fecund:  [0, 0.5, 1.5, 1.75, 1.5, 1.0, 0.5]        # mean fledglings per ♀
 
-n0:      [8, 5, 3, 2, 1, 1, 0]                     # starting stage vector
+n0:      [6, 4, 2, 1, 1, 0, 0]                     # starting stage vector
 env_sd:  0.25                                      # σ_env (log-normal)
 demo_sd: 1                                         # demo stoch (binomial/pois: o = off, 1 = on)
 
-K: 30                                              # limited habitat on the mountain tops
+K: 50                                              # limited habitat on the mountain tops
 
 cat_freq: 0.05                                     # annual probability of a cyclone
 cat_surv: 0.50                                     # survival multiplier in a catastrophe year
 cat_repro: 0.75                                    # fecundity multiplier in a catastrophe year
+
+release_years: [1, 2, 3, 4]      # simulation years *after* t = 0
+release_vec:   [5, 0, 0, 0, 0, 0]   # stage vector to add (age-1 here)
+

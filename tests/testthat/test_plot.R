@@ -1,6 +1,6 @@
 context("Plot layer")
 
-spec <- read_spec(system.file("extdata", "woodhen_no_mgmt.yaml",
+spec <- read_spec(system.file("extdata", "woodhen_test.yaml",
                               package = "woodhenPVA"))
 spec$years <- 3
 spec$reps  <- 5
