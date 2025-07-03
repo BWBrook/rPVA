@@ -1,9 +1,9 @@
-context("Checkpoint 2 – core engine")
+context("Checkpoint 1 – core engine")
 
 # Canonical deterministic spec (no stochasticity, 1 year, 1 rep)
 spec_det <- read_spec(system.file("extdata", "woodhen_no_mgmt.yaml", package = "woodhenPVA"))
 spec_det$env_sd  <- 0
-spec_det$demo_sd <- 0
+spec_det$demo_sd <- FALSE
 spec_det$years   <- 1
 spec_det$reps    <- 1
 

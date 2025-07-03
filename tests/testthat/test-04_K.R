@@ -1,8 +1,9 @@
-context("Checkpoint 3 – carrying capacity ceiling")
+context("Checkpoint 4 – carrying capacity ceiling")
 
 spec_K <- read_spec(system.file("extdata", "woodhen_test.yaml", 
                     package = "woodhenPVA"))
-spec_K$env_sd <- spec_K$demo_sd <- 0
+spec_K$env_sd <- 0
+spec_K$demo_sd <- FALSE
 spec_K$years   <- 1
 spec_K$reps    <- 1
 spec_K$K       <- 50

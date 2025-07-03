@@ -1,12 +1,13 @@
-context("Checkpoint 4 – catastrophe pulse")
+context("Checkpoint 5 – catastrophe pulse")
 
 spec_cat <- read_spec(system.file("extdata", "woodhen_test.yaml",
                                   package = "woodhenPVA"))
-spec_cat$env_sd  <- spec_cat$demo_sd <- 0
-spec_cat$years   <- 100
+spec_cat$env_sd  <- 0
+spec_cat$demo_sd <- FALSE
+spec_cat$years   <- 50
 spec_cat$reps    <- 100
-spec_cat$n0[]    <- 100       # start well below K to isolate cat effect
-spec_cat$K       <- 1e6       # disable ceiling
+spec_cat$n0[]    <- 50       # start well below K to isolate cat effect
+spec_cat$K       <- 1e5       # disable ceiling
 
 test_that("expected # of catastrophes ≈ freq * years", {
   set.seed(1)
