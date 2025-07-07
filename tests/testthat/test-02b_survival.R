@@ -1,4 +1,4 @@
-context("Checkpoint 1b - survival-phase")
+context("Checkpoint 2b - survival-phase")
 
 test_that("survival_phase conserves survivors under deterministic input", {
   # 3-stage example, adults have stasis only

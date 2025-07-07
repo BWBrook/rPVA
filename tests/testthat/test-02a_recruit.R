@@ -1,4 +1,4 @@
-context("Checkpoint 1a - recruit-phase")
+context("Checkpoint 2a - recruit-phase")
 
 test_that("recruit_phase returns expected recruits and SR update", {
   # deterministic inputs
@@ -10,7 +10,7 @@ test_that("recruit_phase returns expected recruits and SR update", {
 
   out <- recruit_phase(N, fec_t, sr_in, spec, demo)
 
-  lambda      <- sum(fec_t * N) * (sr_in / 0.5)   # throttled expectation
+  lambda       <- sum(fec_t * N) * (sr_in / 0.5)   # throttled expectation
   expect_equal(out$recruits, as.integer(round(lambda)))
 
   # SR should satisfy internal mass balance

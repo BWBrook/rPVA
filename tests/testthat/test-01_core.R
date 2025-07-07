@@ -1,7 +1,7 @@
 context("Checkpoint 1 – core engine")
 
 # Canonical deterministic spec (no stochasticity, 1 year, 1 rep)
-spec_det <- read_spec(system.file("extdata", "woodhen_no_mgmt.yaml", package = "woodhenPVA"))
+spec_det <- read_spec(system.file("extdata", "woodhen_test.yaml", package = "woodhenPVA"))
 spec_det$env_sd  <- 0
 spec_det$demo_sd <- FALSE
 spec_det$years   <- 1
@@ -37,6 +37,7 @@ test_that("engine handles extinction", {
   spec_ext$surv[]   <- 0
   spec_ext$fecund[] <- 0
   spec_ext$n0[]     <- 1
+  spec_ext$release_vec <- 0
   out <- run_pva_core(spec_ext)
   expect_true(all(out$Nend == 0))
 })

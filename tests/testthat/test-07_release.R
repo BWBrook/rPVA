@@ -3,11 +3,11 @@ context("Checkpoint 7 – supplementation")
 spec_rel <- read_spec(system.file("extdata", "woodhen_test.yaml",
                                   package = "woodhenPVA"))
 
-spec_rel$env_sd <- 0
+spec_rel$env_sd  <- 0
 spec_rel$demo_sd <- FALSE
-spec_rel$K      <- 1e6   # disable ceiling to isolate releases
-spec_rel$years  <- 5
-spec_rel$reps   <- 1
+spec_rel$K       <- 1e6   # disable ceiling to isolate releases
+spec_rel$years   <- 5
+spec_rel$reps    <- 1
 spec_rel$removal_years <- NULL
 set.seed(42)
 

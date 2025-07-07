@@ -1,4 +1,4 @@
-context("Checkpoint 2 – plot layer")
+context("Checkpoint 8 – plot layer")
 
 spec <- read_spec(system.file("extdata", "woodhen_test.yaml",
                               package = "woodhenPVA"))
