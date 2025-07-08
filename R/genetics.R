@@ -18,11 +18,13 @@ genetic_update <- function(surv, fec, N_vec, F, spec, Ne_override = NULL) {
     return(list(surv = surv, fec = fec, F = F))
   }
 
-  B  <- spec$lethal_equiv
-  w  <- exp(-B * F)                               # fitness multiplier
+  BS <- spec$lethal_equiv   # lethal equivalents on survival
+  BF <- BS * spec$B_on_fec  # lethal equivalents on fertility
+  ws <- exp(-BS * F)        # survival fitness multiplier
+  wf <- exp(-BF * F)        # fertility fitness multiplier
 
-  surv <- surv * w
-  fec  <- fec  * w
+  surv <- surv * ws
+  fec  <- fec  * wf
 
   # ---- Drift -------------------------------------------------------------
   if (!is.null(Ne_override)) {
@@ -35,8 +37,7 @@ genetic_update <- function(surv, fec, N_vec, F, spec, Ne_override = NULL) {
 
   # ---- Optional purging --------------------------------------------------
   if (!is.null(spec$purge_kappa) && spec$purge_kappa > 0)
-    spec$lethal_equiv <- B * (1 - spec$purge_kappa *
-                                    ((1 - F) / (2 * Ne)))
+    spec$lethal_equiv <- BS * (1 - spec$purge_kappa * ((1 - F) / (2 * Ne)))
 
   list(surv = surv, fec = fec, F = F_next)
 }

@@ -8,52 +8,130 @@ traj_to_long <- function(traj) {
   df
 }
 
-#' Plot all Monte-Carlo trajectories
-#' @param out list returned by run_pva_core(…, keep_traj = TRUE)
-#' @param alpha line transparency
+#' Plot all (or sampled) Monte-Carlo trajectories
+#'
+#' @param out     list from `run_pva_core(..., keep_traj = TRUE)`
+#' @param alpha   transparency for the lines
+#' @param sample  integer; if > 0, randomly sample this many replicates
+#'                before plotting. 0 ⇒ plot all replicates (default = 0).
+#' @param raster  logical; if TRUE use ggrastr::geom_line_rast() which
+#'                rasterises the polylines for speed.
 #' @export
-plot_pva_traj <- function(out, alpha = 0.3) {
-  df <- traj_to_long(out$traj) |>
+plot_pva_traj <- function(out,
+                          alpha  = 0.3,
+                          sample = 0,
+                          raster = FALSE,
+                          dpi    = 96) {
+
+  # reshape --------------------------------------------------------------
+  df <- traj_to_long(out$raw$traj) |>
         dplyr::group_by(Year, Rep) |>
         dplyr::summarise(N = sum(N), .groups = "drop")
 
-  ggplot2::ggplot(df, ggplot2::aes(Year, N, group = Rep)) +
-    ggplot2::geom_line(alpha = alpha) +
-    ggplot2::labs(title = "Population trajectories",
-                  y = "Total N") +
-    ggplot2::theme_minimal()
+  # optional subsample ---------------------------------------------------
+  if (sample > 0) {
+    reps_all <- unique(df$Rep)
+    keep     <- sample(reps_all, min(sample, length(reps_all)))
+    df       <- dplyr::filter(df, Rep %in% keep)
+  }
+
+  # build base plot ------------------------------------------------------
+  p <- ggplot2::ggplot(df, ggplot2::aes(Year, N, group = Rep)) +
+       ggplot2::geom_line(alpha = alpha) +
+       ggplot2::labs(title = "Population trajectories",
+                     y = "Total N") +
+       ggplot2::theme_minimal()
+
+  # optionally rasterise the line layer ---------------------------------
+  if (raster) {
+    if (!requireNamespace("ggrastr", quietly = TRUE))
+      stop("Install the ggrastr package or set raster = FALSE")
+
+    # rasterise *only* the geom_line layer (class 'GeomLine')
+    p <- ggrastr::rasterize(p,
+                            layers = "GeomLine",
+                            dpi    = dpi)
+  }
+
+  print(p)
+  invisible(p)
 }
 
-#' Plot mean ± SE ± 95 % envelope
-#' @param probs two-element numeric: lower & upper quantiles (default 2.5 % & 97.5 %)
+#' Plot PVA summary: ribbon (95 %), unconditional mean ± SE, and conditional mean
+#' @param out   list returned by `run_pva_core(…, keep_traj = TRUE)`
+#' @param probs two-element numeric: lower & upper quantiles for the ribbon
 #' @export
 plot_pva_summary <- function(out, probs = c(0.025, 0.975)) {
-  df <- traj_to_long(out$traj)
-  # Sum across stages per Year and Rep
+
+  ## ---------- 1. unconditional summaries (exactly as before) ----------
+  df <- traj_to_long(out$raw$traj)                           # stage → long
   df_tot <- df |>
     dplyr::group_by(Year, Rep) |>
     dplyr::summarise(N = sum(N), .groups = "drop")
-  # Now summarise across reps for each year
-  df_sum <- df_tot |>
+
+  df_uncond <- df_tot |>
     dplyr::group_by(Year) |>
     dplyr::summarise(
       Mean = mean(N),
-      SE   = stats::sd(N) / sqrt(dplyr::n()),
-      Lo95 = stats::quantile(N, probs[1]),
-      Hi95 = stats::quantile(N, probs[2]),
+      SE   = sd(N) / sqrt(dplyr::n()),
+      Lo95 = quantile(N, probs[1]),
+      Hi95 = quantile(N, probs[2]),
       .groups = "drop"
     )
-  ggplot2::ggplot(df_sum, ggplot2::aes(Year, Mean)) +
-    ggplot2::geom_ribbon(ggplot2::aes(ymin = Lo95, ymax = Hi95),
-                         fill = "grey80", alpha = 0.7) +
-    ggplot2::geom_line(linewidth = 1.2) +
-    ggplot2::geom_line(ggplot2::aes(y = Mean + SE),
-                       linetype = "dashed", colour = "blue") +
-    ggplot2::geom_line(ggplot2::aes(y = Mean - SE),
-                       linetype = "dashed", colour = "blue") +
-    ggplot2::labs(title = "Population: mean, SE, and 95% envelope",
-                  y = "Total N") +
-    ggplot2::theme_minimal()
+
+  ## ---------- 2. conditional mean ( rowSums of traj_mean ) ------------
+  cond_mean <- rowSums(out$traj_mean)                # vector length time
+  df_cond <- dplyr::tibble(
+    Year = df_uncond$Year,
+    Mean_cond = cond_mean
+  )
+
+  ## ---------- 3. combine & pivot for ggplot ---------------------------
+  df_plot <- df_uncond |>
+    dplyr::select(Year, Mean, SE) |>
+    dplyr::left_join(df_cond, by = "Year") |>
+    tidyr::pivot_longer(
+      cols = c(Mean, Mean_cond, SE),
+      names_to = "Metric",
+      values_to = "Value"
+    )
+
+  p <- ggplot2::ggplot(df_uncond, ggplot2::aes(x = Year)) +
+    ## 95 % envelope
+    ggplot2::geom_ribbon(
+      ggplot2::aes(ymin = Lo95, ymax = Hi95),
+      fill = "grey80", alpha = 0.7, show.legend = FALSE
+    ) +
+    ## unconditional mean ± SE (blue dashed)
+    ggplot2::geom_line(
+      data = dplyr::filter(df_plot, Metric %in% c("Mean")),
+      ggplot2::aes(y = Value,
+                   linetype = "Metric",
+                   colour   = "Unconditional"),
+      linewidth = 1
+    ) +
+    ## conditional mean (solid green)
+    ggplot2::geom_line(
+      data = dplyr::filter(df_plot, Metric == "Mean_cond"),
+      ggplot2::aes(y = Value,
+                   linetype = "Conditional",
+                   colour   = "Conditional"),
+      linewidth = 1
+    ) +
+    ## manual legend
+    ggplot2::scale_colour_manual(
+      name   = "",
+      values = c(Unconditional = "blue", Conditional = "green")
+    ) +
+    ggplot2::labs(
+      y     = "Total N",
+      title = "Pop. trajectories (blue: mean ±95% CI): green = extant"
+    ) +
+    ggplot2::theme_minimal() +
+    ggplot2::guides(colour = "none", linetype = "none")
+
+  print(p)         # side‐effect: always draws the plot
+  invisible(p)     # returns p invisibly
 }
 
 #' Plot matrix diagnostics (2 × 2 panel; lambda and SSD printed to console)
@@ -130,4 +208,106 @@ plot_pva_matrix <- function(spec) {
     print(p_A); print(p_ssd); print(p_rv); print(p_el)
   }
   invisible(p)
+}
+
+#' Plot extinction probability together with mean F and mean sex-ratio
+#'
+#' @param out   result list from `run_pva_core(... , keep_traj = TRUE)`
+#' @param lab_F character label for the inbreeding-coefficient line (default "Mean F")
+#' @param lab_sr character label for the sex-ratio line (default "Mean SR")
+#' @export
+plot_ext <- function(out,
+                     lab_F  = "Mean F",
+                     lab_sr = "Mean SR") {
+
+  if (is.null(out$ext_prob))
+    stop("Must run with keep_traj = TRUE")
+
+  yrs <- seq_along(out$ext_prob) - 1L
+  df  <- data.frame(
+    Year     = yrs,
+    ext_prob = out$ext_prob,
+    F_mean   = out$F_mean,
+    sr_mean  = out$sr_mean
+  )
+
+  # --- find median extinction time (where ext_prob = 0.5) --------------
+  p   <- df$ext_prob
+  Y   <- df$Year
+  # if we ever hit exactly 0.5, take that year
+  if (any(p == 0.5)) {
+    med_t <- Y[which(p == 0.5)[1]]
+  } else {
+    # bracket the crossing
+    i2 <- which(p > 0.5)[1]
+    i1 <- i2 - 1
+    # linear interpolation
+    med_t <- Y[i1] + (0.5 - p[i1]) / (p[i2] - p[i1]) * (Y[i2] - Y[i1])
+  }
+
+  # --- now build plot with vline ----------------------------------------
+  p <- ggplot2::ggplot(df, ggplot2::aes(x = Year)) +
+    ggplot2::geom_line(                                    # extinction
+      ggplot2::aes(y = ext_prob, colour = "Extinction prob.",
+                   linetype = "Extinction prob."),
+      linewidth = 1.2
+    ) +
+    ggplot2::geom_line(                                    # mean F
+      ggplot2::aes(y = F_mean, colour = lab_F, linetype = lab_F),
+      linewidth = 0.8
+    ) +
+    ggplot2::geom_line(                                    # mean SR
+      ggplot2::aes(y = sr_mean, colour = lab_sr, linetype = lab_sr),
+      linewidth = 0.8
+    ) +
+    ggplot2::geom_vline(                                   # median‐extinction-time
+      xintercept = med_t,
+      colour     = "yellow",
+      linetype   = "dashed",
+      linewidth  = 1
+    ) +
+    # scales and legend
+    {
+      col_vals  <- setNames(c("red", "blue", "grey40"),
+                            c("Extinction prob.", lab_F, lab_sr))
+      line_vals <- setNames(c("solid", "dashed", "dotted"),
+                            c("Extinction prob.", lab_F, lab_sr))
+      ggplot2::scale_colour_manual(name = "", values = col_vals)
+    } +
+    ggplot2::scale_linetype_manual(values = line_vals, guide = "none") +
+    ggplot2::labs(
+      y     = "Proportion / Mean (0–1)",
+      title = "Extinction probability with median TE (yellow), plus mean F and SR"
+    ) +
+    ggplot2::theme_minimal()
+
+  print(p)
+  invisible(p)
+}
+
+#' Combine PVA plots into a 2×1 panel
+#'
+#' Takes three ggplot objects (e.g. trajectory, summary, extinction) and
+#' arranges them so that the first two sit side‐by‐side on the top row and
+#' the third spans the bottom row.
+#'
+#' @param p1 A ggplot object (e.g. output of `plot_pva_traj()`)
+#' @param p2 A ggplot object (e.g. output of `plot_pva_summary()`)
+#' @param p3 A ggplot object (e.g. output of `plot_ext()`)
+#' @return A patchwork composite
+#' @export
+plot_pva_panel <- function(p1, p2, p3) {
+  # Ensure patchwork is available
+  if (!requireNamespace("patchwork", quietly = TRUE)) {
+    stop("Please install the patchwork package to use plot_pva_panel().")
+  }
+  # Top row: p1 + p2; bottom row: p3
+  p <- patchwork::wrap_plots(
+    (p1 + p2),   # side-by-side
+    p3,          # full-width below
+    ncol    = 1,    # one column of two rows
+    heights = c(1, 1) # equal row heights (tweak as needed)
+  )
+  print(p)
+  invisible(p)  
 }

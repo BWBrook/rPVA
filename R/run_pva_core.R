@@ -114,7 +114,7 @@ run_pva_core <- function(
     sr_traj <- matrix(NA_real_, nrow = years + 1, ncol = reps,
                       dimnames = list(time = 0:years,
                                       rep   = NULL))
-    F_traj  <- numeric(years + 1)
+    F_traj  <- matrix(NA_real_, nrow = years + 1, ncol = reps)
   } else {
     traj    <- NULL
     sr_traj <- NULL
@@ -196,9 +196,9 @@ run_pva_core <- function(
       if (sum(N) == 0) {
         if (keep_traj) {
           # fill remaining years with zeros (or carry forward sr, F if you prefer)
-          traj[(t + 1):(years + 1), , r]   <- 0L
-          sr_traj[(t + 1):(years + 1), r]  <- sr
-          F_traj[(t + 1):(years + 1)]      <- F
+          traj[(t + 1):(years + 1), , r]  <- 0L
+          sr_traj[(t + 1):(years + 1), r] <- sr
+          F_traj[(t + 1):(years + 1), r]  <- F
         }
         break # stop this replicate if population has gone extinct
       }
@@ -206,19 +206,87 @@ run_pva_core <- function(
       if (keep_traj) {
         traj[t + 1, , r]  <- N
         sr_traj[t + 1, r] <- sr
-        F_traj[t + 1]     <- F
+        F_traj[t + 1, r]  <- F
       }
     }
     Nend[r] <- sum(N)
-    if (verbose && r %% max(1, reps %/% 20) == 0) cat(".")
+    if (verbose && r %% max(1, reps %/% 50) == 0) cat(".")
   }
   if (verbose) cat("\n")
 
-  list(
-    Nend   = Nend,
-    traj   = traj,
-    sr_traj = if (keep_traj) sr_traj else NULL,
-    F_traj  = if (keep_traj) F_traj  else NULL,
-    params = c(spec, list(years = years, reps = reps, stasis = stasis, seed = seed))
-  )
+  Tsteps <- years + 1
+  if (keep_traj) {
+    extinct_mat <- matrix(FALSE, nrow = Tsteps, ncol = reps)
+    for (r in seq_len(reps)) {
+      for (t in seq_len(Tsteps)) {
+        extinct_mat[t, r] <- sum(traj[t, , r]) == 0
+      }
+    }
+    ext_prob <- rowMeans(extinct_mat)
+
+    # 1. plain mean over *all* reps
+    traj_raw  <- apply(traj, c(1, 2), mean)   # [time × stage]
+
+    # 2. conditional mean given persistence
+    surv_prob <- 1 - ext_prob                 # vector length time
+    traj_mean <- traj_raw                     # initialise
+    for (t in seq_len(years + 1)) {
+      if (surv_prob[t] > 0) {
+        traj_mean[t, ] <- round(traj_raw[t, ] / surv_prob[t])
+      } else {
+        traj_mean[t, ] <- 0L                  # no survivors
+      }
+    }
+
+    # 3. conditional Nend summary
+    if (surv_prob[years + 1] > 0) {
+      Nsurv <- Nend[!extinct_mat[years + 1, ]]
+      Nend_summary <- list(
+        median = median(Nsurv),
+        lo95   = quantile(Nsurv, 0.025),
+        hi95   = quantile(Nsurv, 0.975)
+      )
+    } else {
+      Nend_summary <- list(median = 0, lo95 = 0, hi95 = 0)
+    }
+      
+    # conditional F and SR means
+    sr_mean <- rowMeans(sr_traj)
+    F_mean  <- rowMeans(F_traj); F_mean[1] <- 0
+
+  } else {
+    traj_mean     <- NULL
+    Nend_summary  <- NULL
+    sr_mean   <- NULL
+    F_mean    <- NULL
+  }
+  
+  # --- summary of Nend on surviving replicates ----------------------------
+  final_survivors <- if (keep_traj) which(!extinct_mat[Tsteps, ]) else which(Nend > 0)
+  if (length(final_survivors) > 0) {
+    Np <- Nend[final_survivors]
+    Nmed  <- as.numeric(round(quantile(Np, probs = 0.50)))
+    Nlo95 <- as.numeric(round(quantile(Np, probs = 0.025)))
+    Nhi95 <- as.numeric(round(quantile(Np, probs = 0.975)))
+  } else {
+    Nmed  <- 0
+    Nlo95 <- 0
+    Nhi95 <- 0
+  }
+
+  return(list(
+    ext_prob      = ext_prob,                 # fraction extinct at each t
+    Nend_summary  = list(median = Nmed,
+                         lo95   = Nlo95,
+                         hi95   = Nhi95),
+    traj_mean     = traj_mean,                # integer mean over survivors
+    sr_mean       = sr_mean,
+    F_mean        = F_mean,
+    params        = c(spec,
+                      list(years  = years,
+                           reps   = reps,
+                           stasis = stasis,
+                           seed   = seed)),
+    raw           = list(traj = traj)
+  ))
 }
