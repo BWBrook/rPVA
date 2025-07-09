@@ -1,14 +1,26 @@
 # woodhen.R
+pkgload::load_all(".")
 
-devtools::load_all()
+# First run all scenarios and compare results
+run_scenarios(csv_out = NULL)
 
-spec <- read_spec(system.file("extdata", "woodhen_no_mgmt.yaml", package="woodhenPVA"))
-plot_pva_matrix(spec) # returns patchwork composite or a list
+# These are the scenarios you can run individually:
+scen_list <- c("01_no_mgmt",           # 1
+               "02_pig_control",       # 2
+               "03_captive_pig",       # 3
+               "04_rat_eradication",   # 4
+               "05_future_baseline",   # 5
+               "sensitivity_analysis") # 6
 
-# Run stochastic scenario
-sim  <- run_pva_core(spec, keep_traj = TRUE, verbose = TRUE, seed = 1234)
-p1 <- plot_pva_traj(sim, sample = 250)
-p2 <- plot_pva_summary(sim)
-p3 <- plot_ext(sim)
-panel <- plot_pva_panel(p1, p2, p3)
-sim[1:5] # show core results data
+# Choose which scenario number you wish to run:
+select_scen_number <- 6
+
+spec <- set_scenario(scen_list[select_scen_number])
+plot_pva_matrix(spec) # returns composite plot and a list
+sim  <- run_pva_core(spec, seed = 123)
+
+# Create a composite plot of the PVA results
+plot_pva_panel(plot_pva_traj(sim, sample = 100),
+               plot_pva_summary(sim), 
+               plot_ext(sim))
+sim[1:5] # show core results as numbers

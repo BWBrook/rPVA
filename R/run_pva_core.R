@@ -20,10 +20,10 @@ run_pva_core <- function(
     spec,
     years     = spec$years,
     reps      = spec$reps,
-    keep_traj = FALSE,
+    keep_traj = TRUE,
     stasis    = NULL,
     seed      = NULL,
-    verbose   = FALSE
+    verbose   = TRUE
 ) {
   # --- Input validation & defaults ---
   stopifnot(is.list(spec))
@@ -48,6 +48,7 @@ run_pva_core <- function(
 
   # K default (disable if missing)
   if (is.null(spec$K))               spec$K             <- NA_real_
+  if (is.null(spec$K_sd))            spec$K_sd          <- 0
 
   # catastrophe defaults
   if (is.null(spec$cat_freq))        spec$cat_freq      <- 0
@@ -59,7 +60,7 @@ run_pva_core <- function(
   if (is.null(spec$F_init))          spec$F_init        <- 0
   if (is.null(spec$lethal_equiv)) spec$lethal_equiv     <- 0
   if (is.null(spec$B_on_fec))  spec$B_on_fec            <- 0
-  if (is.null(spec$Ne_N_ratio))      spec$Ne_N_ratio    <- NA_real_
+  if (is.null(spec$Ne_N_ratio))      spec$Ne_N_ratio    <- 1
   if (is.null(spec$Ne_window))       spec$Ne_window     <- 1
   if (is.null(spec$purge_kappa))     spec$purge_kappa   <- 0
 
@@ -127,6 +128,7 @@ run_pva_core <- function(
     F <- if (!is.null(spec$F_init)) spec$F_init else 0
     k <- if (!is.null(spec$Ne_window)) spec$Ne_window else 10  # years of memory
     N_hist <- rep(sum(N), k)                                   # fill with N₀
+    LE <- spec$lethal_equiv
 
     if (keep_traj) {
       traj[1, , r]  <- N
@@ -157,10 +159,8 @@ run_pva_core <- function(
       # --- genetics: apply inbreeding depression if selected ---
       N_hist <- c(N_hist[-1], sum(N)) # update rolling buffer of N
       Ne_t <- spec$Ne_N_ratio / mean(1 / N_hist) # harmonic mean of window
-      gen <- genetic_update(surv_t, fec_t, N, F, spec, Ne_override = Ne_t)
-      surv_t <- gen$surv
-      fec_t  <- gen$fec
-      F      <- gen$F
+      gen <- genetic_update(surv_t, fec_t, N, F, spec, LE, Ne_override = Ne_t)
+      surv_t <- gen$surv; fec_t <- gen$fec; F <- gen$F; LE <- gen$LE
 
       N_next <- integer(n_stage)
 
@@ -188,14 +188,19 @@ run_pva_core <- function(
         }
       }
 
-      # --- Density ceiling ---
-      N_next <- apply_ceiling_K(N_next, spec$K)
+      # --- Density ceiling with environmental variability ---
+      if (!is.na(spec$K) && spec$K_sd > 0) {
+        K_t <- round(rnorm(1, spec$K, spec$K_sd))
+      } else {
+        K_t <- spec$K
+      }   
+      N_next <- apply_ceiling_K(N_next, K_t)
       N_next[N_next < 0] <- 0 # numerical guard
       N <- N_next
 
+      # --- Tally trajectories ---
       if (sum(N) == 0) {
         if (keep_traj) {
-          # fill remaining years with zeros (or carry forward sr, F if you prefer)
           traj[(t + 1):(years + 1), , r]  <- 0L
           sr_traj[(t + 1):(years + 1), r] <- sr
           F_traj[(t + 1):(years + 1), r]  <- F
@@ -252,7 +257,7 @@ run_pva_core <- function(
       
     # conditional F and SR means
     sr_mean <- rowMeans(sr_traj)
-    F_mean  <- rowMeans(F_traj); F_mean[1] <- 0
+    F_mean  <- rowMeans(F_traj); F_mean[1] <- spec$F_init
 
   } else {
     traj_mean     <- NULL

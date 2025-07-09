@@ -9,16 +9,16 @@
 #'              Ne_N_ratio, purge_kappa
 #' @return list(surv, fec, F) – adjusted survival, fecundity, and updated F
 #' @keywords internal
-genetic_update <- function(surv, fec, N_vec, F, spec, Ne_override = NULL) {
+genetic_update <- function(surv, fec, N_vec, F, spec, LE, Ne_override = NULL) {
 
   # only drift if we have a positive B and a valid Ne/N ratio
-  if (is.null(spec$lethal_equiv) || sum(spec$lethal_equiv) <= 0 ||
+  if (is.null(LE) || sum(LE) <= 0 ||
       is.null(spec$Ne_N_ratio) || is.na(spec$Ne_N_ratio) || spec$Ne_N_ratio <= 0
       || !isTRUE(spec$genetics)) {
     return(list(surv = surv, fec = fec, F = F))
   }
 
-  BS <- spec$lethal_equiv   # lethal equivalents on survival
+  BS <- LE                  # lethal equivalents on survival
   BF <- BS * spec$B_on_fec  # lethal equivalents on fertility
   ws <- exp(-BS * F)        # survival fitness multiplier
   wf <- exp(-BF * F)        # fertility fitness multiplier
@@ -33,11 +33,11 @@ genetic_update <- function(surv, fec, N_vec, F, spec, Ne_override = NULL) {
   } else {
     Ne <- max(1, floor(spec$Ne_N_ratio * sum(N_vec)))
   }
-  F_next <- F + (1 - F) / (2 * Ne)
+  F_next <- F + (1 - F) / (2 * Ne * 2) # account for ♀ only model
 
   # ---- Optional purging --------------------------------------------------
   if (!is.null(spec$purge_kappa) && spec$purge_kappa > 0)
-    spec$lethal_equiv <- BS * (1 - spec$purge_kappa * ((1 - F) / (2 * Ne)))
+    LE <- LE * (1 - spec$purge_kappa * ((1 - F) / (2 * Ne * 2)))
 
-  list(surv = surv, fec = fec, F = F_next)
+  list(surv = surv, fec = fec, F = F_next, LE = LE)
 }

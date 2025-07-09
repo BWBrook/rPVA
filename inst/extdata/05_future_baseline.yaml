@@ -1,0 +1,10 @@
+# Lord Howe Island woodhen – Scenario 5 (future population viability)
+# What future threats might the woodhen face? How secure is its population in the long-term through to  
+# the year 2100, if nothing else changes?
+
+name:           woodhen_future_baseline
+years:          75                             # 2025-2100
+K:              200                            # maximum breeding territories after rat eradication
+K_sd:           50
+n0:             [123, 60, 34, 25, 16, 10, 6]   # Female age distribution in 2025 0=123 or 351?
+F_init:         0.35                           # Inbreeding coefficient after recovery

@@ -1,0 +1,27 @@
+# Lord Howe Island woodhen – sensitivity analysis (explore and experiment)
+
+# What if things do change? Explore the sensitivity of the woodhen to extinction risk due to global change.  
+
+# Try runs with different "realistic" parameters  to determine the robustness of the outcomes to input  
+# parameters (see also Brook et al. 1997). These runs are all to be done for 75 years, to simulate the  
+# period 2025 to 2100. First run the scenario with the default parameters below, so that you have a control  
+# to compare with. 
+
+# Next, modify the input values to how sensitive the woodhen population is to: 
+# a. A 5% decreased survival rate due to a new disease.  
+# b. A 50% decrease in habitat due to tourist development (K = 100).  
+# c. An increase in the frequency of catastrophes to 10% due to a higher number of intense cyclones as a  
+#    result of global climate change.  
+# d. Other options you choose. (see below)  
+
+# Brainstorm to think of alternative processes that might impact the woodhen (e.g., an expansion of the 
+# lowland settlement, a new predator or competitor introduced species, sea-level rise, etc.). Ensure the  
+# parameters you manipulate are environmental or demographic processes that are likely to change, or that  
+# a manager really could alter (e.g. it is no use changing the sex-ratio at birth).
+
+name:           woodhen_sensitivity
+years:          75                             # 2025-2100
+K:              200                            # maximum breeding territories after rat eradication
+K_sd:           50
+n0:             [123, 60, 34, 25, 16, 10, 6]   # Female age distribution in 2025 0=123 or 351?
+F_init:         0.35                           # Inbreeding coefficient after recovery

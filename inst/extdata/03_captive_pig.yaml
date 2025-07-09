@@ -1,0 +1,18 @@
+# Lord Howe Island woodhen – Scenario 3 (captive breeding + pig control: what was actually done)
+# Pig control is undertaken, but this is not deemed enough. The last remaining woodhen are removed  
+# from the wild, and a captive breeding colony is established. Supplementation then occurs, in  
+# combination with pig eradication releasing more habitat. Is this enough?
+
+# This is to simulate the situation when the captive breeding program was instituted, with 3 pairs  
+# captured from the wild, and the island-wide eradication of pigs was carried out.  
+# This is implemented in the PVA by a reintroduction programme using captive-bred individuals, by  
+# adding 10 adult pairs over the period 1981-1985. A carrying capacity of K = 150 is used again to  
+# encompass pig control.
+
+name:           woodhen_captive_pig
+K:              150
+K_sd:           38
+removal_years:  [1]                        # start year is 1979, removals occur once in 1980
+removal_vec:    [0, 1, 1, 1, 0, 0, 0]      # 3 pairs captured from the wild
+release_years:  [3, 4, 5, 6]               # years 3-6 (1982-1985)
+release_vec:    [0, 0, 10, 0, 0, 0, 0]     # 10 adult pairs = 20 adults (prime breeding age)

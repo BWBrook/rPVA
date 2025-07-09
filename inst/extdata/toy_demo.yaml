@@ -1,0 +1,25 @@
+#| Step | Learning focus                       | Parameter tweaks                     |
+#| ---: | ------------------------------------ | -------------------------------------|
+#|    0 | **Deterministic exponential growth** | Base YAML above (λ ≈ 1.07).          |
+#|    1 | **Ceiling stops growth**             | `K = 100`.                           |
+#|    2 | **Demographic stochasticity**        | `demo_sd = TRUE`, `reps = 100`.      |
+#|    3 | **Environmental stochasticity**      | `env_sd = 0.30` (keep 100 reps).     |
+#|    4 | **Inbreeding‐depression ratchet**    | `genetics = TRUE`.                   |
+
+# ---------- Toy species for PVA fundamentals ----------
+name:           toy_species 
+years:          25
+reps:           1
+
+# Vital rates (3 stages: Juvenile, Sub‑adult, Adult)
+surv:           [0.4, 0.6, 0.7]          # survival per stage
+fecund:         [0.0, 1.7, 2.1]          # F per female
+
+# Initial population — rounded SSD for  λ ≈ 1.0724  (total 50)
+n0:             [31, 12, 7]
+
+# Switch‑offs for the first demo
+K:              NA                       # no density ceiling
+demo_sd:        FALSE
+env_sd:         0
+genetics:       FALSE                    # apply inbreeding depression? (TRUE or FALSE)
