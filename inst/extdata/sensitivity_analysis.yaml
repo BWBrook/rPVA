@@ -8,11 +8,11 @@
 # to compare with. 
 
 # Next, modify the input values to how sensitive the woodhen population is to: 
-# a. A 5% decreased survival rate due to a new disease.  
-# b. A 50% decrease in habitat due to tourist development (K = 100).  
+# a. A 10% decreased survival rate due to a new disease.  
+# b. A 50% decrease in habitat due to tourist development (K = 250).  
 # c. An increase in the frequency of catastrophes to 10% due to a higher number of intense cyclones as a  
 #    result of global climate change.  
-# d. Other options you choose. (see below)  
+# d. Other options you choose. (see below for ideas)  
 
 # Brainstorm to think of alternative processes that might impact the woodhen (e.g., an expansion of the 
 # lowland settlement, a new predator or competitor introduced species, sea-level rise, etc.). Ensure the  
@@ -20,8 +20,13 @@
 # a manager really could alter (e.g. it is no use changing the sex-ratio at birth).
 
 name:           woodhen_sensitivity
-years:          75                             # 2025-2100
-K:              200                            # maximum breeding territories after rat eradication
+years:          75                                       # 2025-2100
+n0:             [497, 167, 82, 43, 24, 11, 3]            # 2024 census numbers, including ~330 breeding pairs
+K:              500                                      # habitat use unleashed after rodents are eradicated
 K_sd:           50
-n0:             [123, 60, 34, 25, 16, 10, 6]   # Female age distribution in 2025 0=123 or 351?
-F_init:         0.35                           # Inbreeding coefficient after recovery
+surv:           [0.6, 0.75, 0.85, 0.75, 0.75, 0.65, 0.5] # survival rates of age 0 and 1 ↑
+stasis:         [0, 0, 0, 0, 0, 0, 0.5]                  # survival rate of age 8+ (stasis stage)
+fecund:         [0, 1.5, 3, 3.3, 3, 2.5, 1.5]            # ~50% ↑ to recruitment
+F_init:         0.4                                      # Inbreeding coefficient after earlier recovery
+lethal_equiv:   [0.2, 0, 0, 0, 0, 0, 0]                  # LE (B) on survival: most already purged
+purge_kappa:    0                                        # no further purging

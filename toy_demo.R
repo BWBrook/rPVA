@@ -28,3 +28,5 @@ plot_ext(toy$results$env_sd)
 plot_pva_traj(toy$results$genetics, sample = 10)
 plot_pva_summary(toy$results$genetics)
 plot_ext(toy$results$genetics)
+
+# Equipped With this understanding, you're ready to move on to the woodhen!

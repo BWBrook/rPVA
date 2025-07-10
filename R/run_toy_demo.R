@@ -26,7 +26,7 @@ run_toy_demo <- function(base_yaml = system.file("extdata", "toy_demo.yaml",
                   K_sd = 5, 
                   reps = 100,
                   genetics = TRUE,
-                  lethal_equiv = c(2, 1, 0.5))))
+                  lethal_equiv = c(1.5, 1, 0.5))))
 
   ## run every scenario ------------------------------------------------------
   out <- lapply(scenarios, run_pva_core, seed = seed)

@@ -113,13 +113,14 @@ run_pva_core <- function(
                                      stage = paste0("stage", seq_len(n_stage)),
                                      rep   = NULL))
     sr_traj <- matrix(NA_real_, nrow = years + 1, ncol = reps,
-                      dimnames = list(time = 0:years,
-                                      rep   = NULL))
+                      dimnames = list(time = 0:years, rep = NULL))
     F_traj  <- matrix(NA_real_, nrow = years + 1, ncol = reps)
+    LE_traj <- matrix(NA_real_, nrow = years + 1, ncol = reps)
   } else {
     traj    <- NULL
     sr_traj <- NULL
     F_traj  <- NULL
+    LE_traj <- NULL
   }
 
   for (r in seq_len(reps)) {
@@ -133,7 +134,8 @@ run_pva_core <- function(
     if (keep_traj) {
       traj[1, , r]  <- N
       sr_traj[1, r] <- sr
-      F_traj[1]     <- F
+      F_traj[1, r]  <- F
+      LE_traj[1, r] <- sum(LE)
     }
     
     for (t in seq_len(years)) {
@@ -204,6 +206,7 @@ run_pva_core <- function(
           traj[(t + 1):(years + 1), , r]  <- 0L
           sr_traj[(t + 1):(years + 1), r] <- sr
           F_traj[(t + 1):(years + 1), r]  <- F
+          LE_traj[(t + 1):(years + 1), r] <- sum(LE)
         }
         break # stop this replicate if population has gone extinct
       }
@@ -212,6 +215,7 @@ run_pva_core <- function(
         traj[t + 1, , r]  <- N
         sr_traj[t + 1, r] <- sr
         F_traj[t + 1, r]  <- F
+        LE_traj[t + 1, r] <- sum(LE)
       }
     }
     Nend[r] <- sum(N)
@@ -258,12 +262,14 @@ run_pva_core <- function(
     # conditional F and SR means
     sr_mean <- rowMeans(sr_traj)
     F_mean  <- rowMeans(F_traj); F_mean[1] <- spec$F_init
+    LE_mean <- rowMeans(LE_traj)
 
   } else {
     traj_mean     <- NULL
     Nend_summary  <- NULL
     sr_mean   <- NULL
     F_mean    <- NULL
+    LE_mean   <- NULL
   }
   
   # --- summary of Nend on surviving replicates ----------------------------
@@ -287,6 +293,7 @@ run_pva_core <- function(
     traj_mean     = traj_mean,                # integer mean over survivors
     sr_mean       = sr_mean,
     F_mean        = F_mean,
+    LE_mean       = LE_mean,
     params        = c(spec,
                       list(years  = years,
                            reps   = reps,

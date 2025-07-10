@@ -1,18 +1,18 @@
 # Lord Howe Island woodhen – Scenario 3 (captive breeding + pig control: what was actually done)
-# Pig control is undertaken, but this is not deemed enough. The last remaining woodhen are removed  
-# from the wild, and a captive breeding colony is established. Supplementation then occurs, in  
-# combination with pig eradication releasing more habitat. Is this enough?
+# Pig control was undertaken, but this was not deemed enough. Some of the last remaining woodhen  
+# were removed from the wild, and a captive breeding colony was established. Supplementation then  
+# occurred, in  ombination with pig eradication releasing more habitat. Was that enough?
 
-# This is to simulate the situation when the captive breeding program was instituted, with 3 pairs  
+# This is to simulate the situation when the captive breeding program was instituted, with 4 pairs  
 # captured from the wild, and the island-wide eradication of pigs was carried out.  
 # This is implemented in the PVA by a reintroduction programme using captive-bred individuals, by  
-# adding 10 adult pairs over the period 1981-1985. A carrying capacity of K = 150 is used again to  
-# encompass pig control.
+# capturing breeding pairs in 1981-82 and subsequently adding 13 adult pairs over the period 1982-1984.  
+# A carrying capacity of K = 70 is used again to encompass pig control in the lowland areas.
 
 name:           woodhen_captive_pig
-K:              150
-K_sd:           38
-removal_years:  [1]                        # start year is 1979, removals occur once in 1980
-removal_vec:    [0, 1, 1, 1, 0, 0, 0]      # 3 pairs captured from the wild
-release_years:  [3, 4, 5, 6]               # years 3-6 (1982-1985)
-release_vec:    [0, 0, 10, 0, 0, 0, 0]     # 10 adult pairs = 20 adults (prime breeding age)
+K:              70
+K_sd:           7
+removal_years:  [1, 2]                     # start year is 1980, removals occur 1981 and 1982
+removal_vec:    [0, 1, 1, 0, 0, 0, 0]      # 4 pairs captured from the wild in total
+release_years:  [2, 3, 4]                  # captive birds released during 1982-1984
+release_vec:    [0, 13, 0, 0, 0, 0, 0]     # ~13 mature pairs = 26 individuals per year

@@ -33,11 +33,11 @@ genetic_update <- function(surv, fec, N_vec, F, spec, LE, Ne_override = NULL) {
   } else {
     Ne <- max(1, floor(spec$Ne_N_ratio * sum(N_vec)))
   }
-  F_next <- F + (1 - F) / (2 * Ne * 2) # account for ♀ only model
+  F_next <- F + (1 - F) / (2 * Ne)
 
   # ---- Optional purging --------------------------------------------------
   if (!is.null(spec$purge_kappa) && spec$purge_kappa > 0)
-    LE <- LE * (1 - spec$purge_kappa * ((1 - F) / (2 * Ne * 2)))
+    LE <- max(0, LE * (1 - spec$purge_kappa * ((1 - F) / (2 * Ne))))
 
   list(surv = surv, fec = fec, F = F_next, LE = LE)
 }

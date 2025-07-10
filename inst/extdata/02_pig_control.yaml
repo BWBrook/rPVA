@@ -2,8 +2,8 @@
 # Managers decide to cull the feral pig population, with a hope that this will allow the woodhen to expand its  
 # numbers and repopulate the lowland territories. How did this action affect its extinction risk?
 # Simulated by increasing the amount of available habitat. This is implemented by changing the carrying capacity  
-# to 150 breeding pairs (+ juvenile floaters).
+# to ~70 breeding pairs (+ juvenile 'floaters': young birds that have not yet secured a territory).
 
 name: woodhen_pig_control
-K:    150                 # 150 breeding pairs + floaters
-K_sd: 38                  # σ_env on K (habitat variability) set at 0.3 CV 
+K:    70                  # maximum of 70 breeding pairs + floaters
+K_sd: 7                   # σ_env on K (habitat variability) set at 0.1 CV 
