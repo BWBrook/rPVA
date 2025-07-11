@@ -1,7 +1,9 @@
 # Lord Howe Island woodhen – Scenario 4 (rodent eradication programme)
 # In 2019, a rodent eradication programme was implemented, to supress egg predation,  
 # remove the predation of chicks, and improve the invertebrate food supply for woodhens.  
-# This scenario starts with the 2019 population release size of 208 birds and projects to 2024 (latest survey).  
+# This scenario starts with the 2019 population release size of 208 birds and projects  
+# to 2024 (latest survey). It models a ~50% increase in recruitment, and an improvement  
+# in juvenile and sub-adult survival.
 
 name:           woodhen_rat_eradication
 years:          5                                        # Forecast from 2019 to 2024
