@@ -1,0 +1,27 @@
+# Thylacine life‑history (base – do not run directly)
+years:          20          # baseline 1909‑1929
+reps:           1000
+# ----- Stage structure ------------------------------------------------------
+# stage1 = age0 (juvenile), stage2 = age1 (sub‑adult), stage3 = ≥2 (adult)
+surv:           [0.60, 0.80, 0.80]        # survival rates
+fecund:         [0, 0, 0.88]              # 0.70 × 2.5 × 0.5 - daughters only
+sex_ratio_init: 0.5
+monogamy:       FALSE                      # polygynous
+max_age:        10
+# ----- Demographic & environmental noise ------------------------------------
+demo_sd:        TRUE
+env_sd:         0.20                       # ball‑park for EV settings
+# ----- Density & catastrophes ----------------------------------------------
+K:              1000
+K_ev:           250
+cat_freq:       0.05                       # Disease
+cat_surv:       0.5
+cat_repro:      1.0
+# ----- Genetics -------------------------------------------------------------
+genetics:       TRUE
+F_init:         0.0
+lethal_equiv:   [3.14, 0, 0]               # same LE for all stages
+B_on_fec:       0.0                        # assume survival‑only load
+Ne_N_ratio:     0.8
+# ----- Initial population (50 total, collapsed to 3 stages) -----------------
+n0:             [14, 22, 14]               # juvenile / sub‑adult / adult

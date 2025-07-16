@@ -1,0 +1,5 @@
+# Copy this file, change the numbers, and give it a new name
+name: thylacine_sensitivity_XXX
+years: 75
+# example: disease increases first‑year mortality by +10 %
+surv: [0.50, 0.80, 0.80]   # 🔶 adjust only what you test
