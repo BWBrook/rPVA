@@ -1,7 +1,7 @@
 # bootstrap.R  ---------------------------------------------------------------
-# One-liner for KPZ308 students: source("bootstrap.R")
+# One-liner for installation: source("bootstrap.R")
 
-message("🔧  Setting up the woodhenPVA environment…")
+message("🔧  Setting up the r-pva environment…")
 
 ## 1. Install renv if missing -----------------------------------------------
 if (!requireNamespace("renv", quietly = TRUE)) {
@@ -19,4 +19,4 @@ if (!requireNamespace("pkgload", quietly = TRUE)) {
 
 pkgload::load_all(".")  # same as devtools::load_all(), lighter dependencies
 
-message("✅  woodhenPVA is ready!  Open toy_demo.R to get started.")
+message("✅  r-pva is ready!  Open README.md to get started.")

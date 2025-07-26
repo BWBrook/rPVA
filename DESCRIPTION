@@ -1,8 +1,8 @@
-Package: woodhenPVA
-Title: KPZ308 Woodhen Population Viability Simulator
+Package: r-pva
+Title: R-based Population Viability Analysis Simulator
 Version: 0.0.1.000
 Authors@R: person("Barry", "Brook", email = "barry.brook@utas.edu.au", role = c("aut", "cre"))
-Description: Internal teaching package to run PVA simulations in KPZ308 practicals.
+Description: R package to build and run PVA simulations
 License: MIT
 Encoding: UTF-8
 Depends: R (>= 4.0)
@@ -21,7 +21,4 @@ Imports:
 Suggests:
     pkgload,
     devtools,
-    testthat,
-    popbio,
-    learnr,
-    gradethis
+    testthat

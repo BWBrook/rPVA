@@ -1,0 +1,32 @@
+# _woodhen_base.yaml
+name:           woodhen_base                                # will be amended by scenario files
+years:          40                                          # number of years to simulate (1981-2020)
+reps:           1000                                        # number of stochastic replications
+
+# Vital rates: this woodhen model has 7 stages (ages):
+surv:           [0.35, 0.65, 0.85, 0.75, 0.75, 0.65, 0.5]   # age-specific survival
+stasis:         [0, 0, 0, 0, 0, 0, 0.5]                     # survival rate of age 8+ (stasis stage)
+fecund:         [0, 1.0, 2.0, 2.2, 2.0, 1.5, 0.5]           # mean fledglings per ♀ (fertility/fecundity)
+sex_ratio_init: 0.5                                         # F/(F+M) in starting population
+monogamy:       TRUE                                        # if FALSE, ignore SR constraint
+
+# Population Dynamics
+n0:             [9, 3, 2, 1, 1, 1, 1]                       # starting age vector of ♀ (integers)
+demo_sd:        TRUE                                        # demo stoch (binomial/pois: FALSE = off, TRUE = on)
+env_sd:         0.2                                         # σ_env (log-normal/beta: range 0-0.4)
+K:              10                                          # limited habitat on the mountain tops (max. number of pairs)
+K_sd:           1                                           # σ_env on K (habitat variability)
+
+# Catastrophes
+cat_freq:       0.04                                        # annual probability of a catstrophe (cyclone)
+cat_surv:       0.50                                        # survival multiplier in a catastrophe year
+cat_repro:      0.75                                        # fecundity multiplier in a catastrophe year
+
+# Genetics
+genetics:       TRUE                                        # apply inbreeding depression? (TRUE or FALSE)
+F_init:         0.2                                         # initial inbreeding coefficent due to bottlneck (F: 0-1) 
+lethal_equiv:   [1, 0.3, 0.2, 0, 0, 0, 0]                   # LE (B) on survival (~1.5 total due to past purging)
+B_on_fec:       0.1                                         # multiplier on LE to fecundity (0 = off)
+Ne_N_ratio:     0.8                                         # effective to census population size ratio (0.01-1)
+Ne_window:      10                                          # years contributing to harmonic mean for Ne
+purge_kappa:    4                                           # purging constant for recessive lethal allelles
