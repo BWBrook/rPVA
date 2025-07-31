@@ -5,7 +5,7 @@
 #' @return A complete `pva_spec` list ready for `run_pva_core()`.
 #' @export
 set_scenario <- function(scen_name,
-                         dir = system.file("extdata", package = "woodhenPVA")) {
+                         dir = system.file("extdata", package = "rPVA")) {
 
   base_path  <- file.path(dir, "_woodhen_base.yaml")
   delta_path <- file.path(dir, paste0(scen_name, ".yaml"))

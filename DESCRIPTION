@@ -1,4 +1,4 @@
-Package: r-pva
+Package: rPVA
 Title: R-based Population Viability Analysis Simulator
 Version: 0.0.1.000
 Authors@R: person("Barry", "Brook", email = "barry.brook@utas.edu.au", role = c("aut", "cre"))

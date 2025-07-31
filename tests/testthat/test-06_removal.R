@@ -1,7 +1,6 @@
 context("Checkpoint 6 – removals")
 
-spec_rm <- read_spec(system.file("extdata", "woodhen_test.yaml",
-                                 package = "woodhenPVA"))
+spec_rm <- read_spec(system.file("extdata", "woodhen_test.yaml", package = "rPVA"))
 spec_rm$env_sd  <- 0
 spec_rm$demo_sd <- 0        # deterministic
 spec_rm$K       <- 1e6

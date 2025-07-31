@@ -1,4 +1,4 @@
-# R-PVA
+# rPVA
 
 Open-source, cross-platform, and fully reproducible population viability analysis (PVA) toolkit for R.  
 Designed for rapid scenario-building, robust teaching, and defensible conservation decision-making.
@@ -19,7 +19,7 @@ Designed for rapid scenario-building, robust teaching, and defensible conservati
 
 ## Getting started
 
-1. **Clone the repository** and open `r-pva.Rproj` in RStudio, or launch an R session in this directory.
+1. **Clone the repository** and open `rPVA.Rproj` in RStudio, or launch an R session in this directory.
 2. **Quick setup**: *Source the bootstrap script* (recommmended for new users). In the project root:
    ```r
    source("bootstrap.R")

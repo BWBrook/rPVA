@@ -1,7 +1,6 @@
 context("Checkpoint 3c – immigration lowers F")
 
-spec_r <- read_spec(system.file("extdata", "woodhen_test.yaml",
-                                package = "woodhenPVA"))
+spec_r <- read_spec(system.file("extdata", "woodhen_test.yaml", package = "rPVA"))
 spec_r$env_sd <- 0
 spec_r$demo_sd <- FALSE
 spec_r$years  <- 10; spec_r$reps <- 1

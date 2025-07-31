@@ -1,7 +1,6 @@
 context("Checkpoint 8 – plot layer")
 
-spec <- read_spec(system.file("extdata", "woodhen_test.yaml",
-                              package = "woodhenPVA"))
+spec <- read_spec(system.file("extdata", "woodhen_test.yaml", package = "rPVA"))
 spec$years <- 3
 spec$reps  <- 5
 out <- run_pva_core(spec, keep_traj = TRUE)

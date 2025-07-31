@@ -1,7 +1,6 @@
 context("Checkpoint 4 – carrying capacity ceiling (floaters exempt)")
 
-spec_K <- read_spec(system.file("extdata", "woodhen_test.yaml",
-                                package = "woodhenPVA"))
+spec_K <- read_spec(system.file("extdata", "woodhen_test.yaml", package = "rPVA"))
 spec_K$env_sd  <- 0
 spec_K$demo_sd <- FALSE
 spec_K$years   <- 1

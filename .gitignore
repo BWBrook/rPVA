@@ -56,7 +56,7 @@ renv/staging/
 # Quarto / rmarkdown artefacts
 *.html                  # rendered notebooks
 *.knit.md
-woodhenPVA_files/        # html asset dir (JS/CSS/img)
+rPVA_files/        # html asset dir (JS/CSS/img)
 
 # _targets
 # The object store is committed ONCE; ignore future changes

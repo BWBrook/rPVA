@@ -1,7 +1,6 @@
 context("Checkpoint 7 – supplementation")
 
-spec_rel <- read_spec(system.file("extdata", "woodhen_test.yaml",
-                                  package = "woodhenPVA"))
+spec_rel <- read_spec(system.file("extdata", "woodhen_test.yaml", package = "rPVA"))
 
 spec_rel$env_sd  <- 0
 spec_rel$demo_sd <- FALSE

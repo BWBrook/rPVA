@@ -1,7 +1,6 @@
 context("Checkpoint 3b – genetic drift increases F")
 
-spec <- read_spec(system.file("extdata", "woodhen_test.yaml",
-                              package = "woodhenPVA"))
+spec <- read_spec(system.file("extdata", "woodhen_test.yaml", package = "rPVA"))
 spec$env_sd <- 0
 spec$demo_sd <- FALSE
 spec$years <- 30; spec$reps <- 1

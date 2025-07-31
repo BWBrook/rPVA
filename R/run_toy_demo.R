@@ -4,8 +4,7 @@
 #' configurations and returns a list of result objects plus a summary table.
 #' 
 #' @export
-run_toy_demo <- function(base_yaml = system.file("extdata", "toy_demo.yaml",
-                                                 package = "woodhenPVA"),
+run_toy_demo <- function(base_yaml = system.file("extdata", "toy_demo.yaml", package = "rPVA"),
                          seed = 42) {
 
   requireNamespace("dplyr")   # fail fast if missing
