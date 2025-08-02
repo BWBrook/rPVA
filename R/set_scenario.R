@@ -1,26 +1,34 @@
 #' set_scenario
-#' 
-#' Combine the global woodhen base spec with an override YAML.
-#' @param scen_name Character, e.g. "01_no_mgmt" (no extension).
-#' @return A complete `pva_spec` list ready for `run_pva_core()`.
+#'
+#' Combine a species-specific “base” YAML with a scenario override YAML.
+#'
+#' @param scen_name   Character, e.g. "01_no_mgmt" (no extension)
+#' @param subdir      Sub-folder under inst/extdata/ that holds the YAMLs
+#'                    (default "woodhen").
+#' @return            A complete `pva_spec` list ready for `run_pva_core()`.
 #' @export
 set_scenario <- function(scen_name,
-                         dir = system.file("extdata", package = "rPVA")) {
+                         subdir = "woodhen",
+                         pkg    = utils::packageName()) {
 
-  base_path  <- file.path(dir, "_woodhen_base.yaml")
-  delta_path <- file.path(dir, paste0(scen_name, ".yaml"))
+  root <- system.file("extdata", subdir, package = pkg)
+
+  if (root == "" || !dir.exists(root))
+    stop("Cannot locate inst/extdata/", subdir, " in package ", pkg, call. = FALSE)
+
+  base_path  <- file.path(root, paste0("_", subdir, "_base.yaml"))
+  delta_path <- file.path(root, paste0(scen_name,  ".yaml"))
 
   if (!file.exists(base_path))
-    stop("Base YAML not found: ", base_path)
+    stop("Base YAML not found: ", base_path,  call. = FALSE)
   if (!file.exists(delta_path))
-    stop("Scenario YAML not found: ", delta_path)
+    stop("Scenario YAML not found: ", delta_path, call. = FALSE)
 
   base  <- read_spec(base_path)
-  delta <- read_spec(delta_path)   # safe: read_spec() already coerces numerics
+  delta <- read_spec(delta_path)
 
   spec  <- modifyList(base, delta)
-  if (is.null(spec$name))
-    spec$name <- scen_name
-
+  if (is.null(spec$name)) spec$name <- scen_name
   spec
 }
+

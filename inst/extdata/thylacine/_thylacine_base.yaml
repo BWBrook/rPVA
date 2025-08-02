@@ -1,27 +1,31 @@
 # Thylacine life‑history (base – do not run directly)
-years:          20          # baseline 1909‑1929
+name:           thylacine_base        # will be amended by scenario files
+years:          20                    # baseline 1920‑1939
 reps:           1000
 # ----- Stage structure ------------------------------------------------------
 # stage1 = age0 (juvenile), stage2 = age1 (sub‑adult), stage3 = ≥2 (adult)
-surv:           [0.60, 0.80, 0.80]        # survival rates
-fecund:         [0, 0, 0.88]              # 0.70 × 2.5 × 0.5 - daughters only
+surv:           [0.60, 0.80, 0.80]    # survival rates
+stasis:         [0,    0,    0.80]    # survival rate of age 3+ (stasis)
+fecund:         [0,    0,    1.00]    # 0.8 prob b × 2.5 per lit × 0.5 sr: fem
 sex_ratio_init: 0.5
-monogamy:       FALSE                      # polygynous
-max_age:        10
+monogamy:       FALSE                 # polygynous
+max_age:        8
 # ----- Demographic & environmental noise ------------------------------------
 demo_sd:        TRUE
-env_sd:         0.20                       # ball‑park for EV settings
+env_sd:         0.25                  # ball‑park for EV settings
 # ----- Density & catastrophes ----------------------------------------------
-K:              1000
-K_ev:           250
-cat_freq:       0.05                       # Disease
+K:              1500                  # Habitat ceiling, females only
+K_ev:           350
+cat_freq:       0.05                  # Disease
 cat_surv:       0.5
 cat_repro:      1.0
 # ----- Genetics -------------------------------------------------------------
 genetics:       TRUE
 F_init:         0.0
-lethal_equiv:   [3.14, 0, 0]               # same LE for all stages
-B_on_fec:       0.0                        # assume survival‑only load
+lethal_equiv:   [1, 0.3, 0.2]         # LE (B) on survival
+B_on_fec:       0.0                   # assume survival‑only load
 Ne_N_ratio:     0.8
-# ----- Initial population (50 total, collapsed to 3 stages) -----------------
-n0:             [14, 22, 14]               # juvenile / sub‑adult / adult
+Ne_window:      10                    # years contrib to harmonic mean for Ne
+purge_kappa:    4                     # purging constant for recessive lethals
+# ----- Initial population (20 adult females) ---------------------------------
+n0:             [18, 9, 20]           # juvenile / sub‑adult / adult

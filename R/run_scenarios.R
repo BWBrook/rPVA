@@ -10,10 +10,16 @@
 #' @param parallel Logical: use `future.apply` for parallel execution?
 #' @return (invisibly) a data.frame with one row per scenario.
 #' @export
-run_scenarios <- function(paths      = "inst/extdata",
+run_scenarios <- function(subdir     = "",             # e.g. "woodhen"
                           csv_out    = "scenario_summary.csv",
                           rds_out    = "scenario_raw.rds",
                           parallel   = FALSE) {
+
+  root <- system.file("extdata", package = utils::packageName())
+  paths <- if (subdir == "") root else file.path(root, subdir)
+
+  if (paths == "" || !dir.exists(paths))
+    stop("Cannot locate scenarios in ", paths, call. = FALSE)
 
   ## ------------ resolve file list -----------------------------------------
   if (length(paths) == 1 && dir.exists(paths)) {
@@ -38,7 +44,7 @@ run_scenarios <- function(paths      = "inst/extdata",
   ## ------------ run each scenario -----------------------------------------
   results <- lapply_fun(paths, function(p) {
     scen <- tools::file_path_sans_ext(basename(p))
-    spec <- set_scenario(scen)
+    spec <- set_scenario(scen, subdir)
     cat(scen, "\n")
     out  <- run_pva_core(spec, seed = 123)
     data.frame(
