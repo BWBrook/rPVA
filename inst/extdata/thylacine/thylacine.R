@@ -1,13 +1,13 @@
-# woodhen.R
+# thylacine.R
 pkgload::load_all(".")
 
 # These are the scenarios you can run individually:
-scen_list <- c("01_historical_no_action",    # 1
-               "02_habitat_restoration",     # 2
-               "03_legal_protection",        # 3
-               "04_captive_breeding",        # 4
-               "05_captive_plus_protection", # 5
-               "06_sensitivity_template")    # 6
+scen_list <- c("01_historical_no_action", # 1
+               "02_habitat_restoration",  # 2
+               "03_legal_protection",     # 3
+               "04_captive_breeding",     # 4
+               "05_combined_action",      # 5
+               "06_sensitivity_template") # 6
 
 # Choose which scenario number you wish to run:
 select_scen_number <- 1

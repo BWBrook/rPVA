@@ -1,3 +1,7 @@
 
 name: thylacine_legal_protection
-removal_years:  []      # stop bounty hunting immediately
+
+years: 50                   # 1925‑1974
+
+surv:   [0.60, 0.85, 0.85]  # survival rates for subadults and adults +5%
+stasis: [0,    0,    0.85]

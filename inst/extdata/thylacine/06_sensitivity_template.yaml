@@ -1,5 +1,7 @@
 # Copy this file, change the numbers, and give it a new name
 name: thylacine_sensitivity_XXX
-years: 75
-# example: disease increases first‑year mortality by +10 %
-surv: [0.50, 0.80, 0.80]   # 🔶 adjust only what you test
+
+years:          50                        # 1925‑1974
+
+# example: chronic disease increases early-stage mortality by +5 %
+surv:           [0.55, 0.75, 0.80]    # survival rates for subadults and adults -5%

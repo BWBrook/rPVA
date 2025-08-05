@@ -5,7 +5,7 @@ reps:           1000                                        # number of stochast
 
 # Vital rates: this woodhen model has 7 stages (ages):
 surv:           [0.35, 0.65, 0.85, 0.75, 0.75, 0.65, 0.5]   # age-specific survival
-stasis:         [0, 0, 0, 0, 0, 0, 0.5]                     # survival rate of age 8+ (stasis stage)
+stasis:         [0, 0, 0, 0, 0, 0, 0.25]                    # survival rate of age 8+ (stasis stage)
 fecund:         [0, 1.0, 2.0, 2.2, 2.0, 1.5, 0.5]           # mean fledglings per ♀ (fertility/fecundity)
 sex_ratio_init: 0.5                                         # F/(F+M) in starting population
 monogamy:       TRUE                                        # if FALSE, ignore SR constraint

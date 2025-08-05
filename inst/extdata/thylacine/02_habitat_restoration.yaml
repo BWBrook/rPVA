@@ -1,4 +1,7 @@
 
 name: thylacine_habitat_restoration
-K:    3000        # restore ~50 % former habitat
-K_ev: 600
+
+years: 50    # 1925‑1974
+
+K:     1125  # restore ~50 % former habitat but no other intervention
+K_ev:  242

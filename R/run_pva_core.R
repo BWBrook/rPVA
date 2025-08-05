@@ -39,8 +39,16 @@ run_pva_core <- function(
             all(spec$fecund>=0),
             all(spec$n0>=0))
 
-  # stasis default
-  if (is.null(stasis)) stasis <- rep(0, n_stage)
+  # stasis defaults  ----------------------------------------------------------
+  if (is.null(stasis)) {
+    if (!is.null(spec$stasis)) {
+      stasis <- spec$stasis
+    } else {
+      stasis <- rep(0, n_stage)
+    }
+  }
+  if (length(stasis) != n_stage)
+    stop("stasis must be length ", n_stage)
 
   # sex‐ratio defaults
   if (is.null(spec$sex_ratio_init)) spec$sex_ratio_init <- 0.5
@@ -144,8 +152,10 @@ run_pva_core <- function(
       # --- Environmental stochasticity on survival via Beta ----------
       if (spec$env_sd > 0) {
         surv_t <- rbeta(n_stage, env_alpha, env_beta)
+        stasis_t <- pmin(1, stasis) * rbeta(n_stage, env_alpha, env_beta)
       } else {
         surv_t <- spec$surv
+        stasis_t <- pmin(1, stasis)
       }
       
       # --- Environmental stochasticity on fertility via Lognormal ----------

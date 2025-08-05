@@ -19,3 +19,19 @@ test_that("survival_phase conserves survivors under deterministic input", {
   # adults: 0.8 survive
   expect_equal(N_next[3], round(5 * 0.8))
 })
+
+test_that("last-stage stasis is honoured", {
+  spec <- read_spec(system.file("testdata", "woodhen_test.yaml",
+                                package = "woodhenPVA"))
+  spec$years <- spec$reps <- 1
+  spec$env_sd <- 0; spec$demo_sd <- FALSE
+  spec$surv   <- c(0.6, 0.8, 0.0)   # progression only
+  spec$stasis <- c(0, 0, 0.8)
+
+  adults_keep <- run_pva_core(spec, keep_traj = TRUE)$traj[2,3,1]
+
+  spec$stasis[3] <- 0
+  adults_die  <- run_pva_core(spec, keep_traj = TRUE)$traj[2,3,1]
+
+  expect_gt(adults_keep, adults_die)
+})
