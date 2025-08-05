@@ -1,31 +1,31 @@
 # Thylacine life‑history (base – do not run directly)
 name:           thylacine_base        # will be amended by scenario files
-years:          50                    # baseline 1925‑1944
-reps:           1
+years:          20                    # baseline 1925‑1944
+reps:           1000
 # ----- Stage structure ------------------------------------------------------
 # stage1 = age0 (juvenile), stage2 = age1 (sub‑adult), stage3 = ≥2 (adult)
-surv:           [0.60, 0.80, 0.80]    # survival rates for ages 0, 1 and 2 yo
-stasis:         [0,    0,    0.80]    # survival rate of age 3+
-fecund:         [0,    0,    1.00]    # 0.8 prob b × 2.5 per lit × 0.5 sr: fem
+surv:           [0.50, 0.50, 0.60]    # survival rates for ages 0, 1 and 2 yo
+stasis:         [0,    0,    0.60]    # survival rate of age 3+
+fecund:         [0,    0,    0.88]    # 0.7 prob b × 2.5 per lit × 0.5 sr: fem
 sex_ratio_init: 0.5
 monogamy:       FALSE                 # polygynous
 max_age:        8
 # ----- Demographic & environmental noise ------------------------------------
-demo_sd:        FALSE
-env_sd:         0.0                  # ball‑park for EV settings
+demo_sd:        TRUE
+env_sd:         0.21                  # ball‑park for EV based on rainfall
 # # ----- Density & catastrophes ----------------------------------------------
-K:              7500                   # 1920s habitat ceiling, females only
+K:              750                   # 1920s habitat ceiling, females only
 K_ev:           161
-cat_freq:       0.02                   # Disease
+cat_freq:       0.02                  # 1 in 50-year pandemic disease event
 cat_surv:       0.5
 cat_repro:      1.0
 # # ----- Genetics -------------------------------------------------------------
-genetics:       FALSE
-F_init:         0.0
-lethal_equiv:   [0.9, 0.1, 0]         # LE (B) on survival
-B_on_fec:       0.0                   # assume survival‑only load
+genetics:       TRUE
+F_init:         0.1
+lethal_equiv:   [1.5, 0.2, 0.1]       # LE (B) on survival
+B_on_fec:       0.1                   # assume survival‑only load
 Ne_N_ratio:     0.8
 Ne_window:      10                    # years contrib to harmonic mean for Ne
 purge_kappa:    4                     # purging constant for recessive lethals
-# # ----- Initial population in 1925 (~20 adult females) ------------------------
-n0:             [18, 9, 20]           # juvenile / sub‑adult / adult
+# # ----- Initial population in 1925 (~10 adult females) ------------------------
+n0:             [8, 4, 10]           # juvenile / sub‑adult / adult

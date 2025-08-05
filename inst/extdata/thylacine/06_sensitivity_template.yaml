@@ -1,7 +1,15 @@
 # Copy this file, change the numbers, and give it a new name
-name: thylacine_sensitivity_XXX
+name: thylacine_sensitivity
+years:         50                                # 1925‑1974
 
-years:          50                        # 1925‑1974
+surv:          [0.50, 0.65, 0.75]                # survival rates for subadults and adults +10%
+stasis:        [0,    0,    0.75]
+fecund:         [0,    0,   1.13]               # Increased proportion breeding: 0.9 x 2.5 x 0.5
 
-# example: chronic disease increases early-stage mortality by +5 %
-surv:           [0.55, 0.75, 0.80]    # survival rates for subadults and adults -5%
+K:             1125                              # restore ~50 % former habitat
+K_ev:          242
+
+removal_years: [1, 2, 3]                         # 1926‑1928
+removal_vec:   [0, 1, 2]                         # 3 females (+ males) captured from the wild per year
+release_years: [8, 9, 10, 11, 12, 13, 14, 15]    # 1933‑1940
+release_vec:   [0, 0, 10]                        # release 10 breeding females (+ males) per year after CB

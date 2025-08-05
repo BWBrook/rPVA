@@ -10,7 +10,7 @@ scen_list <- c("01_historical_no_action", # 1
                "06_sensitivity_template") # 6
 
 # Choose which scenario number you wish to run:
-select_scen_number <- 1
+select_scen_number <- 5
 spec <- set_scenario(scen_list[select_scen_number], subdir="thylacine")
 
 plot_pva_matrix(spec) # returns composite plot and a list

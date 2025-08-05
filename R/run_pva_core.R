@@ -11,7 +11,8 @@
 #' @param years     integer. Projection length.
 #' @param reps      integer. Number of Monte Carlo repetitions.
 #' @param keep_traj logical. If TRUE, returns full population trajectory.
-#' @param stasis    numeric vector (optional); stage-specific stasis probabilities.
+#' @param stasis    numeric vector; *if NULL (default) the value of spec$stasis 
+#'                  is used; otherwise overrides it.*
 #' @param seed      integer or NULL; set for reproducibility.
 #' @param verbose   logical; progress indicator.
 #' @return list with Nend, traj, and params (full inputs used).
@@ -66,8 +67,8 @@ run_pva_core <- function(
   # genetics defaults
   if (is.null(spec$genetics))        spec$genetics      <- FALSE
   if (is.null(spec$F_init))          spec$F_init        <- 0
-  if (is.null(spec$lethal_equiv)) spec$lethal_equiv     <- 0
-  if (is.null(spec$B_on_fec))  spec$B_on_fec            <- 0
+  if (is.null(spec$lethal_equiv))    spec$lethal_equiv  <- 0
+  if (is.null(spec$B_on_fec))        spec$B_on_fec      <- 0
   if (is.null(spec$Ne_N_ratio))      spec$Ne_N_ratio    <- 1
   if (is.null(spec$Ne_window))       spec$Ne_window     <- 1
   if (is.null(spec$purge_kappa))     spec$purge_kappa   <- 0
@@ -153,6 +154,7 @@ run_pva_core <- function(
       if (spec$env_sd > 0) {
         surv_t <- rbeta(n_stage, env_alpha, env_beta)
         stasis_t <- pmin(1, stasis) * rbeta(n_stage, env_alpha, env_beta)
+        stasis_t[n_stage] <- surv_t[n_stage]
       } else {
         surv_t <- spec$surv
         stasis_t <- pmin(1, stasis)
