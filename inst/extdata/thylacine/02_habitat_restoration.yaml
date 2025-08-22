@@ -2,4 +2,4 @@
 name: thylacine_habitat_restoration
 
 K:     1125  # restore ~50 % former habitat but no other intervention
-K_ev:  242
+K_sd:  242

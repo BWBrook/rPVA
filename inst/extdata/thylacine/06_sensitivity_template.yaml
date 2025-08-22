@@ -7,7 +7,7 @@ stasis:        [0,    0,    0.75]
 fecund:         [0,    0,   1.13]               # Increased proportion breeding: 0.9 x 2.5 x 0.5
 
 K:             1125                              # restore ~50 % former habitat
-K_ev:          242
+K_sd:          242
 
 removal_years: [1, 2, 3]                         # 1926‑1928
 removal_vec:   [0, 1, 2]                         # 3 females (+ males) captured from the wild per year

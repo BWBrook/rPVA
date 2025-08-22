@@ -15,7 +15,7 @@ demo_sd:        TRUE
 env_sd:         0.21                  # ball‑park for EV based on rainfall
 # # ----- Density & catastrophes ----------------------------------------------
 K:              750                   # 1920s habitat ceiling, females only
-K_ev:           161
+K_sd:           161
 cat_freq:       0.02                  # 1 in 50-year pandemic disease event
 cat_surv:       0.5
 cat_repro:      1.0
