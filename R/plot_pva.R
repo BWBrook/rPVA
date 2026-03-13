@@ -24,9 +24,7 @@ plot_pva_traj <- function(out,
                           dpi    = 96) {
 
   # reshape --------------------------------------------------------------
-  df <- traj_to_long(out$raw$traj) |>
-        dplyr::group_by(Year, Rep) |>
-        dplyr::summarise(N = sum(N), .groups = "drop")
+  df <- traj_to_total_df(extract_traj(out))
 
   # optional subsample ---------------------------------------------------
   if (sample > 0) {
@@ -62,39 +60,9 @@ plot_pva_traj <- function(out,
 #' @param probs two-element numeric: lower & upper quantiles for the ribbon
 #' @export
 plot_pva_summary <- function(out, probs = c(0.025, 0.975)) {
-
-  ## ---------- 1. unconditional summaries (exactly as before) ----------
-  df <- traj_to_long(out$raw$traj)                           # stage → long
-  df_tot <- df |>
-    dplyr::group_by(Year, Rep) |>
-    dplyr::summarise(N = sum(N), .groups = "drop")
-
-  df_uncond <- df_tot |>
-    dplyr::group_by(Year) |>
-    dplyr::summarise(
-      Mean = mean(N),
-      SE   = sd(N) / sqrt(dplyr::n()),
-      Lo95 = quantile(N, probs[1]),
-      Hi95 = quantile(N, probs[2]),
-      .groups = "drop"
-    )
-
-  ## ---------- 2. conditional mean ( rowSums of traj_mean ) ------------
-  cond_mean <- rowSums(out$traj_mean)                # vector length time
-  df_cond <- dplyr::tibble(
-    Year = df_uncond$Year,
-    Mean_cond = cond_mean
-  )
-
-  ## ---------- 3. combine & pivot for ggplot ---------------------------
-  df_plot <- df_uncond |>
-    dplyr::select(Year, Mean, SE) |>
-    dplyr::left_join(df_cond, by = "Year") |>
-    tidyr::pivot_longer(
-      cols = c(Mean, Mean_cond, SE),
-      names_to = "Metric",
-      values_to = "Value"
-    )
+  plot_data <- build_summary_plot_data(out, probs)
+  df_uncond <- plot_data$unconditional
+  df_plot <- plot_data$conditional
 
   p <- ggplot2::ggplot(df_uncond, ggplot2::aes(x = Year)) +
     ## 95 % envelope
@@ -104,16 +72,16 @@ plot_pva_summary <- function(out, probs = c(0.025, 0.975)) {
     ) +
     ## unconditional mean ± SE (blue dashed)
     ggplot2::geom_line(
-      data = dplyr::filter(df_plot, Metric %in% c("Mean")),
-      ggplot2::aes(y = Value,
-                   linetype = "Metric",
+      data = df_plot,
+      ggplot2::aes(y = Mean,
+                   linetype = "Unconditional",
                    colour   = "Unconditional"),
       linewidth = 1
     ) +
     ## conditional mean (solid green)
     ggplot2::geom_line(
-      data = dplyr::filter(df_plot, Metric == "Mean_cond"),
-      ggplot2::aes(y = Value,
+      data = df_plot,
+      ggplot2::aes(y = Mean_cond,
                    linetype = "Conditional",
                    colour   = "Conditional"),
       linewidth = 1
@@ -223,27 +191,8 @@ plot_ext <- function(out,
   if (is.null(out$ext_prob))
     stop("Must run with keep_traj = TRUE")
 
-  yrs <- seq_along(out$ext_prob) - 1L
-  df  <- data.frame(
-    Year     = yrs,
-    ext_prob = out$ext_prob,
-    F_mean   = out$F_mean,
-    sr_mean  = out$sr_mean
-  )
-
-  # --- find median extinction time (where ext_prob = 0.5) --------------
-  p   <- df$ext_prob
-  Y   <- df$Year
-  # if we ever hit exactly 0.5, take that year
-  if (any(p == 0.5)) {
-    med_t <- Y[which(p == 0.5)[1]]
-  } else {
-    # bracket the crossing
-    i2 <- which(p > 0.5)[1]
-    i1 <- i2 - 1
-    # linear interpolation
-    med_t <- Y[i1] + (0.5 - p[i1]) / (p[i2] - p[i1]) * (Y[i2] - Y[i1])
-  }
+  df <- build_extinction_plot_data(out)
+  med_t <- median_extinction_time(df$ext_prob)
 
   # --- now build plot with vline ----------------------------------------
   p <- ggplot2::ggplot(df, ggplot2::aes(x = Year)) +
@@ -260,12 +209,6 @@ plot_ext <- function(out,
       ggplot2::aes(y = sr_mean, colour = lab_sr, linetype = lab_sr),
       linewidth = 0.8
     ) +
-    ggplot2::geom_vline(                                   # median‐extinction-time
-      xintercept = med_t,
-      colour     = "yellow",
-      linetype   = "dashed",
-      linewidth  = 1
-    ) +
     # scales and legend
     {
       col_vals  <- setNames(c("red", "blue", "grey40"),
@@ -276,10 +219,19 @@ plot_ext <- function(out,
     } +
     ggplot2::scale_linetype_manual(values = line_vals, guide = "none") +
     ggplot2::labs(
-      y     = "Proportion / Mean (0–1)",
+      y     = "Proportion / Mean (0-1)",
       title = "Extinction probability with median TE (yellow), plus mean F and SR"
     ) +
     ggplot2::theme_minimal()
+
+  if (is.finite(med_t)) {
+    p <- p + ggplot2::geom_vline(
+      xintercept = med_t,
+      colour     = "yellow",
+      linetype   = "dashed",
+      linewidth  = 1
+    )
+  }
 
   print(p)
   invisible(p)

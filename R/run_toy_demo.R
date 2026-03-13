@@ -2,12 +2,22 @@
 #' 
 #' Convenience wrapper that runs the toy model under the five textbook
 #' configurations and returns a list of result objects plus a summary table.
+#'
+#' Prints matrix diagnostics for the base toy model before running the
+#' scenarios.
+#'
+#' @param base_yaml Path to the toy-model YAML file.
+#' @param seed Random seed used for all toy scenarios.
+#' @return A list with `results` (named scenario outputs) and `summary`
+#'   (a one-row-per-scenario tibble).
 #' 
 #' @export
 run_toy_demo <- function(base_yaml = system.file("extdata", "toy", "toy_demo.yaml", package = "rPVA"),
                          seed = 42) {
 
-  requireNamespace("dplyr")   # fail fast if missing
+  if (!requireNamespace("dplyr", quietly = TRUE)) {
+    stop("Please install the dplyr package to use run_toy_demo().", call. = FALSE)
+  }
 
   base <- read_spec(base_yaml)
   plot_pva_matrix(base)

@@ -9,10 +9,10 @@ run_pva_core(
   spec,
   years = spec$years,
   reps = spec$reps,
-  keep_traj = FALSE,
+  keep_traj = TRUE,
   stasis = NULL,
   seed = NULL,
-  verbose = FALSE
+  verbose = TRUE
 )
 }
 \arguments{
@@ -24,7 +24,8 @@ run_pva_core(
 
 \item{keep_traj}{logical. If TRUE, returns full population trajectory.}
 
-\item{stasis}{numeric vector (optional); stage-specific stasis probabilities.}
+\item{stasis}{numeric vector; *if NULL (default) the value of spec$stasis 
+is used; otherwise overrides it.*}
 
 \item{seed}{integer or NULL; set for reproducibility.}
 

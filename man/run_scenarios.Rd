@@ -5,28 +5,30 @@
 \title{run_scenarios}
 \usage{
 run_scenarios(
-  paths = "inst/extdata",
+  subdir = "",
   csv_out = "scenario_summary.csv",
   rds_out = "scenario_raw.rds",
-  keep_traj = FALSE,
+  keep_traj = TRUE,
   parallel = FALSE
 )
 }
 \arguments{
-\item{paths}{Character vector of *.yaml files **or** a single directory.}
+\item{subdir}{Case-study subdir (for example `"woodhen"`), a project path
+like `"inst/extdata/woodhen"`, or a character vector of scenario YAML
+files.}
 
 \item{csv_out}{File name for the summary CSV (set to NULL to suppress).}
 
 \item{rds_out}{File name for an .rds containing the raw result objects
 (written only if `keep_traj = TRUE`; set to NULL to suppress).}
 
-\item{keep_traj}{Logical: store full Monte‑Carlo trajectories?}
+\item{keep_traj}{Logical: store full Monte Carlo trajectories?}
 
 \item{parallel}{Logical: use `future.apply` for parallel execution?}
 }
 \value{
-(invisibly) a data.frame with one row per scenario.
+Invisibly returns a data.frame with one row per scenario.
 }
 \description{
-Batch‑execute one or more YAML spec files and write a tidy summary table.
+Batch-execute one or more YAML spec files and write a tidy summary table.
 }

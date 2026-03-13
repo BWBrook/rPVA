@@ -1,6 +1,6 @@
 context("Checkpoint 3a – sex-ratio limitation")
 
-spec_sr <- read_spec(system.file("extdata", "woodhen_test.yaml", package = "rPVA"))
+spec_sr <- read_test_spec()
 spec_sr$monogamy       <- TRUE
 spec_sr$sex_ratio_init <- 0.30   # female-poor
 spec_sr$env_sd         <- 0

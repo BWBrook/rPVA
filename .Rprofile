@@ -1,9 +1,11 @@
-## .Rprofile  (project root) 
-Sys.setenv(
-  RENV_CONFIG_INSTALL_TYPE = "binary",   # tell renv “binaries only”
-  RENV_CONFIG_PAK_ENABLED  = "TRUE"      # delegate installs to pak
-)
+## .Rprofile (project root)
+## Prefer pak everywhere, but only force binary installs on platforms where
+## CRAN/RSPM binaries are routinely available.
+Sys.setenv(RENV_CONFIG_PAK_ENABLED = "TRUE")
 
-options(pkgType = "binary")              # same preference for base R
+if (!identical(Sys.info()[["sysname"]], "Linux")) {
+  Sys.setenv(RENV_CONFIG_INSTALL_TYPE = "binary")
+  options(pkgType = "binary")
+}
 
-source("renv/activate.R")                # <- leave renv’s autoloader here
+source("renv/activate.R")

@@ -6,9 +6,8 @@ Description: R package to build and run PVA simulations
 License: MIT
 Encoding: UTF-8
 Depends: R (>= 4.0)
-RoxygenNote: 7.3.2
+RoxygenNote: 7.3.3
 Imports:
-    tidyr,
     dplyr,
     yaml,
     ggplot2,
@@ -16,6 +15,7 @@ Imports:
     future,
     reshape2,
     patchwork,
+    popbio,
     readr,
     future.apply
 Suggests:

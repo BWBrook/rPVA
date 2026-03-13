@@ -21,8 +21,7 @@ test_that("survival_phase conserves survivors under deterministic input", {
 })
 
 test_that("last-stage stasis is honoured", {
-  spec <- read_spec(system.file("testdata", "woodhen_test.yaml",
-                                package = "woodhenPVA"))
+  spec <- read_toy_spec()
   spec$years <- spec$reps <- 1
   spec$env_sd <- 0; spec$demo_sd <- FALSE
   spec$surv   <- c(0.6, 0.8, 0.0)   # progression only

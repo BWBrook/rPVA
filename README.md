@@ -20,7 +20,7 @@ Designed for rapid scenario-building, robust teaching, and defensible conservati
 ## Getting started
 
 1. **Clone the repository** and open `rPVA.Rproj` in RStudio, or launch an R session in this directory.
-2. **Quick setup**: *Source the bootstrap script* (recommmended for new users). In the project root:
+2. **Quick setup**: *Source the bootstrap script* (recommended for new users). In the project root:
    ```r
    source("bootstrap.R")
    ```
@@ -39,7 +39,7 @@ Designed for rapid scenario-building, robust teaching, and defensible conservati
    ```
    Or batch-run all scenarios for a case study (e.g. woodhen):
    ```r
-   run_scenarios("inst/extdata/woodhen", csv_out = NULL)
+   run_scenarios("woodhen", csv_out = NULL, rds_out = NULL, keep_traj = FALSE)
    ```
 All functions can be called interactively, scripted, or batch-run.  
 See case-specific folders in `inst/extdata/` for scenario YAMLs and runnable scripts.
