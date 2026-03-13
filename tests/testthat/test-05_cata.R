@@ -2,7 +2,7 @@ context("Checkpoint 5 – catastrophe pulse")
 
 spec_cat <- read_test_spec()
 spec_cat$env_sd  <- 0
-spec_cat$demo_sd <- FALSE
+spec_cat$demographic_stochasticity <- FALSE
 spec_cat$years   <- 50
 spec_cat$reps    <- 100
 spec_cat$n0[]    <- 50       # start well below K to isolate cat effect

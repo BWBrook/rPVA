@@ -3,7 +3,7 @@ context("Checkpoint 7 – supplementation")
 spec_rel <- read_test_spec()
 
 spec_rel$env_sd  <- 0
-spec_rel$demo_sd <- FALSE
+spec_rel$demographic_stochasticity <- FALSE
 spec_rel$K       <- 1e6   # disable ceiling to isolate releases
 spec_rel$years   <- 5
 spec_rel$reps    <- 1

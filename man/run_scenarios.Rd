@@ -6,9 +6,9 @@
 \usage{
 run_scenarios(
   subdir = "",
-  csv_out = "scenario_summary.csv",
-  rds_out = "scenario_raw.rds",
-  keep_traj = TRUE,
+  csv_out = NULL,
+  rds_out = NULL,
+  keep_traj = FALSE,
   parallel = FALSE
 )
 }
@@ -20,7 +20,7 @@ files.}
 \item{csv_out}{File name for the summary CSV (set to NULL to suppress).}
 
 \item{rds_out}{File name for an .rds containing the raw result objects
-(written only if `keep_traj = TRUE`; set to NULL to suppress).}
+(set to NULL to suppress).}
 
 \item{keep_traj}{Logical: store full Monte Carlo trajectories?}
 

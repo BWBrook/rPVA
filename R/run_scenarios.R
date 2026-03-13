@@ -74,15 +74,15 @@ write_scenario_outputs <- function(summary_tbl, results, csv_out, rds_out) {
 #'   files.
 #' @param csv_out File name for the summary CSV (set to NULL to suppress).
 #' @param rds_out File name for an .rds containing the raw result objects
-#'   (written only if `keep_traj = TRUE`; set to NULL to suppress).
+#'   (set to NULL to suppress).
 #' @param keep_traj Logical: store full Monte Carlo trajectories?
 #' @param parallel Logical: use `future.apply` for parallel execution?
 #' @return Invisibly returns a data.frame with one row per scenario.
 #' @export
 run_scenarios <- function(subdir     = "",             # e.g. "woodhen"
-                          csv_out    = "scenario_summary.csv",
-                          rds_out    = "scenario_raw.rds",
-                          keep_traj  = TRUE,
+                          csv_out    = NULL,
+                          rds_out    = NULL,
+                          keep_traj  = FALSE,
                           parallel   = FALSE) {
   paths <- resolve_scenario_paths(subdir)
 

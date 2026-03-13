@@ -1,17 +1,3 @@
-null_coalesce <- function(x, y) {
-  if (is.null(x)) y else x
-}
-
-normalize_stage_action_vector <- function(vec, n_stage) {
-  vec <- as.integer(null_coalesce(vec, integer(n_stage)))
-
-  if (length(vec) < n_stage) {
-    return(c(vec, integer(n_stage - length(vec))))
-  }
-
-  vec[seq_len(n_stage)]
-}
-
 compute_env_beta_params <- function(surv, env_sd) {
   if (env_sd <= 0) {
     return(list(alpha = rep(NA_real_, length(surv)), beta = rep(NA_real_, length(surv))))
@@ -32,22 +18,10 @@ compute_env_beta_params <- function(surv, env_sd) {
 
 normalize_pva_spec <- function(spec, stasis) {
   stopifnot(is.list(spec))
-
-  required <- c("surv", "fecund", "n0", "env_sd", "demo_sd")
-  if (!all(required %in% names(spec))) {
-    stop("spec must include: ", paste(required, collapse = ", "))
-  }
+  spec <- normalize_pva_spec_fields(spec)
+  spec <- validate_full_pva_spec(spec)
 
   n_stage <- length(spec$surv)
-  stopifnot(
-    length(spec$fecund) == n_stage,
-    length(spec$n0) == n_stage,
-    is.numeric(spec$years), spec$years >= 1, spec$years == as.integer(spec$years),
-    is.numeric(spec$reps), spec$reps >= 1, spec$reps == as.integer(spec$reps),
-    all(spec$surv >= 0 & spec$surv <= 1),
-    all(spec$fecund >= 0),
-    all(spec$n0 >= 0)
-  )
 
   if (is.null(stasis)) {
     if (!is.null(spec$stasis)) {
@@ -72,17 +46,17 @@ normalize_pva_spec <- function(spec, stasis) {
 
   if (is.null(spec$genetics)) spec$genetics <- FALSE
   if (is.null(spec$F_init)) spec$F_init <- 0
-  if (is.null(spec$lethal_equiv)) spec$lethal_equiv <- 0
+  if (is.null(spec$lethal_equiv)) spec$lethal_equiv <- rep(0, n_stage)
   if (is.null(spec$B_on_fec)) spec$B_on_fec <- 0
   if (is.null(spec$Ne_N_ratio)) spec$Ne_N_ratio <- 1
   if (is.null(spec$Ne_window)) spec$Ne_window <- 1
   if (is.null(spec$purge_kappa)) spec$purge_kappa <- 0
 
   if (is.null(spec$removal_years)) spec$removal_years <- integer(0)
-  spec$removal_vec <- normalize_stage_action_vector(spec$removal_vec, n_stage)
+  if (is.null(spec$removal_vec)) spec$removal_vec <- integer(n_stage)
 
   if (is.null(spec$release_years)) spec$release_years <- integer(0)
-  spec$release_vec <- normalize_stage_action_vector(spec$release_vec, n_stage)
+  if (is.null(spec$release_vec)) spec$release_vec <- integer(n_stage)
 
   env_params <- compute_env_beta_params(spec$surv, spec$env_sd)
 
@@ -181,10 +155,10 @@ run_pva_step <- function(N, sr, F, LE, N_hist, year, spec, stasis, env_alpha, en
   F <- gen$F
   LE <- gen$LE
 
-  rec <- recruit_phase(N, fec_t, sr, spec, spec$demo_sd)
+  rec <- recruit_phase(N, fec_t, sr, spec, spec$demographic_stochasticity)
   N_next <- integer(length(N))
   N_next[1] <- rec$recruits
-  N_next <- N_next + survival_phase(N, surv_t, rates$stasis, spec, spec$demo_sd)
+  N_next <- N_next + survival_phase(N, surv_t, rates$stasis, spec, spec$demographic_stochasticity)
 
   N_next <- apply_removals(N_next, year, spec)
   N_next <- apply_releases(N_next, year, spec)

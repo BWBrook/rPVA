@@ -2,7 +2,7 @@ context("Checkpoint 4 – carrying capacity ceiling (floaters exempt)")
 
 spec_K <- read_test_spec()
 spec_K$env_sd  <- 0
-spec_K$demo_sd <- FALSE
+spec_K$demographic_stochasticity <- FALSE
 spec_K$years   <- 1
 spec_K$reps    <- 1
 spec_K$K       <- 50

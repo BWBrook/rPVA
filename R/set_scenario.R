@@ -27,8 +27,8 @@ set_scenario <- function(scen_name,
   base  <- read_spec(base_path)
   delta <- read_spec(delta_path)
 
-  spec  <- modifyList(base, delta)
+  spec  <- validate_full_pva_spec(modifyList(base, delta))
   if (is.null(spec$name)) spec$name <- scen_name
+  class(spec) <- c("pva_spec", class(spec))
   spec
 }
-

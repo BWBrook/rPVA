@@ -9,14 +9,15 @@ run_pva_core(
   spec,
   years = spec$years,
   reps = spec$reps,
-  keep_traj = TRUE,
+  keep_traj = FALSE,
   stasis = NULL,
   seed = NULL,
-  verbose = TRUE
+  verbose = FALSE
 )
 }
 \arguments{
-\item{spec}{list; must include surv, fecund, n0, env_sd, demo_sd.}
+\item{spec}{list; must include surv, fecund, n0, env_sd,
+demographic_stochasticity.}
 
 \item{years}{integer. Projection length.}
 

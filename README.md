@@ -33,7 +33,7 @@ Designed for rapid scenario-building, robust teaching, and defensible conservati
    ```
 4. **Run a scenario or demo**: Try the toy-model walk-through to verify core features:
    ```r
-   toy <- run_toy_demo()
+   toy <- run_toy_demo(keep_traj = TRUE, plot_matrix = TRUE, verbose = FALSE)
    toy$summary
    plot_pva_summary(toy$results$det)
    ```
@@ -73,7 +73,8 @@ trajectories.
    pkgload::load_all(".")    # or devtools::load_all(".")
 
    # 2  Run the helper that generates five preset scenarios
-   toy <- run_toy_demo()     # returns $results and a summary table
+   toy <- run_toy_demo(keep_traj = TRUE, plot_matrix = TRUE, verbose = FALSE)
+                            # returns $results and a summary table
    toy$summary               # extinction probabilities & median N
 
    # ── Step-wise exploration ─────────────────────────────────────
@@ -85,8 +86,8 @@ trajectories.
    plot_pva_summary(toy$results$ceiling)
 
    ## (c) + Demographic stochasticity (10 replicates)
-   plot_pva_traj(toy$results$demo_sd, sample = 10)
-   plot_pva_summary(toy$results$demo_sd)
+   plot_pva_traj(toy$results$demographic_stochasticity, sample = 10)
+   plot_pva_summary(toy$results$demographic_stochasticity)
 
    ## (d) + Environmental σ_env = 0.30
    plot_pva_traj(toy$results$env_sd,  sample = 10)

@@ -2,7 +2,7 @@ context("Checkpoint 6 – removals")
 
 spec_rm <- read_test_spec()
 spec_rm$env_sd  <- 0
-spec_rm$demo_sd <- 0        # deterministic
+spec_rm$demographic_stochasticity <- FALSE
 spec_rm$K       <- 1e6
 spec_rm$years   <- 7
 spec_rm$reps    <- 1

@@ -1,11 +1,7 @@
 context("Checkpoint 9 – scenario layer")
 
 test_that("wrapper finds and summarises the five core scenarios", {
-  tbl <- run_scenarios("woodhen",
-                       csv_out   = NULL,
-                       rds_out   = NULL,
-                       keep_traj = FALSE,
-                       parallel  = FALSE)
+  tbl <- run_scenarios("woodhen")
   expect_equal(tbl$scenario, c(
     "woodhen_no_intervention",
     "woodhen_pig_control",

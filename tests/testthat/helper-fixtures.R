@@ -23,4 +23,5 @@ with_temp_pdf <- function(code) {
 expect_no_local_artifacts <- function() {
   testthat::expect_false(file.exists("Rplots.pdf"))
   testthat::expect_false(file.exists("scenario_raw.rds"))
+  testthat::expect_false(file.exists("scenario_summary.csv"))
 }

@@ -9,9 +9,9 @@ stasis:         [0,    0,    0.60]    # survival rate of age 3+
 fecund:         [0,    0,    0.88]    # 0.7 prob b × 2.5 per lit × 0.5 sr: fem
 sex_ratio_init: 0.5
 monogamy:       FALSE                 # polygynous
-max_age:        8
+# max_age:      8                     # unused placeholder for future age-explicit extensions
 # ----- Demographic & environmental noise ------------------------------------
-demo_sd:        TRUE
+demographic_stochasticity: TRUE
 env_sd:         0.21                  # ball‑park for EV based on rainfall
 # # ----- Density & catastrophes ----------------------------------------------
 K:              750                   # 1920s habitat ceiling, females only

@@ -2,7 +2,7 @@
 pkgload::load_all(".")
 
 # Run all scenarios for the toy model
-toy <- run_toy_demo() 
+toy <- run_toy_demo(keep_traj = TRUE, plot_matrix = TRUE, verbose = FALSE)
 toy$summary # table of results
 
 # Now let's look at the results in detail!
@@ -14,8 +14,8 @@ plot_pva_summary(toy$results$det)
 plot_pva_summary(toy$results$ceiling)
 
 # 2. Ceiling K with demographic stochasticity
-plot_pva_traj(toy$results$demo_sd, sample = 10)
-plot_pva_summary(toy$results$demo_sd)
+plot_pva_traj(toy$results$demographic_stochasticity, sample = 10)
+plot_pva_summary(toy$results$demographic_stochasticity)
 
 # 3. Ceiling K with demographic and environmental stochasticity
 plot_pva_traj(toy$results$env_sd, sample = 10)

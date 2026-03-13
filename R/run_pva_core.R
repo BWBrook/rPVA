@@ -7,7 +7,8 @@
 #' (typically set `surv[n] = 0, stasis[n] = adult survival`). If both are zero,
 #' adults die each step.
 #'
-#' @param spec      list; must include surv, fecund, n0, env_sd, demo_sd.
+#' @param spec      list; must include surv, fecund, n0, env_sd,
+#'   demographic_stochasticity.
 #' @param years     integer. Projection length.
 #' @param reps      integer. Number of Monte Carlo repetitions.
 #' @param keep_traj logical. If TRUE, returns full population trajectory.
@@ -21,11 +22,13 @@ run_pva_core <- function(
     spec,
     years     = spec$years,
     reps      = spec$reps,
-    keep_traj = TRUE,
+    keep_traj = FALSE,
     stasis    = NULL,
     seed      = NULL,
-    verbose   = TRUE
+    verbose   = FALSE
 ) {
+  spec$years <- years
+  spec$reps <- reps
   normalized <- normalize_pva_spec(spec, stasis)
   spec <- normalized$spec
   stasis <- normalized$stasis

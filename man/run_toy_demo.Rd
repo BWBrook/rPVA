@@ -6,13 +6,22 @@
 \usage{
 run_toy_demo(
   base_yaml = system.file("extdata", "toy", "toy_demo.yaml", package = "rPVA"),
-  seed = 42
+  seed = 42,
+  keep_traj = FALSE,
+  plot_matrix = FALSE,
+  verbose = FALSE
 )
 }
 \arguments{
 \item{base_yaml}{Path to the toy-model YAML file.}
 
 \item{seed}{Random seed used for all toy scenarios.}
+
+\item{keep_traj}{If TRUE, retain trajectories in each scenario result.}
+
+\item{plot_matrix}{If TRUE, print matrix diagnostics for the base toy model.}
+
+\item{verbose}{If TRUE, print simulation progress dots.}
 }
 \value{
 A list with `results` (named scenario outputs) and `summary`
