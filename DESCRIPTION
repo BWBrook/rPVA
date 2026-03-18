@@ -12,7 +12,7 @@ Imports:
     dplyr,
     yaml,
     ggplot2,
-    ggrastr,
+    popbio,
     future,
     reshape2,
     patchwork,

@@ -1,7 +1,7 @@
 context("Checkpoint 1 – core engine")
 
 # Canonical deterministic spec (no stochasticity, 1 year, 1 rep)
-spec_det <- read_spec(system.file("extdata", "woodhen_test.yaml", package = "rPVA"))
+spec_det <- read_spec(system.file("testdata", "test_01.yaml", package = "rPVA"))
 spec_det$env_sd  <- 0
 spec_det$demo_sd <- FALSE
 spec_det$years   <- 1
@@ -25,7 +25,7 @@ test_that("deterministic projection matches matrix algebra for a single time ste
 
   # Simulation engine
   out <- run_pva_core(spec_det, keep_traj = TRUE)
-  N1_engine <- out$traj[2, , 1]
+  N1_engine <- out$raw$traj[2, , 1]
 
   # Compare: must match exactly in deterministic mode (integer animal case)
   expect_equal(sum(N1_engine), sum(N1_matrix), tolerance = 1)

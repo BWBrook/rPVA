@@ -1,6 +1,6 @@
 context("Checkpoint 7 – supplementation")
 
-spec_rel <- read_spec(system.file("extdata", "woodhen_test.yaml", package = "rPVA"))
+spec_rel <- read_spec(system.file("testdata", "test_01.yaml", package = "rPVA"))
 
 spec_rel$env_sd  <- 0
 spec_rel$demo_sd <- FALSE
@@ -26,10 +26,8 @@ test_that("supplementation lifts population by ≥ addN", {
 })
 
 test_that("no supplementation outside schedule", {
-  nonrel <- setdiff(1:spec_rel$years, spec_rel$release_years)
-  addN <- sum(spec_rel$release_vec)
-  for (yr in nonrel) {
-    delta <- sum(out_yes$traj[yr + 1, , 1]) - sum(out_yes$traj[yr, , 1])
-    expect_false(delta == addN)
-  }
+  N <- c(10L, 10L, 10L, 10L, 10L, 10L, 10L)
+  untouched <- rPVA:::apply_releases(N, 1, spec_rel)
+
+  expect_equal(untouched, N)
 })

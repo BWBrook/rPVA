@@ -8,7 +8,7 @@ test_that("survival_phase conserves survivors under deterministic input", {
   spec       <- list()             # unused flags
   demo       <- FALSE              # deterministic
 
-  N_next <- survival_phase(N, surv_t, stasis_t, spec, demo)
+  N_next <- rPVA:::survival_phase(N, surv_t, stasis_t, spec, demo)
 
   # juveniles progressed
   juv_prog <- round(20 * 0.5)
@@ -21,17 +21,13 @@ test_that("survival_phase conserves survivors under deterministic input", {
 })
 
 test_that("last-stage stasis is honoured", {
-  spec <- read_spec(system.file("testdata", "woodhen_test.yaml",
-                                package = "woodhenPVA"))
-  spec$years <- spec$reps <- 1
-  spec$env_sd <- 0; spec$demo_sd <- FALSE
-  spec$surv   <- c(0.6, 0.8, 0.0)   # progression only
-  spec$stasis <- c(0, 0, 0.8)
+  N <- c(20, 10, 5)
+  surv_t <- c(0.6, 0.8, 0.0)
+  stasis_keep <- c(0, 0, 0.8)
+  stasis_die <- c(0, 0, 0.0)
 
-  adults_keep <- run_pva_core(spec, keep_traj = TRUE)$traj[2,3,1]
-
-  spec$stasis[3] <- 0
-  adults_die  <- run_pva_core(spec, keep_traj = TRUE)$traj[2,3,1]
+  adults_keep <- rPVA:::survival_phase(N, surv_t, stasis_keep, list(), FALSE)[3]
+  adults_die  <- rPVA:::survival_phase(N, surv_t, stasis_die, list(), FALSE)[3]
 
   expect_gt(adults_keep, adults_die)
 })
