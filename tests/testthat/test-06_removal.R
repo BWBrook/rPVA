@@ -28,7 +28,7 @@ test_that("removal schedule is only applied in configured years", {
 
 test_that("treatment population is always ≤ control", {
   for (yr in 0:spec_rm$years) {
-    expect_lte(sum(out_yes$traj[yr + 1, , 1]),
-               sum(out_no $traj[yr + 1, , 1]))
+    expect_lte(sum(out_yes$raw$traj[yr + 1, , 1]),
+               sum(out_no $raw$traj[yr + 1, , 1]))
   }
 })

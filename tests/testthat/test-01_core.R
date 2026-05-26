@@ -25,7 +25,7 @@ test_that("deterministic projection matches matrix algebra for a single time ste
 
   # Simulation engine
   out <- run_pva_core(spec_det, keep_traj = TRUE)
-  N1_engine <- out$traj[2, , 1]
+  N1_engine <- out$raw$traj[2, , 1]
 
   # Compare: must match exactly in deterministic mode (integer animal case)
   expect_equal(sum(N1_engine), sum(N1_matrix), tolerance = 1)

@@ -13,9 +13,10 @@ traj_to_long <- function(traj) {
 #' @param out     list from `run_pva_core(..., keep_traj = TRUE)`
 #' @param alpha   transparency for the lines
 #' @param sample  integer; if > 0, randomly sample this many replicates
-#'                before plotting. 0 ⇒ plot all replicates (default = 0).
+#'                before plotting. 0 plots all replicates (default = 0).
 #' @param raster  logical; if TRUE use ggrastr::geom_line_rast() which
 #'                rasterises the polylines for speed.
+#' @param dpi     raster output resolution when `raster = TRUE`.
 #' @export
 plot_pva_traj <- function(out,
                           alpha  = 0.3,
@@ -55,8 +56,8 @@ plot_pva_traj <- function(out,
   invisible(p)
 }
 
-#' Plot PVA summary: ribbon (95 %), unconditional mean ± SE, and conditional mean
-#' @param out   list returned by `run_pva_core(…, keep_traj = TRUE)`
+#' Plot PVA summary: ribbon (95 percent), unconditional mean +/- SE, and conditional mean
+#' @param out   list returned by `run_pva_core(..., keep_traj = TRUE)`
 #' @param probs two-element numeric: lower & upper quantiles for the ribbon
 #' @export
 plot_pva_summary <- function(out, probs = c(0.025, 0.975)) {
@@ -70,7 +71,7 @@ plot_pva_summary <- function(out, probs = c(0.025, 0.975)) {
       ggplot2::aes(ymin = Lo95, ymax = Hi95),
       fill = "grey80", alpha = 0.7, show.legend = FALSE
     ) +
-    ## unconditional mean ± SE (blue dashed)
+    ## unconditional mean +/- SE (blue dashed)
     ggplot2::geom_line(
       data = df_plot,
       ggplot2::aes(y = Mean,
@@ -93,16 +94,16 @@ plot_pva_summary <- function(out, probs = c(0.025, 0.975)) {
     ) +
     ggplot2::labs(
       y     = "Total N",
-      title = "Pop. trajectories (blue: mean ±95% CI): green = extant"
+      title = "Pop. trajectories (blue: mean +/-95% CI): green = extant"
     ) +
     ggplot2::theme_minimal() +
     ggplot2::guides(colour = "none", linetype = "none")
 
-  print(p)         # side‐effect: always draws the plot
+  print(p)         # side-effect: always draws the plot
   invisible(p)     # returns p invisibly
 }
 
-#' Plot matrix diagnostics (2 × 2 panel; lambda and SSD printed to console)
+#' Plot matrix diagnostics (2 x 2 panel; lambda and SSD printed to console)
 #' @param spec List with surv, fecund, stasis
 #' @export
 plot_pva_matrix <- function(spec) {
@@ -114,7 +115,7 @@ plot_pva_matrix <- function(spec) {
   ea  <- popbio::eigen.analysis(A)
 
   # Print lambda and stable stage dist to console
-  cat(sprintf("\nlambda (λ): %.4f\n\n", ea$lambda1))
+  cat(sprintf("\nlambda: %.4f\n\n", ea$lambda1))
   cat("Stable stage distribution (SSD/SAD):\n")
   print(round(ea$stable.stage, 4))
 
@@ -237,10 +238,10 @@ plot_ext <- function(out,
   invisible(p)
 }
 
-#' Combine PVA plots into a 2×1 panel
+#' Combine PVA plots into a 2 x 1 panel
 #'
 #' Takes three ggplot objects (e.g. trajectory, summary, extinction) and
-#' arranges them so that the first two sit side‐by‐side on the top row and
+#' arranges them so that the first two sit side-by-side on the top row and
 #' the third spans the bottom row.
 #'
 #' @param p1 A ggplot object (e.g. output of `plot_pva_traj()`)

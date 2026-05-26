@@ -29,8 +29,10 @@ Designed for rapid scenario-building, robust teaching, and defensible conservati
    ```r
    install.packages("renv")   # only needed once
    renv::restore()            # restores locked package versions
-   pkgload::load_all(".")     # or devtools::load_all(".")
+   pkgload::load_all(".")
    ```
+   Optional: install `ggrastr` only if you want rasterized trajectory plotting on large Monte Carlo runs.
+   The default package restore no longer requires `ggrastr` or `Cairo`.
 4. **Run a scenario or demo**: Try the toy-model walk-through to verify core features:
    ```r
    toy <- run_toy_demo(keep_traj = TRUE, plot_matrix = TRUE, verbose = FALSE)
@@ -43,6 +45,12 @@ Designed for rapid scenario-building, robust teaching, and defensible conservati
    ```
 All functions can be called interactively, scripted, or batch-run.  
 See case-specific folders in `inst/extdata/` for scenario YAMLs and runnable scripts.
+
+## Optional plotting extras
+
+- `plot_pva_traj(..., raster = TRUE)` uses `ggrastr` when installed.
+- On Homebrew R for macOS, source installs of `ggrastr` may also need `pkgconf` so `Cairo` can discover the local graphics libraries.
+- This plotting stack is optional; core modelling, tests, and teaching workflows do not require it.
 
 ## Repository structure
 
@@ -70,7 +78,7 @@ trajectories.
    ```r
    # 1  Open the project or install & attach the package, then:
 
-   pkgload::load_all(".")    # or devtools::load_all(".")
+   pkgload::load_all(".")
 
    # 2  Run the helper that generates five preset scenarios
    toy <- run_toy_demo(keep_traj = TRUE, plot_matrix = TRUE, verbose = FALSE)

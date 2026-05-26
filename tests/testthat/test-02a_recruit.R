@@ -8,7 +8,7 @@ test_that("recruit_phase returns expected recruits and SR update", {
   spec   <- list(monogamy = TRUE)      # throttle on
   demo   <- FALSE                      # deterministic branch
 
-  out <- recruit_phase(N, fec_t, sr_in, spec, demo)
+  out <- rPVA:::recruit_phase(N, fec_t, sr_in, spec, demo)
 
   lambda       <- sum(fec_t * N) * (sr_in / 0.5)   # throttled expectation
   expect_equal(out$recruits, as.integer(round(lambda)))

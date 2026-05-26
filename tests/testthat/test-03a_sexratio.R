@@ -11,5 +11,5 @@ out <- run_pva_core(spec_sr, keep_traj = TRUE)
 
 test_that("female shortage reduces first-year recruits", {
   lambda_unlim <- sum(spec_sr$fecund * spec_sr$n0)   # λ with SR = 0.5
-  expect_lt(out$traj[2, 1, 1], lambda_unlim)         # fewer juveniles
+  expect_lt(out$raw$traj[2, 1, 1], lambda_unlim)     # fewer juveniles
 })

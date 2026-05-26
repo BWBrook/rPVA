@@ -13,7 +13,7 @@ test_that("expected # of catastrophes ≈ freq * years", {
   ct <- 0
   # instrument the helper directly
   for (i in seq_len(spec_cat$years)) {
-    if (maybe_apply_catastrophe(spec_cat$surv, spec_cat$fecund, spec_cat)$happened)
+    if (rPVA:::maybe_apply_catastrophe(spec_cat$surv, spec_cat$fecund, spec_cat)$happened)
       ct <- ct + 1
   }
   expect_equal(ct / spec_cat$years, spec_cat$cat_freq,
@@ -24,5 +24,5 @@ test_that("catastrophe reduces population vs control", {
   spec_no  <- spec_cat; spec_no$cat_freq <- 0
   out_no   <- run_pva_core(spec_no)
   out_cat  <- run_pva_core(spec_cat)
-  expect_lt(median(out_cat$Nend), median(out_no$Nend))
+  expect_lt(out_cat$Nend_summary$median, out_no$Nend_summary$median)
 })

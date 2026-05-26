@@ -32,8 +32,8 @@ test_that("supplementation lifts population by ≥ addN", {
 test_that("release schedule is only applied in configured years", {
   baseline <- rep(10L, length(spec_rel$release_vec))
   expect_equal(
-    apply_releases(baseline, spec_rel$release_years[1], spec_rel),
+    rPVA:::apply_releases(baseline, spec_rel$release_years[1], spec_rel),
     baseline + spec_rel$release_vec
   )
-  expect_equal(apply_releases(baseline, 1L, spec_rel), baseline)
+  expect_equal(rPVA:::apply_releases(baseline, 1L, spec_rel), baseline)
 })

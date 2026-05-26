@@ -12,10 +12,12 @@ plot_pva_traj(out, alpha = 0.3, sample = 0, raster = FALSE, dpi = 96)
 \item{alpha}{transparency for the lines}
 
 \item{sample}{integer; if > 0, randomly sample this many replicates
-before plotting. 0 ⇒ plot all replicates (default = 0).}
+before plotting. 0 plots all replicates (default = 0).}
 
 \item{raster}{logical; if TRUE use ggrastr::geom_line_rast() which
 rasterises the polylines for speed.}
+
+\item{dpi}{raster output resolution when `raster = TRUE`.}
 }
 \description{
 Plot all (or sampled) Monte-Carlo trajectories

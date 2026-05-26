@@ -10,5 +10,5 @@ spec_r$release_vec   <- c(0,0,10,0,0,0,0)
 out_rescue <- run_pva_core(spec_r, keep_traj = TRUE)
 
 test_that("F drops in release year", {
-  expect_lt(out_rescue$F_traj[6], out_rescue$F_traj[5])
+  expect_lt(out_rescue$F_mean[6], out_rescue$F_mean[5])
 })

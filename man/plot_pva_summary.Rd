@@ -2,15 +2,15 @@
 % Please edit documentation in R/plot_pva.R
 \name{plot_pva_summary}
 \alias{plot_pva_summary}
-\title{Plot PVA summary: ribbon (95 %), unconditional mean ± SE, and conditional mean}
+\title{Plot PVA summary: ribbon (95 percent), unconditional mean +/- SE, and conditional mean}
 \usage{
 plot_pva_summary(out, probs = c(0.025, 0.975))
 }
 \arguments{
-\item{out}{list returned by `run_pva_core(…, keep_traj = TRUE)`}
+\item{out}{list returned by `run_pva_core(..., keep_traj = TRUE)`}
 
 \item{probs}{two-element numeric: lower & upper quantiles for the ribbon}
 }
 \description{
-Plot PVA summary: ribbon (95 %), unconditional mean ± SE, and conditional mean
+Plot PVA summary: ribbon (95 percent), unconditional mean +/- SE, and conditional mean
 }

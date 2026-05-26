@@ -11,10 +11,12 @@ set_scenario(scen_name, subdir = "woodhen", pkg = utils::packageName())
 
 \item{subdir}{Sub-folder under inst/extdata/ that holds the YAMLs
 (default "woodhen").}
+
+\item{pkg}{Package name used to locate installed extdata files.}
 }
 \value{
 A complete `pva_spec` list ready for `run_pva_core()`.
 }
 \description{
-Combine a species-specific “base” YAML with a scenario override YAML.
+Combine a species-specific base YAML with a scenario override YAML.
 }
