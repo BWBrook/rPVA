@@ -91,8 +91,15 @@ validate_scalar_integerish <- function(value, field) {
   as.integer(round(value))
 }
 
-validate_numeric_vector <- function(value, field, integerish = FALSE) {
+validate_numeric_vector <- function(value, field, integerish = FALSE, allow_empty = FALSE) {
   value <- flatten_yaml_sequence(value)
+  if (allow_empty && length(value) == 0) {
+    if (integerish) {
+      return(integer(0))
+    }
+    return(numeric(0))
+  }
+
   if (!is.numeric(value) || length(value) == 0 || any(is.na(value))) {
     stop("`", field, "` must be a numeric sequence.", call. = FALSE)
   }
@@ -129,7 +136,11 @@ normalize_pva_spec_field <- function(field, value) {
     return(validate_numeric_vector(value, field))
   }
 
-  if (field %in% c("removal_years", "release_years", "removal_vec", "release_vec")) {
+  if (field %in% c("removal_years", "release_years")) {
+    return(validate_numeric_vector(value, field, integerish = TRUE, allow_empty = TRUE))
+  }
+
+  if (field %in% c("removal_vec", "release_vec")) {
     return(validate_numeric_vector(value, field, integerish = TRUE))
   }
 

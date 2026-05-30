@@ -72,6 +72,20 @@ test_that("run_pva_core rejects exact-length action mismatches", {
   expect_error(run_pva_core(spec, verbose = FALSE), "release_vec")
 })
 
+test_that("run_pva_core accepts explicit empty management-year vectors", {
+  spec <- read_test_spec()
+  spec$years <- 2
+  spec$reps <- 2
+  spec$env_sd <- 0
+  spec$demographic_stochasticity <- FALSE
+  spec$removal_years <- integer(0)
+  spec$removal_vec <- rep(0L, length(spec$n0))
+  spec$release_years <- integer(0)
+  spec$release_vec <- rep(0L, length(spec$n0))
+
+  expect_no_error(run_pva_core(spec, keep_traj = FALSE, seed = 7, verbose = FALSE))
+})
+
 test_that("plot_ext handles trajectories that never cross 50 percent extinction", {
   spec <- read_toy_spec()
   spec$years <- 5
