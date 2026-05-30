@@ -25,7 +25,7 @@ demographic_stochasticity.}
 
 \item{keep_traj}{logical. If TRUE, returns full population trajectory.}
 
-\item{stasis}{numeric vector; *if NULL (default) the value of spec$stasis 
+\item{stasis}{numeric vector; *if NULL (default) the value of spec$stasis
 is used; otherwise overrides it.*}
 
 \item{seed}{integer or NULL; set for reproducibility.}

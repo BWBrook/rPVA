@@ -40,8 +40,10 @@ vignettes/*.pdf
 # R Environment Variables
 .Renviron
 
-# pkgdown site
-docs/
+# pkgdown site, except Codex review notes
+docs/*
+!docs/codex/
+!docs/codex/**
 
 # translation temp files
 po/*~

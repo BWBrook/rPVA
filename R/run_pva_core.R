@@ -12,7 +12,7 @@
 #' @param years     integer. Projection length.
 #' @param reps      integer. Number of Monte Carlo repetitions.
 #' @param keep_traj logical. If TRUE, returns full population trajectory.
-#' @param stasis    numeric vector; *if NULL (default) the value of spec$stasis 
+#' @param stasis    numeric vector; *if NULL (default) the value of spec$stasis
 #'                  is used; otherwise overrides it.*
 #' @param seed      integer or NULL; set for reproducibility.
 #' @param verbose   logical; progress indicator.
@@ -55,7 +55,7 @@ run_pva_core <- function(
       outputs$F_traj[1, r] <- F
       outputs$LE_traj[1, r] <- sum(LE)
     }
-    
+
     for (t in seq_len(years)) {
       step_out <- run_pva_step(N, sr, F, LE, N_hist, t, spec, stasis, env_alpha, env_beta)
       N <- step_out$N
