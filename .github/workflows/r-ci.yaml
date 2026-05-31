@@ -25,7 +25,7 @@ jobs:
         run: Rscript -e 'source("bootstrap.R")'
 
       - name: renv status
-        run: Rscript -e 'renv::status()'
+        run: Rscript -e 'renv::status(sources = FALSE)'
 
       - name: Test suite
         run: Rscript -e 'source("bootstrap.R"); testthat::test_dir("tests/testthat", reporter = "summary")'
