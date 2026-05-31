@@ -1,16 +1,16 @@
 context("Checkpoint 1 – core engine")
 
 # Canonical deterministic spec (no stochasticity, 1 year, 1 rep)
-spec_det <- read_spec(system.file("testdata", "test_01.yaml", package = "rPVA"))
+spec_det <- read_test_spec()
 spec_det$env_sd  <- 0
-spec_det$demo_sd <- FALSE
+spec_det$demographic_stochasticity <- FALSE
 spec_det$years   <- 1
 spec_det$reps    <- 1
 
 # Canonical stochastic spec (env + demo variance, 1 year, 5 reps)
 spec_stoch <- spec_det
 spec_stoch$env_sd  <- 0.15
-spec_stoch$demo_sd <- 0.05
+spec_stoch$demographic_stochasticity <- TRUE
 spec_stoch$reps    <- 5
 
 test_that("deterministic projection matches matrix algebra for a single time step", {
@@ -37,7 +37,7 @@ test_that("engine handles extinction", {
   spec_ext$surv[]   <- 0
   spec_ext$fecund[] <- 0
   spec_ext$n0[]     <- 1
-  spec_ext$release_vec <- 0
+  spec_ext$release_vec <- rep(0L, length(spec_ext$surv))
   out <- run_pva_core(spec_ext)
   expect_true(all(out$Nend == 0))
 })

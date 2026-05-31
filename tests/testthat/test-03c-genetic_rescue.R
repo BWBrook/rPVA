@@ -1,8 +1,8 @@
 context("Checkpoint 3c – immigration lowers F")
 
-spec_r <- read_spec(system.file("testdata", "test_01.yaml", package = "rPVA"))
+spec_r <- read_test_spec()
 spec_r$env_sd <- 0
-spec_r$demo_sd <- FALSE
+spec_r$demographic_stochasticity <- FALSE
 spec_r$years  <- 10; spec_r$reps <- 1
 spec_r$release_years <- 5
 spec_r$release_vec   <- c(0,0,10,0,0,0,0)

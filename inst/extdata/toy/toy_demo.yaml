@@ -2,7 +2,7 @@
 #| ---: | ------------------------------------ | -------------------------------------|
 #|    0 | **Deterministic exponential growth** | Base YAML above (λ ≈ 1.07).          |
 #|    1 | **Ceiling stops growth**             | `K = 100`.                           |
-#|    2 | **Demographic stochasticity**        | `demo_sd = TRUE`, `reps = 100`.      |
+#|    2 | **Demographic stochasticity**        | `demographic_stochasticity = TRUE`, `reps = 100`. |
 #|    3 | **Environmental stochasticity**      | `env_sd = 0.30` (keep 100 reps).     |
 #|    4 | **Inbreeding‐depression ratchet**    | `genetics = TRUE`.                   |
 
@@ -19,7 +19,7 @@ fecund:         [0.0, 1.7, 2.1]          # F per female
 n0:             [31, 12, 7]
 
 # Switch‑offs for the first demo
-K:              NA                       # no density ceiling
-demo_sd:        FALSE
+K:              ~                        # no density ceiling
+demographic_stochasticity: FALSE
 env_sd:         0
 genetics:       FALSE                    # apply inbreeding depression? (TRUE or FALSE)

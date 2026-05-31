@@ -10,7 +10,7 @@ read_spec(path)
 \item{path}{path to YAML file}
 }
 \value{
-named list with numeric vectors
+Named list validated against the supported partial spec schema.
 }
 \description{
 read_spec

@@ -20,7 +20,7 @@ Designed for rapid scenario-building, robust teaching, and defensible conservati
 ## Getting started
 
 1. **Clone the repository** and open `rPVA.Rproj` in RStudio, or launch an R session in this directory.
-2. **Quick setup**: *Source the bootstrap script* (recommmended for new users). In the project root:
+2. **Quick setup**: *Source the bootstrap script* (recommended for new users). In the project root:
    ```r
    source("bootstrap.R")
    ```
@@ -29,19 +29,19 @@ Designed for rapid scenario-building, robust teaching, and defensible conservati
    ```r
    install.packages("renv")   # only needed once
    renv::restore()            # restores locked package versions
-   pkgload::load_all(".")     # or devtools::load_all(".")
+   pkgload::load_all(".")
    ```
    Optional: install `ggrastr` only if you want rasterized trajectory plotting on large Monte Carlo runs.
    The default package restore no longer requires `ggrastr` or `Cairo`.
 4. **Run a scenario or demo**: Try the toy-model walk-through to verify core features:
    ```r
-   toy <- run_toy_demo()
+   toy <- run_toy_demo(keep_traj = TRUE, plot_matrix = TRUE, verbose = FALSE)
    toy$summary
    plot_pva_summary(toy$results$det)
    ```
    Or batch-run all scenarios for a case study (e.g. woodhen):
    ```r
-   run_scenarios("inst/extdata/woodhen", csv_out = NULL)
+   run_scenarios("woodhen", csv_out = NULL, rds_out = NULL, keep_traj = FALSE)
    ```
 All functions can be called interactively, scripted, or batch-run.  
 See case-specific folders in `inst/extdata/` for scenario YAMLs and runnable scripts.
@@ -78,10 +78,11 @@ trajectories.
    ```r
    # 1  Open the project or install & attach the package, then:
 
-   pkgload::load_all(".")    # or devtools::load_all(".")
+   pkgload::load_all(".")
 
    # 2  Run the helper that generates five preset scenarios
-   toy <- run_toy_demo()     # returns $results and a summary table
+   toy <- run_toy_demo(keep_traj = TRUE, plot_matrix = TRUE, verbose = FALSE)
+                            # returns $results and a summary table
    toy$summary               # extinction probabilities & median N
 
    # ── Step-wise exploration ─────────────────────────────────────
@@ -93,8 +94,8 @@ trajectories.
    plot_pva_summary(toy$results$ceiling)
 
    ## (c) + Demographic stochasticity (10 replicates)
-   plot_pva_traj(toy$results$demo_sd, sample = 10)
-   plot_pva_summary(toy$results$demo_sd)
+   plot_pva_traj(toy$results$demographic_stochasticity, sample = 10)
+   plot_pva_summary(toy$results$demographic_stochasticity)
 
    ## (d) + Environmental σ_env = 0.30
    plot_pva_traj(toy$results$env_sd,  sample = 10)

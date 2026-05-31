@@ -2,13 +2,14 @@ Package: rPVA
 Title: R-based Population Viability Analysis Simulator
 Version: 0.0.1.000
 Authors@R: person("Barry", "Brook", email = "barry.brook@utas.edu.au", role = c("aut", "cre"))
-Description: R package to build and run PVA simulations
-License: MIT
+Author: Barry Brook [aut, cre]
+Maintainer: Barry Brook <barry.brook@utas.edu.au>
+Description: Provides tools to build and run population viability analysis simulations in R.
+License: MIT + file LICENSE
 Encoding: UTF-8
-Depends: R (>= 4.0)
-RoxygenNote: 7.3.2
+Depends: R (>= 4.1.0)
+RoxygenNote: 7.3.3
 Imports:
-    tidyr,
     dplyr,
     yaml,
     ggplot2,
@@ -20,5 +21,5 @@ Imports:
     future.apply
 Suggests:
     pkgload,
-    devtools,
-    testthat
+    testthat,
+    ggrastr

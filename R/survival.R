@@ -1,4 +1,4 @@
-survival_phase <- function(N, surv_t, stasis_t, spec, demo_sd) {
+survival_phase <- function(N, surv_t, stasis_t, spec, demographic_stochasticity) {
   n_stage <- length(N)
   N_next  <- integer(n_stage)
 
@@ -9,7 +9,7 @@ survival_phase <- function(N, surv_t, stasis_t, spec, demo_sd) {
       total_surv  <- prog + stay
 
       # --- survivors drawn once (binomial or deterministic) ---
-      alive <- if (isTRUE(demo_sd)) {
+      alive <- if (isTRUE(demographic_stochasticity)) {
         rbinom(1, N[i], total_surv)
       } else {
         as.integer(round(N[i] * total_surv))
@@ -18,7 +18,7 @@ survival_phase <- function(N, surv_t, stasis_t, spec, demo_sd) {
       # --- progression vs stasis split ---
       n_prog <- 0L
       if (isTRUE(alive > 0) && isTRUE(prog > 0) && isTRUE(total_surv > 0)) {
-        if (isTRUE(demo_sd)) {
+        if (isTRUE(demographic_stochasticity)) {
           p_prog <- prog / total_surv
           n_prog <- rbinom(1, alive, p_prog)
         } else {
@@ -32,7 +32,7 @@ survival_phase <- function(N, surv_t, stasis_t, spec, demo_sd) {
     }
 
     # Last stage: only stasis
-    surv_ad <- if (isTRUE(demo_sd)) {
+    surv_ad <- if (isTRUE(demographic_stochasticity)) {
       rbinom(1, N[n_stage], stasis_t[n_stage])
     } else {
       as.integer(round(N[n_stage] * stasis_t[n_stage]))

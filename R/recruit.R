@@ -1,15 +1,15 @@
-recruit_phase   <- function(N, fec_t, sr, spec, demo_sd) {
+recruit_phase <- function(N, fec_t, sr, spec, demographic_stochasticity) {
   # 1. throttle by monogamy + SR
   fec_eff <- if (spec$monogamy) fec_t * pmin(1, sr / 0.5) else fec_t
   lambda  <- sum(fec_eff * N)
-  recruits <- if (isTRUE(demo_sd)) {
+  recruits <- if (isTRUE(demographic_stochasticity)) {
                 rpois(1, lambda)
               } else {
                 as.integer(floor(lambda)) # recruits <= λ_eff
               }
 
   # 2. sex draw + SR update
-  n_f <- if (isTRUE(demo_sd)) {
+  n_f <- if (isTRUE(demographic_stochasticity)) {
            rbinom(1, recruits, sr)
          } else {
            # deterministic half‐female split

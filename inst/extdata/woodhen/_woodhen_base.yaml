@@ -12,7 +12,7 @@ monogamy:       TRUE                                        # if FALSE, ignore S
 
 # Population Dynamics
 n0:             [9, 3, 2, 1, 1, 1, 1]                       # starting age vector of ♀ (integers)
-demo_sd:        TRUE                                        # demo stoch (binomial/pois: FALSE = off, TRUE = on)
+demographic_stochasticity: TRUE                             # demo stoch (binomial/pois: FALSE = off, TRUE = on)
 env_sd:         0.2                                         # σ_env (log-normal/beta: range 0-0.4)
 K:              10                                          # limited habitat on the mountain tops (max. number of pairs)
 K_sd:           1                                           # σ_env on K (habitat variability)

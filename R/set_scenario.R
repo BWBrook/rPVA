@@ -1,10 +1,11 @@
 #' set_scenario
 #'
-#' Combine a species-specific “base” YAML with a scenario override YAML.
+#' Combine a species-specific base YAML with a scenario override YAML.
 #'
 #' @param scen_name   Character, e.g. "01_no_mgmt" (no extension)
 #' @param subdir      Sub-folder under inst/extdata/ that holds the YAMLs
 #'                    (default "woodhen").
+#' @param pkg         Package name used to locate installed extdata files.
 #' @return            A complete `pva_spec` list ready for `run_pva_core()`.
 #' @export
 set_scenario <- function(scen_name,
@@ -27,8 +28,8 @@ set_scenario <- function(scen_name,
   base  <- read_spec(base_path)
   delta <- read_spec(delta_path)
 
-  spec  <- modifyList(base, delta)
+  spec  <- validate_full_pva_spec(modifyList(base, delta))
   if (is.null(spec$name)) spec$name <- scen_name
+  class(spec) <- c("pva_spec", class(spec))
   spec
 }
-

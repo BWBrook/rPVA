@@ -1,8 +1,8 @@
 context("Checkpoint 4 – carrying capacity ceiling (floaters exempt)")
 
-spec_K <- read_spec(system.file("testdata", "test_01.yaml", package = "rPVA"))
+spec_K <- read_test_spec()
 spec_K$env_sd  <- 0
-spec_K$demo_sd <- FALSE
+spec_K$demographic_stochasticity <- FALSE
 spec_K$years   <- 1
 spec_K$reps    <- 1
 spec_K$K       <- 50
@@ -10,6 +10,9 @@ spec_K$K_sd    <- 0
 spec_K$n0[]    <- 60   # all stages start at 60
 
 out1 <- run_pva_core(spec_K, keep_traj = TRUE)
+spec_noK <- spec_K
+spec_noK$K <- 1e6
+out1_noK <- run_pva_core(spec_noK, keep_traj = TRUE)
 
 test_that("ceiling scales holders down exactly to K in first step", {
   # sum only stages 2..n at t = 1 should equal K

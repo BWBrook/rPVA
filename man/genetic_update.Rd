@@ -5,7 +5,7 @@
 \title{genetic_update
 Penalise vital rates by inbreeding and update F via drift}
 \usage{
-genetic_update(surv, fec, N_vec, F, spec, Ne_override = NULL)
+genetic_update(surv, fec, N_vec, F, spec, LE, Ne_override = NULL)
 }
 \arguments{
 \item{surv}{numeric vector of progression survival (after env noise & cat)}

@@ -1,10 +1,10 @@
 context("Checkpoint 3a – sex-ratio limitation")
 
-spec_sr <- read_spec(system.file("testdata", "test_01.yaml", package = "rPVA"))
+spec_sr <- read_test_spec()
 spec_sr$monogamy       <- TRUE
 spec_sr$sex_ratio_init <- 0.30   # female-poor
 spec_sr$env_sd         <- 0
-spec_sr$demo_sd        <- FALSE
+spec_sr$demographic_stochasticity <- FALSE
 spec_sr$years <- spec_sr$reps <- 1
 
 out <- run_pva_core(spec_sr, keep_traj = TRUE)
