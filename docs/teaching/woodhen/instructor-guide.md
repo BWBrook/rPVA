@@ -10,6 +10,8 @@ engine internals.
 
 - Confirm `git status` is clean except for expected goal artefacts.
 - Start from the repo root.
+- Work through `classroom-dry-run-checklist.md` on the teaching machine before
+  the first student session.
 - Open an R session and run:
 
 ```r
@@ -58,6 +60,7 @@ source("bootstrap.R")
 
 ## Expected outputs (minimum evidence per group)
 
+- Practical 1 toy summary with non-zero extinction risk only in `genetics`,
 - one `run_scenarios()` table (Practical 2),
 - one plotted management scenario,
 - one bounded sensitivity table,

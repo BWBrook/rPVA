@@ -41,6 +41,9 @@ toy <- run_toy_demo(
 )
 ```
 
+If the matrix plot opens in a separate window or interrupts your R session, rerun
+the same command with `plot_matrix = FALSE`; the summary table is unchanged.
+
 `run_toy_demo()` returns:
 
 - `toy$results`: named list of outputs for each mechanism.

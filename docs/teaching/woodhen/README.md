@@ -16,6 +16,7 @@ Target students: ecology, conservation, or applied modelling classes.
 - `troubleshooting.md`
 - `report-scaffold.qmd`
 - `marking-rubric.md`
+- `classroom-dry-run-checklist.md`
 
 ## Quick start for students
 
@@ -49,6 +50,10 @@ For each worksheet:
 - Run the listed code blocks exactly as shown.
 - Fill response boxes.
 - Save all R outputs for your short report.
+
+For demonstrators, use `classroom-dry-run-checklist.md` before class and at the
+end of each practical to confirm that the expected tables, plots, and report
+render path are still working.
 
 ## Teaching outcomes
 

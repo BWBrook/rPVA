@@ -110,10 +110,12 @@ s2 <- run_pva_core(modifyList(base, list(surv = base$surv * 0.90)),
                   keep_traj = FALSE, seed = 123)
 s3 <- run_pva_core(modifyList(base, list(K = 250)),
                   keep_traj = FALSE, seed = 123)
+s4 <- run_pva_core(modifyList(base, list(cat_freq = 0.10)),
+                  keep_traj = FALSE, seed = 123)
 
 compare_pva_results(
-  list(s1, s2, s3),
-  scenarios = c("baseline", "survival_minus_10pct", "K_250")
+  list(s1, s2, s3, s4),
+  scenarios = c("baseline", "survival_minus_10pct", "K_250", "cat_freq_0.10")
 )
 ```
 
