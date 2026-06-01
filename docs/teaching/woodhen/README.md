@@ -25,6 +25,19 @@ Run from the repo root in R:
 source("bootstrap.R")
 ```
 
+To render the assessment scaffold from the repo root, use a temp folder for classroom
+output hygiene:
+
+```sh
+quarto render docs/teaching/woodhen/report-scaffold.qmd \
+  --to docx --output-dir /tmp/rpva-teaching-report
+quarto render docs/teaching/woodhen/report-scaffold.qmd \
+  --to pdf --output-dir /tmp/rpva-teaching-report
+```
+
+You can run either format at a time if your machine is missing a local PDF
+dependency; this is common in first-run Mac setups.
+
 Each practical is designed to be run independently, but best delivered in this
 order:
 

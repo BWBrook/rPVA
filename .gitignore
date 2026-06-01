@@ -63,6 +63,7 @@ renv/staging/
 *.html                  # rendered notebooks
 *.knit.md
 rPVA_files/        # html asset dir (JS/CSS/img)
+docs/teaching/woodhen/.gitignore
 
 # _targets
 # The object store is committed ONCE; ignore future changes

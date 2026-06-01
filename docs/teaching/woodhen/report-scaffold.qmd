@@ -18,10 +18,31 @@ This scaffold is a report template for Practical 1 and Practical 2. Replace
 each placeholder with your own results and interpretation.
 
 ```{r setup}
-if (!file.exists("bootstrap.R")) {
-  stop("Run this scaffold from the project root (e.g. /Users/bwbrook/git/rPVA) so source(\"bootstrap.R\") resolves.")
+find_repo_root <- function(start = getwd()) {
+  current <- normalizePath(start, winslash = "/", mustWork = TRUE)
+  while (TRUE) {
+    candidate_bootstrap <- file.path(current, "bootstrap.R")
+    candidate_desc <- file.path(current, "DESCRIPTION")
+    if (file.exists(candidate_bootstrap) && file.exists(candidate_desc)) {
+      return(current)
+    }
+
+    parent <- dirname(current)
+    if (identical(parent, current)) {
+      stop(
+        "Could not find rPVA repo root from this working directory. ",
+        "Run Quarto from a directory that includes DESCRIPTION and bootstrap.R (for example the repo root), ",
+        "or use `setwd()` to switch to the repo root before rendering."
+      )
+    }
+    current <- parent
+  }
 }
-source("bootstrap.R")
+repo_root <- find_repo_root()
+
+knitr::opts_knit$set(root.dir = repo_root)
+bootstrap_path <- file.path(repo_root, "bootstrap.R")
+source(bootstrap_path, chdir = TRUE)
 ```
 
 # Executive summary

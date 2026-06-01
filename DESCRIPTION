@@ -22,4 +22,6 @@ Imports:
 Suggests:
     pkgload,
     testthat,
-    ggrastr
+    ggrastr,
+    knitr,
+    rmarkdown

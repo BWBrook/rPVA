@@ -18,6 +18,30 @@ rerun the command that failed.
 - Ensure your R working directory is the repo root (`/Users/bwbrook/git/rPVA`).
 - Run `getwd()` and `setwd("/Users/bwbrook/git/rPVA")` if needed.
 
+### Report scaffold says repo root cannot be found
+
+The scaffold now searches upward for `bootstrap.R` and `DESCRIPTION`, but this
+still fails if the working directory is outside the repository.
+
+- Check `getwd()` and, if needed, `setwd("/Users/bwbrook/git/rPVA")`.
+- Render using an absolute path from that root:
+
+```sh
+quarto render docs/teaching/woodhen/report-scaffold.qmd --to docx --output-dir /tmp/rpva-teaching-report
+```
+
+### `quarto render ...` fails with missing render packages
+
+If the error includes packages like `rmarkdown` or `knitr`, run:
+
+```r
+source("bootstrap.R")
+renv::status(sources = FALSE)
+```
+
+Then rerun the render. If `status()` is not synchronized, exit and reopen R,
+then run `source("bootstrap.R")` again.
+
 ## Simulation command issues
 
 ### Nothing appears in `plot_pva_traj()` or `plot_ext()`
