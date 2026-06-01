@@ -46,6 +46,8 @@ docs/*
 !docs/codex/**
 !docs/goals/
 !docs/goals/**
+!docs/teaching/
+!docs/teaching/**
 
 # translation temp files
 po/*~

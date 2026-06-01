@@ -1,0 +1,117 @@
+---
+title: "Woodhen PVA Practical Report"
+subtitle: "rPVA teaching road-test scaffold"
+format:
+  pdf:
+    toc: true
+    number-sections: true
+  docx: default
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+# Instructions
+
+This scaffold is a report template for Practical 1 and Practical 2. Replace
+each placeholder with your own results and interpretation.
+
+```{r setup}
+if (!file.exists("bootstrap.R")) {
+  stop("Run this scaffold from the project root (e.g. /Users/bwbrook/git/rPVA) so source(\"bootstrap.R\") resolves.")
+}
+source("bootstrap.R")
+```
+
+# Executive summary
+
+In 3–5 sentences, answer:
+
+- which scenario best balances extinction risk and abundance,
+- what uncertainty is most important,
+- what recommendation you would make.
+
+_Write your answer here._
+
+# Methods
+
+## Data and model setup
+
+- Software: `rPVA`
+- R version: _fill in_
+- Number of Monte-Carlo replicates: _fill in_
+- Seed (if fixed): _fill in_
+
+## Model steps
+
+```{r methods-code}
+# Example: run_scenarios and one scenario visualisation
+# Replace scenario_id as needed
+woodhen_tbl <- run_scenarios("woodhen", csv_out = NULL, rds_out = NULL, keep_traj = FALSE, parallel = FALSE)
+print(woodhen_tbl)
+
+spec <- set_scenario("02_pig_control", "woodhen")
+sim <- run_pva_core(spec, keep_traj = TRUE, seed = 123, verbose = FALSE)
+sim_summary <- summarize_pva_result(sim)
+sim_diagnostics <- diagnose_pva_result(sim)
+```
+
+# Results
+
+## Summary table
+
+```{r results-table}
+woodhen_tbl
+```
+
+```{r selected-scenario-diagnostics}
+sim_summary
+sim_diagnostics
+```
+
+## Figures
+
+```{r figures, fig.height=5, fig.width=10}
+plot_pva_panel(
+  plot_pva_traj(sim, sample = 150),
+  plot_pva_summary(sim),
+  plot_ext(sim)
+)
+```
+
+## Sensitivity check (bounded)
+
+```{r sensitivity}
+base <- set_scenario("sensitivity_analysis", "woodhen")
+s1 <- run_pva_core(base, keep_traj = FALSE, seed = 123)
+s2 <- run_pva_core(modifyList(base, list(surv = base$surv * 0.90)),
+                  keep_traj = FALSE, seed = 123)
+s3 <- run_pva_core(modifyList(base, list(K = 250)),
+                  keep_traj = FALSE, seed = 123)
+
+compare_pva_results(
+  list(s1, s2, s3),
+  scenarios = c("baseline", "survival_minus_10pct", "K_250")
+)
+```
+
+# Discussion
+
+- What does the scenario ranking imply for management?
+- Where is the largest uncertainty?
+- Are any assumptions conservative or likely optimistic?
+
+# Management recommendation
+
+State:
+
+1. the preferred intervention(s),
+2. the most important assumption to challenge before implementation,
+3. one data gap that would change confidence.
+
+# Limitations
+
+- model scale and parameter source uncertainty,
+- no explicit climate-projection forcing,
+- no explicit spatially explicit habitat fragmentation in this teaching setup.
