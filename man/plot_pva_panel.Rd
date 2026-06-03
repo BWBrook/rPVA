@@ -2,7 +2,7 @@
 % Please edit documentation in R/plot_pva.R
 \name{plot_pva_panel}
 \alias{plot_pva_panel}
-\title{Combine PVA plots into a 2×1 panel}
+\title{Combine PVA plots into a 2 x 1 panel}
 \usage{
 plot_pva_panel(p1, p2, p3)
 }
@@ -18,6 +18,6 @@ A patchwork composite
 }
 \description{
 Takes three ggplot objects (e.g. trajectory, summary, extinction) and
-arranges them so that the first two sit side‐by‐side on the top row and
+arranges them so that the first two sit side-by-side on the top row and
 the third spans the bottom row.
 }

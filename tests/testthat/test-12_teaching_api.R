@@ -1,0 +1,153 @@
+context("Practical 1 teaching API")
+
+test_that("teaching_stage_catalog describes implemented and deferred stages", {
+  catalog <- teaching_stage_catalog()
+
+  expect_s3_class(catalog, "data.frame")
+  expect_true(all(c(
+    "stage",
+    "order",
+    "label",
+    "concept",
+    "implemented",
+    "engine_status",
+    "controls"
+  ) %in% names(catalog)))
+  expect_equal(catalog$stage[1], "deterministic_baseline")
+  expect_true(all(c(
+    "deterministic_baseline",
+    "carrying_capacity",
+    "demographic_stochasticity",
+    "environmental_stochasticity",
+    "genetic_stochasticity",
+    "catastrophe",
+    "intervention",
+    "extinction_vortex",
+    "allee_effect",
+    "correlated_events"
+  ) %in% catalog$stage))
+  expect_false(catalog$implemented[catalog$stage == "allee_effect"])
+  expect_false(catalog$implemented[catalog$stage == "correlated_events"])
+})
+
+test_that("build_teaching_spec applies safe stage-specific defaults", {
+  det <- build_teaching_spec("deterministic_baseline")
+  ceiling <- build_teaching_spec("carrying_capacity")
+  demographic <- build_teaching_spec("demographic_stochasticity")
+  environmental <- build_teaching_spec("environmental_stochasticity")
+  genetics <- build_teaching_spec("genetic_stochasticity")
+  catastrophe <- build_teaching_spec("catastrophe")
+  intervention <- build_teaching_spec("intervention")
+  vortex <- build_teaching_spec("extinction_vortex")
+
+  expect_s3_class(det, "pva_spec")
+  expect_equal(det$name, "teaching_deterministic_baseline")
+  expect_false(det$demographic_stochasticity)
+  expect_false(det$genetics)
+  expect_true(is.na(det$K))
+
+  expect_equal(ceiling$K, 30)
+  expect_false(ceiling$demographic_stochasticity)
+
+  expect_true(demographic$demographic_stochasticity)
+  expect_equal(demographic$reps, 100L)
+
+  expect_equal(environmental$env_sd, 0.30)
+  expect_equal(environmental$K_sd, 5)
+
+  expect_true(genetics$genetics)
+  expect_equal(genetics$lethal_equiv, c(1.5, 1, 0.5))
+
+  expect_equal(catastrophe$cat_freq, 0.05)
+  expect_equal(catastrophe$cat_surv, 0.60)
+  expect_equal(catastrophe$cat_repro, 0.70)
+
+  expect_equal(intervention$K, 60)
+  expect_equal(intervention$env_sd, 0.20)
+
+  expect_true(vortex$genetics)
+  expect_true(vortex$demographic_stochasticity)
+  expect_equal(vortex$n0, c(12, 5, 3))
+})
+
+test_that("build_teaching_spec accepts bounded controls and rejects unsafe ones", {
+  spec <- build_teaching_spec(
+    "catastrophe",
+    controls = list(cat_freq = 0.10, cat_surv = 0.50, cat_repro = 0.80, reps = 25)
+  )
+
+  expect_equal(spec$cat_freq, 0.10)
+  expect_equal(spec$cat_surv, 0.50)
+  expect_equal(spec$cat_repro, 0.80)
+  expect_equal(spec$reps, 25L)
+
+  expect_error(build_teaching_spec("not_a_stage"), "Unknown teaching stage")
+  expect_error(build_teaching_spec("allee_effect"), "not implemented")
+  expect_error(build_teaching_spec("catastrophe", list(env_sd = 0.2)), "Unknown control")
+  expect_error(build_teaching_spec("catastrophe", list(cat_freq = 0.8)), "outside")
+  expect_error(build_teaching_spec("demographic_stochasticity", list(reps = 2.5)), "integer")
+  expect_error(build_teaching_spec("deterministic_baseline", base = "woodhen"), "Only `base = \"toy\"`")
+})
+
+test_that("run_teaching_pva returns a labelled Shiny-ready bundle", {
+  run <- run_teaching_pva(
+    "demographic_stochasticity",
+    controls = list(reps = 6),
+    keep_traj = FALSE,
+    seed = 101
+  )
+
+  expect_s3_class(run, "teaching_pva_run")
+  expect_equal(names(run), c(
+    "stage",
+    "label",
+    "spec",
+    "result",
+    "summary",
+    "diagnostics",
+    "settings"
+  ))
+  expect_equal(run$stage, "demographic_stochasticity")
+  expect_equal(run$label, "Demographic stochasticity")
+  expect_s3_class(run$spec, "pva_spec")
+  expect_s3_class(run$summary, "data.frame")
+  expect_s3_class(run$diagnostics, "data.frame")
+  expect_s3_class(run$settings, "data.frame")
+  expect_equal(run$summary$scenario, "Demographic stochasticity")
+  expect_equal(run$summary$reps, 6L)
+  expect_false(run$summary$trajectory_available)
+})
+
+test_that("run_teaching_pva avoids console progress by default", {
+  expect_silent(run_teaching_pva(
+    "deterministic_baseline",
+    keep_traj = FALSE,
+    seed = 101
+  ))
+})
+
+test_that("teaching_settings_record is compact and does not write files", {
+  spec <- build_teaching_spec("intervention", controls = list(K = 75, reps = 8))
+  settings <- teaching_settings_record("intervention", list(K = 75, reps = 8), spec)
+
+  expect_s3_class(settings, "data.frame")
+  expect_true(all(c("stage", "label", "setting", "value") %in% names(settings)))
+  expect_true("control_K" %in% settings$setting)
+  expect_true("spec_K" %in% settings$setting)
+  expect_equal(settings$value[settings$setting == "control_K"], "75")
+  expect_no_local_artifacts()
+})
+
+test_that("compare_teaching_runs preserves run order and labels", {
+  det <- run_teaching_pva("deterministic_baseline", keep_traj = FALSE)
+  ceiling <- run_teaching_pva("carrying_capacity", controls = list(K = 40), keep_traj = FALSE)
+  comparison <- compare_teaching_runs(list(det, ceiling))
+
+  expect_s3_class(comparison, "data.frame")
+  expect_equal(comparison$stage, c("deterministic_baseline", "carrying_capacity"))
+  expect_equal(comparison$label, c("Deterministic baseline", "Ceiling carrying capacity"))
+  expect_equal(comparison$scenario, comparison$label)
+  expect_true(all(c("PE", "Nmed", "Nlo95", "Nhi95") %in% names(comparison)))
+  expect_error(compare_teaching_runs(list()), "non-empty list")
+  expect_error(compare_teaching_runs(list(list(stage = "broken"))), "run_teaching_pva")
+})

@@ -2,7 +2,7 @@
 % Please edit documentation in R/plot_pva.R
 \name{plot_pva_matrix}
 \alias{plot_pva_matrix}
-\title{Plot matrix diagnostics (2 × 2 panel; lambda and SSD printed to console)}
+\title{Plot matrix diagnostics (2 x 2 panel; lambda and SSD printed to console)}
 \usage{
 plot_pva_matrix(spec)
 }
@@ -10,5 +10,5 @@ plot_pva_matrix(spec)
 \item{spec}{List with surv, fecund, stasis}
 }
 \description{
-Plot matrix diagnostics (2 × 2 panel; lambda and SSD printed to console)
+Plot matrix diagnostics (2 x 2 panel; lambda and SSD printed to console)
 }
