@@ -21,6 +21,11 @@ source("bootstrap.R")
 - Ask students to open:
   - `docs/teaching/woodhen/practical-1-pva-foundations.md`
   - `docs/teaching/woodhen/practical-2-woodhen-management.md`
+- For assessment design review, read:
+  - `docs/teaching/woodhen/assessment-brief-2026-draft.md`
+  - `docs/teaching/woodhen/marking-rubric-2026-draft.md`
+  - `docs/teaching/woodhen/feedback-template-2026-draft.md`
+  - `docs/teaching/woodhen/assessment-design-crosswalk-2026.md`
 
 ## Three-hour class timing
 
@@ -73,3 +78,5 @@ source("bootstrap.R")
   first road test.
 - For first delivery, prioritize clarity of interpretation prompts over adding new
   helper wrappers.
+- Before releasing AT1, confirm whether students will use R-only outputs, Shiny
+  exports, or both, then tune the optional artefact wording accordingly.

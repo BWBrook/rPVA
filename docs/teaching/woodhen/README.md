@@ -17,6 +17,10 @@ Target students: ecology, conservation, or applied modelling classes.
 - `report-scaffold.qmd`
 - `marking-rubric.md`
 - `classroom-dry-run-checklist.md`
+- `assessment-brief-2026-draft.md`
+- `marking-rubric-2026-draft.md`
+- `feedback-template-2026-draft.md`
+- `assessment-design-crosswalk-2026.md`
 
 ## Quick start for students
 
@@ -54,6 +58,10 @@ For each worksheet:
 For demonstrators, use `classroom-dry-run-checklist.md` before class and at the
 end of each practical to confirm that the expected tables, plots, and report
 render path are still working.
+
+Draft 2026 AT1 assessment materials are provided as review documents in this
+folder. The student-facing starting point is `assessment-brief-2026-draft.md`;
+the instructor-facing rationale is `assessment-design-crosswalk-2026.md`.
 
 ## Teaching outcomes
 
