@@ -1,0 +1,227 @@
+:root {
+  --ink: #17202a;
+  --muted: #5d6773;
+  --line: #d9e1e8;
+  --panel: #ffffff;
+  --soft: #f5f8fa;
+  --teal: #126a73;
+  --green: #4f7f39;
+  --gold: #9a6a14;
+  --red: #a63d40;
+}
+
+body {
+  color: var(--ink);
+  background: var(--soft);
+  font-size: 15px;
+  overflow-x: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.navbar {
+  border-radius: 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: #ffffff;
+}
+
+.navbar-default .navbar-brand,
+.navbar-default .navbar-nav > li > a {
+  color: var(--ink);
+}
+
+.page-shell {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 18px 18px 28px;
+}
+
+.intro-grid,
+.lab-grid,
+.compare-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.intro-grid {
+  grid-template-columns: minmax(260px, 0.9fr) minmax(300px, 1.1fr);
+}
+
+.lab-grid {
+  grid-template-columns: minmax(270px, 0.75fr) minmax(360px, 1.25fr);
+  align-items: start;
+}
+
+.compare-grid {
+  grid-template-columns: minmax(360px, 1fr) minmax(260px, 0.65fr);
+  align-items: start;
+}
+
+.panel-block {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+  min-width: 0;
+}
+
+.panel-block h2,
+.panel-block h3,
+.panel-block h4 {
+  margin-top: 0;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.species-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.life-stage {
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--teal);
+  border-radius: 8px;
+  padding: 10px;
+  background: #fbfdfe;
+  min-height: 78px;
+}
+
+.prompt {
+  border-left: 4px solid var(--gold);
+  padding: 10px 12px;
+  background: #fff8e8;
+  margin-top: 12px;
+}
+
+.diagnostic-list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.diagnostic-list li {
+  margin-bottom: 6px;
+}
+
+.future-list {
+  padding-left: 18px;
+  color: var(--muted);
+}
+
+.output-region {
+  min-height: 310px;
+}
+
+.plot-region {
+  min-height: 340px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+  margin-top: 12px;
+}
+
+.btn {
+  white-space: normal;
+}
+
+.btn-primary {
+  background-color: var(--teal);
+  border-color: var(--teal);
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+  background-color: #0e555c;
+  border-color: #0e555c;
+}
+
+.btn-default {
+  border-color: var(--line);
+}
+
+.metric-table table,
+.settings-table table,
+.compare-table table {
+  width: 100%;
+  font-size: 14px;
+}
+
+.metric-table,
+.settings-table,
+.compare-table {
+  overflow-x: auto;
+}
+
+.stage-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #e6f2f3;
+  color: var(--teal);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.risk-note {
+  color: var(--red);
+  font-weight: 600;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.summary-metric {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  background: #fbfdfe;
+  min-height: 74px;
+}
+
+.metric-label {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.metric-value {
+  display: block;
+  margin-top: 4px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 780px) {
+  .page-shell {
+    padding: 12px;
+  }
+
+  .intro-grid,
+  .lab-grid,
+  .compare-grid,
+  .species-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .panel-block {
+    padding: 13px;
+  }
+
+  .output-region,
+  .plot-region {
+    min-height: 260px;
+  }
+
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+}

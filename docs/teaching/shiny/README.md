@@ -1,11 +1,11 @@
 # Practical 1 Shiny Design Spike
 
-This directory contains the Goal 011 design package for a future Shiny-first
+This directory contains the design and implementation notes for the Shiny-first
 Practical 1 experience in `rPVA`.
 
-This is not an implemented Shiny app. It is a teaching, requirements, and
-deployment design spike intended to help Barry and the supervisor decide what
-to build next.
+The first base-Shiny MVP scaffold now lives in `inst/shiny/practical1/` and can
+be launched from R with `run_practical1_shiny()`. The documents here remain the
+teaching, requirements, and deployment planning layer for future road-test work.
 
 ## Documents
 
@@ -48,10 +48,11 @@ to change one concept at a time, see immediate visual and numerical outputs,
 export compact evidence, and then transfer those ideas to the Woodhen Practical
 2 workflow.
 
-## Non-Goals For This Spike
+## Current MVP Boundary
 
-- No Shiny implementation.
-- No package dependency changes.
-- No package code, scenario, test, CI, or metadata changes.
-- No edits to Goal 010 assessment drafts.
-- No commit or push.
+- Practical 1 concept-lab scaffold only.
+- No ShinyProxy, Docker, nginx, systemd, or other deployment implementation.
+- No authentication, accounts, persistent student workspaces, quotas, or usage
+  tracing.
+- No Practical 2 Woodhen app mode.
+- No assessment redesign, scenario YAML change, or core engine behaviour change.

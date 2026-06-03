@@ -24,4 +24,5 @@ Suggests:
     testthat,
     ggrastr,
     knitr,
-    rmarkdown
+    rmarkdown,
+    shiny
