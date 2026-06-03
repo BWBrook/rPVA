@@ -152,6 +152,14 @@ body {
   font-size: 14px;
 }
 
+.settings-table th,
+.settings-table td,
+.compare-table th,
+.compare-table td {
+  overflow-wrap: anywhere;
+  vertical-align: top;
+}
+
 .metric-table,
 .settings-table,
 .compare-table {

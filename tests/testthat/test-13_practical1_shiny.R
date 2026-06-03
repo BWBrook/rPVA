@@ -48,3 +48,30 @@ test_that("app file avoids unsupported implementation markers", {
   marker_pattern <- paste(c("TO", "DO|T", "BD|PLACE", "HOLDER"), collapse = "")
   expect_false(any(grepl(marker_pattern, c(app_text, style_text))))
 })
+
+test_that("risk plot panel is server-rendered for browser reliability", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  app_text <- readLines(file.path(app_dir, "app.R"), warn = FALSE)
+
+  expect_true(any(grepl('uiOutput\\("extinction_plot_panel"\\)', app_text)))
+  expect_true(any(grepl("output\\$extinction_plot_panel <- renderUI", app_text)))
+  expect_false(any(grepl("output\\.showExtinctionPlot", app_text)))
+})
+
+test_that("comparison reset realigns the stage selector", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
+
+  expect_true(grepl("observeEvent(input$clear_runs", app_text, fixed = TRUE))
+  expect_true(grepl('updateSelectInput(session, "stage", selected = default_stage)', app_text, fixed = TRUE))
+})
+
+test_that("stage runs collect only visible controls", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
+
+  expect_match(app_text, "visible_stage_controls <- function\\(stage\\)")
+  expect_true(grepl("stage_control_values <- function(stage, input)", app_text, fixed = TRUE))
+  expect_true(grepl("allowed <- visible_stage_controls(stage)", app_text, fixed = TRUE))
+  expect_false(grepl("strsplit\\(implemented\\$controls", app_text))
+})

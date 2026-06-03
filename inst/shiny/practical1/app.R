@@ -25,6 +25,7 @@ stage_prompts <- c(
   intervention = "Ask whether abundance improves without ignoring remaining uncertainty.",
   extinction_vortex = "Use this as a warning that mechanisms can reinforce each other."
 )
+risk_plot_stages <- c("genetic_stochasticity", "catastrophe", "extinction_vortex")
 
 default_stage <- "deterministic_baseline"
 
@@ -89,7 +90,7 @@ stage_control_ui <- function(stage) {
   switch(
     stage,
     deterministic_baseline = tagList(
-      sliderInput("years", "Projection years", min = 10, max = 80, value = 35, step = 5)
+      sliderInput("years", "Projection years", min = 10, max = 80, value = 25, step = 5)
     ),
     carrying_capacity = tagList(
       sliderInput("K", "Habitat ceiling", min = 20, max = 120, value = 35, step = 5),
@@ -122,9 +123,23 @@ stage_control_ui <- function(stage) {
   )
 }
 
+visible_stage_controls <- function(stage) {
+  switch(
+    stage,
+    deterministic_baseline = "years",
+    carrying_capacity = c("K", "K_sd"),
+    demographic_stochasticity = c("K", "reps"),
+    environmental_stochasticity = c("env_sd", "K"),
+    genetic_stochasticity = c("F_init", "env_sd"),
+    catastrophe = c("cat_freq", "cat_surv"),
+    intervention = c("K", "K_sd"),
+    extinction_vortex = c("K", "cat_freq"),
+    character()
+  )
+}
+
 stage_control_values <- function(stage, input) {
-  allowed <- strsplit(implemented$controls[implemented$stage == stage], ",", fixed = TRUE)[[1]]
-  allowed <- allowed[nzchar(allowed)]
+  allowed <- visible_stage_controls(stage)
   values <- list()
   for (name in allowed) {
     if (!is.null(input[[name]])) {
@@ -198,10 +213,7 @@ ui <- navbarPage(
           column(6, plotOutput("trajectory_plot", height = "320px")),
           column(6, plotOutput("summary_plot", height = "320px"))
         ),
-        conditionalPanel(
-          condition = "output.showExtinctionPlot",
-          plotOutput("extinction_plot", height = "300px")
-        )
+        uiOutput("extinction_plot_panel")
       )
     )
   ),
@@ -280,6 +292,7 @@ server <- function(input, output, session) {
     baseline_run <- run_stage(default_stage)
     current_run(baseline_run)
     run_history(list(baseline_run))
+    updateSelectInput(session, "stage", selected = default_stage)
   })
 
   output$stage_text <- renderUI({
@@ -324,13 +337,18 @@ server <- function(input, output, session) {
     rPVA::plot_pva_summary(current_run()$result)
   })
 
-  output$showExtinctionPlot <- reactive({
-    current_run()$stage %in% c("genetic_stochasticity", "catastrophe", "extinction_vortex")
+  output$extinction_plot_panel <- renderUI({
+    if (!current_run()$stage %in% risk_plot_stages) {
+      return(NULL)
+    }
+    tagList(
+      h4("Risk detail"),
+      plotOutput("extinction_plot", height = "300px")
+    )
   })
-  outputOptions(output, "showExtinctionPlot", suspendWhenHidden = FALSE)
 
   output$extinction_plot <- renderPlot({
-    validate(need(output$showExtinctionPlot(), "Extinction and genetics plot appears for risk-focused stages."))
+    req(current_run()$stage %in% risk_plot_stages)
     rPVA::plot_ext(current_run()$result)
   })
 
