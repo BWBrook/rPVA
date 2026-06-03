@@ -138,3 +138,29 @@
   committing.
 - Created commit `13b2a52`:
   `Publish woodhen teaching and Shiny planning`.
+
+## 2026-06-03 - Commit 2 And Push
+
+- Staged the Goal 013-014 publication group:
+  - `R/teaching_api.R`
+  - `tests/testthat/test-12_teaching_api.R`
+  - `NAMESPACE`
+  - generated package docs under `man/`
+  - Goal 013 packet
+  - Goal 014 packet and audit log
+- Ran `git diff --cached --check` before committing. Result: no output, exit 0.
+- Created commit `0e47fcd`:
+  `Add Practical 1 teaching API adapter`.
+- Ran pre-push checks:
+  - `git status --short --branch --untracked-files=all` returned
+    `## main...origin/main [ahead 2]`.
+  - `git log --oneline -5` showed `0e47fcd`, `13b2a52`, `26764ad`,
+    `f5c569e`, and `4649ac9`.
+  - `git diff --check` returned no output, exit 0.
+- Pushed `main` to `origin` with `git push origin main`.
+- Push result:
+  `26764ad..0e47fcd  main -> main`.
+- Post-push `git status --short --branch --untracked-files=all` returned
+  `## main...origin/main`.
+- This final log update is being recorded as a small audit-only follow-up
+  commit so the pushed branch retains the Goal 014 push evidence.
