@@ -20,6 +20,8 @@ nice-to-have expansions and keeps package-code changes bounded.
 
 Goal type: package helper implementation.
 
+Status: completed in Goal 013.
+
 Purpose: create the small app-facing layer that turns safe UI controls into
 validated PVA runs.
 
@@ -41,6 +43,9 @@ Acceptance evidence:
 ## Phase 2: Minimum Viable Practical 1 Shiny App
 
 Goal type: Shiny implementation.
+
+Status: completed in Goal 015, with interaction QA and hardening completed in
+Goal 016.
 
 Purpose: deliver the guided concept lab for the 2026 road test.
 
@@ -115,6 +120,10 @@ Student-style poking is especially valuable for:
 ## Phase 4: Deployment Road Test
 
 Goal type: deployment/readiness.
+
+Status: active planning lane. Goal 017 is the pre-deployment readiness package
+that must settle platform, route, identity, workspace, load-test, monitoring,
+fallback, rollback, cleanup, and go/no-go gates before any service changes.
 
 Purpose: prove that the selected hosting path can survive class use.
 
@@ -200,6 +209,8 @@ After the road test, consider:
 
 ## Recommended Next Goal
 
-The next bounded implementation goal should be the teaching API adapter, not the
-full Shiny app. That would make the eventual app simpler, testable outside
-Shiny, and safer to deploy under time pressure.
+The next bounded implementation goal should follow Goal 017 only after CoS/BB
+accept the readiness gates. It should be a pre-approved ShinyProxy/deep-server
+implementation pass, not an opportunistic service edit. Keep deployment work
+separate from app pedagogy, Practical 2 Woodhen content, and future
+research-grade Lord Howe Island woodhen recovery analysis.

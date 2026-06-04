@@ -27,6 +27,9 @@ teaching, requirements, and deployment planning layer for future road-test work.
   source, Posit Connect, and custom Nginx/Docker/systemd options.
 - `road-test-operations-plan.md` outlines the four-week service, load testing,
   monitoring, fallback, and cleanup model.
+- `../../goals/017-practical-1-shiny-deployment-readiness/Goal.md` records the
+  current pre-deployment decision package and go/no-go gates for the next
+  ShinyProxy/deep-server implementation step.
 
 ## Design Position
 
@@ -48,6 +51,11 @@ to change one concept at a time, see immediate visual and numerical outputs,
 export compact evidence, and then transfer those ideas to the Woodhen Practical
 2 workflow.
 
+Goal 017 is the current pre-deployment bridge between the local MVP and any
+service implementation. Its read-only refresh confirmed the tailnet health
+endpoint but did not verify the campus/student route from this Mac mini route,
+so student-like route testing remains a go/no-go gate before exposing the app.
+
 ## Current MVP Boundary
 
 - Practical 1 concept-lab scaffold only.
@@ -56,3 +64,5 @@ export compact evidence, and then transfer those ideas to the Woodhen Practical
   tracing.
 - No Practical 2 Woodhen app mode.
 - No assessment redesign, scenario YAML change, or core engine behaviour change.
+- No research-grade Lord Howe Island woodhen recovery analysis. Teaching
+  simplifications remain separate from future paper-facing scenario work.
