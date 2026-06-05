@@ -1,0 +1,51 @@
+# Non-live ShinyProxy example for review only.
+# Do not copy to /etc/shinyproxy without replacing placeholders under an
+# approved implementation goal.
+
+proxy:
+  title: "rPVA Practical 1"
+  port: 3838
+  bind-address: "127.0.0.1"
+  hide-navbar: true
+  landing-page: "/app/practical1"
+  heartbeat-rate: 10000
+  heartbeat-timeout: 60000
+  authentication: "simple"
+  admin-groups:
+    - "rpva-admin"
+  users:
+    - name: "<GENERATED_USER_001>"
+      password: "<REPLACE_WITH_APPROVED_HASH_OR_SECRET_SOURCE>"
+      groups:
+        - "rpva-student"
+    - name: "<DEMONSTRATOR_USER>"
+      password: "<REPLACE_WITH_APPROVED_HASH_OR_SECRET_SOURCE>"
+      groups:
+        - "rpva-admin"
+  specs:
+    - id: "practical1"
+      display-name: "Practical 1 PVA"
+      description: "Bounded Practical 1 concept lab for rPVA teaching"
+      container-image: "<RPVA_IMAGE>:<VERSION_TAG>"
+      container-network: "<SHINYPROXY_DOCKER_NETWORK>"
+      container-memory-limit: "1g"
+      container-cpu-limit: 1.0
+      access-groups:
+        - "rpva-student"
+        - "rpva-admin"
+      port: 3838
+      target-path: "/"
+      container-env:
+        SHINY_HOST: "0.0.0.0"
+        SHINY_PORT: "3838"
+        RPVA_STUDENT_WORKSPACE_ROOT: "/srv/rpva-workspaces"
+      container-volumes:
+        - "/data/codex/teaching/rpva-2026/workspaces/<STUDENT_ID>:/srv/rpva-workspaces/<STUDENT_ID>:rw"
+
+server:
+  servlet:
+    context-path: "/"
+
+logging:
+  level:
+    eu.openanalytics: "INFO"

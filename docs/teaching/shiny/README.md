@@ -30,6 +30,10 @@ teaching, requirements, and deployment planning layer for future road-test work.
 - `../../goals/017-practical-1-shiny-deployment-readiness/Goal.md` records the
   current pre-deployment decision package and go/no-go gates for the next
   ShinyProxy/deep-server implementation step.
+- `../../goals/018-practical-1-shiny-deployment-scaffold/Goal.md` records the
+  current non-live deployment scaffold package. Its templates live under
+  `../../../deploy/shinyproxy/practical1/` for review before any real service
+  work.
 
 ## Design Position
 
@@ -58,6 +62,10 @@ campus/public health route. The browser still showed a red "Not secure"
 warning, so TLS trust / student-friendly URL polish and eventual app-path
 verification remain go/no-go gates before exposing the app.
 
+Goal 018 adds an inert ShinyProxy/Docker/nginx scaffold for review. The
+scaffold is not live configuration and must not be copied to `deep-server`
+until a later implementation goal explicitly authorizes remote service work.
+
 ## Current MVP Boundary
 
 - Practical 1 concept-lab scaffold only.
@@ -68,3 +76,5 @@ verification remain go/no-go gates before exposing the app.
 - No assessment redesign, scenario YAML change, or core engine behaviour change.
 - No research-grade Lord Howe Island woodhen recovery analysis. Teaching
   simplifications remain separate from future paper-facing scenario work.
+- No live deployment scaffold activation. `deploy/shinyproxy/practical1/`
+  contains examples/templates only.

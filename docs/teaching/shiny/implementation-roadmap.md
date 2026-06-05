@@ -124,6 +124,8 @@ Goal type: deployment/readiness.
 Status: active planning lane. Goal 017 is the pre-deployment readiness package
 that must settle platform, route, identity, workspace, load-test, monitoring,
 fallback, rollback, cleanup, and go/no-go gates before any service changes.
+Goal 018 adds a non-live ShinyProxy/Docker/nginx scaffold for review before any
+remote implementation work.
 
 Purpose: prove that the selected hosting path can survive class use.
 
@@ -209,8 +211,8 @@ After the road test, consider:
 
 ## Recommended Next Goal
 
-The next bounded implementation goal should follow Goal 017 only after CoS/BB
-accept the readiness gates. It should be a pre-approved ShinyProxy/deep-server
-implementation pass, not an opportunistic service edit. Keep deployment work
-separate from app pedagogy, Practical 2 Woodhen content, and future
-research-grade Lord Howe Island woodhen recovery analysis.
+The next bounded implementation goal should follow review of Goal 018. It
+should either revise the inert scaffold or, if CoS/BB explicitly authorize it,
+perform a pre-approved ShinyProxy/deep-server staging implementation. Keep
+deployment work separate from app pedagogy, Practical 2 Woodhen content, and
+future research-grade Lord Howe Island woodhen recovery analysis.
