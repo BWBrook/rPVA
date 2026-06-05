@@ -34,7 +34,11 @@ Recent state:
 - Follow-up infrastructure work added an nginx HTTPS gateway on `443`.
 - A Goal 017 read-only refresh from the Mac mini confirmed the tailnet gateway
   health endpoint still responds, but the campus-IP health check from this Mac
-  mini route timed out. A true student-like route remains a go/no-go gate.
+  mini route timed out.
+- A 2026-06-05 Windows/WSL campus-network follow-up confirmed the campus/public
+  gateway route returns the expected health text. The browser still shows a red
+  HTTPS "Not secure" warning, so TLS trust / student-friendly URL polish
+  remains a go/no-go gate.
 
 ## Required Sources
 
@@ -98,6 +102,23 @@ Result:
 curl: (28) Connection timed out after 10002 milliseconds
 ```
 
+Campus Windows/WSL follow-up, reported 2026-06-05:
+
+- Browser opened `https://131.217.90.193/_gateway-health`, showed a red
+  "Not secure" warning, and returned `deep-server app gateway ok` after the
+  warning was accepted.
+- PowerShell:
+  - `curl.exe -k --max-time 10 https://131.217.90.193/_gateway-health`
+    returned `deep-server app gateway ok`.
+  - `Test-NetConnection 131.217.90.193 -Port 443` returned
+    `TcpTestSucceeded : True`.
+  - Tailnet `100.96.185.60:443` timed out from PowerShell.
+- WSL:
+  - `curl -k --max-time 10 https://131.217.90.193/_gateway-health` returned
+    `deep-server app gateway ok`.
+  - `nc` reported TCP success for both `100.96.185.60:443` and
+    `131.217.90.193:443`.
+
 `deep-server-ts` runtime probe:
 
 - hostname: `deep-server`
@@ -111,10 +132,10 @@ curl: (28) Connection timed out after 10002 milliseconds
 - listeners included `0.0.0.0:443`, `[::]:443`, SSH on `22`, and local-only
   RStudio on `127.0.0.1:8787`
 
-Interpretation: host capacity and the tailnet gateway are ready for the next
-pre-deployment implementation pass, but student/campus route verification is
-not yet ready from this Mac mini route and must be tested from an actual
-student-like path before release.
+Interpretation: host capacity, the tailnet gateway, and the campus/public
+health route are ready for the next pre-deployment implementation pass. The
+remaining route-related release gates are TLS trust / student-friendly URL
+polish and verification of the eventual app path, not only `/_gateway-health`.
 
 ## Decision Package
 
@@ -136,8 +157,10 @@ Rationale:
 
 ### Gateway And Upstream Alignment
 
-Use the existing nginx HTTPS gateway on `443` as the intended front door if
-campus/student route approval is confirmed.
+Use the existing nginx HTTPS gateway on `443` as the intended front door. The
+campus/public health route has been confirmed from Barry's Windows/WSL campus
+path, but the eventual app URL must not ask students to accept a red browser
+security warning.
 
 The next implementation goal must decide one of these two approaches before
 service work:
@@ -150,7 +173,8 @@ Either choice must be explicit, documented, reversible, and tested from:
 
 - the Mac mini tailnet route,
 - Barry's Windows/WSL or other campus/student-like route,
-- an ordinary browser path that does not require admin SSH.
+- an ordinary browser path that does not require admin SSH and does not present
+  an unacceptable TLS trust warning.
 
 ### Account Or Token Model
 
@@ -300,7 +324,8 @@ accepts a documented exception:
 1. Approved platform path: ShinyProxy on `deep-server`, or a documented
    alternative.
 2. Approved URL, DNS, TLS, and campus/firewall route.
-3. Student-like browser path reaches the gateway and app.
+3. Student-like browser path reaches the gateway and app without an
+   unacceptable browser security warning.
 4. Gateway upstream target is aligned with the app service.
 5. Generated account/token model is tested.
 6. Per-student workspace mapping and quota/cap policy are tested.

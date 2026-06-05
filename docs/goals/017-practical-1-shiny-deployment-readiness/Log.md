@@ -141,3 +141,35 @@
     directory, container, or external-access changes;
   - no student-facing exposure;
   - no commit or push.
+
+## 2026-06-05 - Campus Windows / WSL Route Follow-Up
+
+- Barry tested from the Windows/WSL machine on the campus network.
+- Browser:
+  - opened `https://131.217.90.193/_gateway-health`;
+  - showed a red "Not secure" warning;
+  - returned `deep-server app gateway ok` after accepting the warning.
+- PowerShell:
+  - `curl.exe -k --max-time 10 https://100.96.185.60/_gateway-health`
+    timed out after 10 seconds;
+  - `curl.exe -k --max-time 10 https://131.217.90.193/_gateway-health`
+    returned `deep-server app gateway ok`;
+  - `Test-NetConnection 100.96.185.60 -Port 443` returned
+    `TcpTestSucceeded : False`;
+  - `Test-NetConnection 131.217.90.193 -Port 443` returned
+    `TcpTestSucceeded : True`.
+- WSL:
+  - clean `curl -k --max-time 10 https://131.217.90.193/_gateway-health`
+    returned `deep-server app gateway ok`;
+  - `nc` reported TCP success for both `100.96.185.60:443` and
+    `131.217.90.193:443`;
+  - the first pasted WSL curl command had a line-wrap/paste artefact, so it is
+    not treated as clean evidence for the `100.96.185.60` curl response.
+- Updated interpretation:
+  - the campus/public health route is reachable from a student-like
+    Windows/campus path;
+  - TLS trust / student-friendly URL remains a release gate because the
+    browser displayed a red security warning;
+  - the eventual app path still needs verification after service wiring;
+  - no service changes, remote writes, app code edits, deployment, or
+    student-facing exposure occurred during this follow-up.

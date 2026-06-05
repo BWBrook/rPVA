@@ -53,8 +53,10 @@ export compact evidence, and then transfer those ideas to the Woodhen Practical
 
 Goal 017 is the current pre-deployment bridge between the local MVP and any
 service implementation. Its read-only refresh confirmed the tailnet health
-endpoint but did not verify the campus/student route from this Mac mini route,
-so student-like route testing remains a go/no-go gate before exposing the app.
+endpoint, and a 2026-06-05 Windows/WSL campus-network follow-up confirmed the
+campus/public health route. The browser still showed a red "Not secure"
+warning, so TLS trust / student-friendly URL polish and eventual app-path
+verification remain go/no-go gates before exposing the app.
 
 ## Current MVP Boundary
 
