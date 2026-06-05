@@ -13,6 +13,9 @@ implementation goal before any student-facing service is exposed.
 
 - `Dockerfile.template`: reviewable container-image template for the Practical
   1 Shiny app.
+- `dockerignore.template`: reviewable `.dockerignore` content for keeping
+  local caches, VCS metadata, rendered evidence, and generated teaching
+  artefacts out of the image build context.
 - `application.example.yml`: ShinyProxy application example with inert
   placeholders for class accounts, image names, workspace mapping, and
   resource limits.
@@ -42,19 +45,36 @@ draft, not an operations script.
 1. Confirm Goal 017 readiness gates are accepted by CoS/BB.
 2. Review `Dockerfile.template` for dependency, source-ref, and app-launch
    assumptions.
-3. Review `application.example.yml` for authentication, image, memory/CPU,
+3. Review `dockerignore.template`, then copy it to `.dockerignore` only inside
+   an approved build workspace.
+4. Review `application.example.yml` for authentication, image, memory/CPU,
    workspace-volume, and URL-path assumptions.
-4. Review `nginx-practical1.example.conf` for upstream alignment with the
+5. Review `nginx-practical1.example.conf` for upstream alignment with the
    existing gateway.
-5. Run local static checks only:
+6. Run local static checks only:
 
    ```sh
    bash deploy/shinyproxy/practical1/validate-scaffold.sh
    ```
 
-6. In a later implementation goal, copy reviewed templates into the approved
+7. In a later implementation goal, copy reviewed templates into the approved
    remote/deployment location and replace placeholders with approved values.
-7. Test a non-student staging URL before any live class URL is issued.
+8. Test a non-student staging URL before any live class URL is issued.
+
+## Image Runtime Model
+
+The Dockerfile template is intended to install `rPVA` into the image and run
+the installed package entrypoint:
+
+```r
+rPVA::run_practical1_shiny(...)
+```
+
+That is preferable to running an app from a mutable source-tree checkout,
+because the deployed service should be tied to a reviewed commit/tag and a
+repeatable image build. The source tree is still copied into the image during
+build so `renv.lock`, package source, `inst/shiny/practical1/`, and
+documentation metadata are available to the installer.
 
 ## Placeholder Policy
 
@@ -76,6 +96,8 @@ sensitivity analysis, and manuscript review.
 The later implementation goal should decide and record:
 
 - exact image tag or source commit;
+- whether the final build uses `rocker/r-ver:4.6.0` or a locally approved
+  mirror/base image;
 - final ShinyProxy internal port;
 - whether nginx keeps proxying to `127.0.0.1:3838` or is updated to the chosen
   ShinyProxy port;
@@ -84,3 +106,20 @@ The later implementation goal should decide and record:
 - workspace root and quota enforcement;
 - load-test ladder and monitoring cadence;
 - rollback and cleanup procedure.
+
+## Local Preflight
+
+Docker is not required for the static preflight. If Docker is available, a
+later local-build goal may choose to run a bounded build with:
+
+```sh
+docker build \
+  --platform linux/amd64 \
+  -f deploy/shinyproxy/practical1/Dockerfile.template \
+  --build-arg RPVA_REF=<REVIEWED_COMMIT_OR_TAG> \
+  -t <LOCAL_REVIEW_IMAGE_TAG> \
+  .
+```
+
+That build may pull a sizeable R base image and restore R packages, so it is
+intentionally not part of the default scaffold validation.

@@ -65,6 +65,9 @@ verification remain go/no-go gates before exposing the app.
 Goal 018 adds an inert ShinyProxy/Docker/nginx scaffold for review. The
 scaffold is not live configuration and must not be copied to `deep-server`
 until a later implementation goal explicitly authorizes remote service work.
+Goal 019 is the local, non-live preflight pass over that scaffold: static
+validation, safer template assumptions, and Docker availability assessment
+without remote writes or service changes.
 
 ## Current MVP Boundary
 
@@ -78,3 +81,6 @@ until a later implementation goal explicitly authorizes remote service work.
   simplifications remain separate from future paper-facing scenario work.
 - No live deployment scaffold activation. `deploy/shinyproxy/practical1/`
   contains examples/templates only.
+- No Docker build/run as a default validation gate. Goal 019 keeps image-build
+  testing optional and bounded because it can pull large R base images and
+  restore R packages.

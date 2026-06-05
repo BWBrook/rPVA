@@ -38,9 +38,12 @@ proxy:
       container-env:
         SHINY_HOST: "0.0.0.0"
         SHINY_PORT: "3838"
-        RPVA_STUDENT_WORKSPACE_ROOT: "/srv/rpva-workspaces"
+        RPVA_STUDENT_ID: "#{proxy.userId}"
+        RPVA_STUDENT_WORKSPACE_ROOT: "/srv/rpva-workspaces/current"
       container-volumes:
-        - "/data/codex/teaching/rpva-2026/workspaces/<STUDENT_ID>:/srv/rpva-workspaces/<STUDENT_ID>:rw"
+        # Must resolve to one host directory per authenticated student.
+        # Do not replace with a shared class-wide writable directory.
+        - "/data/codex/teaching/rpva-2026/workspaces/#{proxy.userId}:/srv/rpva-workspaces/current:rw"
 
 server:
   servlet:

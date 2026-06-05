@@ -7,6 +7,7 @@ SCAFFOLD="$ROOT/deploy/shinyproxy/practical1"
 required=(
   "$SCAFFOLD/README.md"
   "$SCAFFOLD/Dockerfile.template"
+  "$SCAFFOLD/dockerignore.template"
   "$SCAFFOLD/application.example.yml"
   "$SCAFFOLD/nginx-practical1.example.conf"
   "$SCAFFOLD/validate-scaffold.sh"
@@ -29,6 +30,13 @@ if grep -R -n -E '(password|token|secret)[[:space:]]*[:=]' "$SCAFFOLD" | grep -v
   printf 'possible non-placeholder credential value found\n' >&2
   exit 1
 fi
+
+grep -q 'R CMD INSTALL' "$SCAFFOLD/Dockerfile.template"
+grep -q 'rPVA::run_practical1_shiny' "$SCAFFOLD/Dockerfile.template"
+grep -q 'system.file("shiny", "practical1", package = "rPVA")' "$SCAFFOLD/Dockerfile.template"
+grep -q '#{proxy.userId}' "$SCAFFOLD/application.example.yml"
+grep -q '/srv/rpva-workspaces/current:rw' "$SCAFFOLD/application.example.yml"
+grep -q 'Do not replace with a shared class-wide writable directory' "$SCAFFOLD/application.example.yml"
 
 bash -n "$SCAFFOLD/validate-scaffold.sh"
 

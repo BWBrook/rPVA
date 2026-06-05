@@ -7,12 +7,14 @@ LABEL org.opencontainers.image.title="rPVA Practical 1 Shiny concept lab"
 LABEL org.opencontainers.image.description="Template image for the bounded Practical 1 teaching app"
 
 ARG RPVA_REF="<RPVA_COMMIT_OR_TAG>"
+LABEL org.opencontainers.image.revision="${RPVA_REF}"
 
 ENV RENV_CONFIG_AUTOLOADER_ENABLED=false
 ENV RENV_PATHS_LIBRARY=/opt/rpva/renv-library
+ENV R_LIBS=/opt/rpva/renv-library
 ENV SHINY_HOST=0.0.0.0
 ENV SHINY_PORT=3838
-ENV RPVA_STUDENT_WORKSPACE_ROOT=/srv/rpva-workspaces
+ENV RPVA_STUDENT_WORKSPACE_ROOT=/srv/rpva-workspaces/current
 
 WORKDIR /opt/rpva
 
@@ -39,13 +41,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY . /opt/rpva
 
 RUN Rscript -e 'install.packages("renv", repos = "https://cloud.r-project.org")' \
+  && mkdir -p "${RENV_PATHS_LIBRARY}" \
   && Rscript -e 'renv::restore(prompt = FALSE)' \
   && Rscript -e 'if (!requireNamespace("shiny", quietly = TRUE)) stop("shiny missing after renv restore", call. = FALSE)' \
-  && Rscript -e 'pkgload::load_all(".", quiet = TRUE); stopifnot(dir.exists(rPVA:::practical1_shiny_app_dir()))'
+  && R CMD INSTALL --no-multiarch --no-test-load . \
+  && Rscript -e 'stopifnot(dir.exists(system.file("shiny", "practical1", package = "rPVA")))'
 
 EXPOSE 3838
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD curl -fsS "http://127.0.0.1:${SHINY_PORT}/" >/dev/null || exit 1
 
-CMD ["Rscript", "-e", "source('bootstrap.R'); rPVA::run_practical1_shiny(host = Sys.getenv('SHINY_HOST', '0.0.0.0'), port = as.integer(Sys.getenv('SHINY_PORT', '3838')), launch.browser = FALSE)"]
+CMD ["Rscript", "-e", "rPVA::run_practical1_shiny(host = Sys.getenv('SHINY_HOST', '0.0.0.0'), port = as.integer(Sys.getenv('SHINY_PORT', '3838')), launch.browser = FALSE)"]

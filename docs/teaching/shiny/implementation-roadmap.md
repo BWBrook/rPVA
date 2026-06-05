@@ -126,6 +126,8 @@ that must settle platform, route, identity, workspace, load-test, monitoring,
 fallback, rollback, cleanup, and go/no-go gates before any service changes.
 Goal 018 adds a non-live ShinyProxy/Docker/nginx scaffold for review before any
 remote implementation work.
+Goal 019 is the local deployment-preflight pass that tightens the scaffold and
+records what can be validated without writing to `deep-server`.
 
 Purpose: prove that the selected hosting path can survive class use.
 
@@ -211,8 +213,9 @@ After the road test, consider:
 
 ## Recommended Next Goal
 
-The next bounded implementation goal should follow review of Goal 018. It
-should either revise the inert scaffold or, if CoS/BB explicitly authorize it,
-perform a pre-approved ShinyProxy/deep-server staging implementation. Keep
-deployment work separate from app pedagogy, Practical 2 Woodhen content, and
-future research-grade Lord Howe Island woodhen recovery analysis.
+The next bounded implementation goal should follow review of Goal 019. It
+should either run a deliberately bounded local image build/staging check or, if
+CoS/BB explicitly authorize it, perform a pre-approved ShinyProxy/deep-server
+staging implementation. Keep deployment work separate from app pedagogy,
+Practical 2 Woodhen content, and future research-grade Lord Howe Island
+woodhen recovery analysis.
