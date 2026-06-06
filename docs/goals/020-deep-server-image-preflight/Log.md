@@ -191,3 +191,143 @@
     and Docker's normal build-layer state;
   - no host package installs outside Docker build layers;
   - no commit or push.
+
+## 2026-06-06 - SRF-A Continuation Branch Check
+
+- SRF-A directed a bounded Goal 020 continuation on the same branch after
+  publishing the previous Goal 020 work as:
+  - `6ed2445 Add deep-server image preflight`
+- Objective: verify whether the committed `libuv1-dev` Dockerfile-template
+  fix resolves the prior `fs`/`libuv` build failure on `deep-server` `x86_64`.
+- First checkpoint before editing:
+  - CWD: `/Users/bwbrook/.codex/worktrees/a4af/rPVA`
+  - branch: `codex/rpva-goal020-deep-server-image-preflight`
+  - HEAD:
+    `6ed2445 (HEAD -> codex/rpva-goal020-deep-server-image-preflight, origin/codex/rpva-goal020-deep-server-image-preflight) Add deep-server image preflight`
+  - status:
+    `## codex/rpva-goal020-deep-server-image-preflight...origin/codex/rpva-goal020-deep-server-image-preflight`
+- Confirmed the local branch was on the requested branch at
+  `6ed24459b9a265f687d0855f6cd9bc9392e2f0ba`.
+
+## 2026-06-06 - Continuation Remote Workspace
+
+- Prepared immutable local values:
+  - source commit:
+    `6ed24459b9a265f687d0855f6cd9bc9392e2f0ba`
+  - source short SHA: `6ed2445`
+  - remote workspace:
+    `/data/codex/teaching/rpva-2026/preflight/goal020-6ed2445`
+  - image tag: `rpva-practical1:goal020-6ed2445`
+  - smoke container name: `rpva-goal020-6ed2445`
+- Confirmed the fresh remote workspace path was available.
+- Created the disposable remote workspace on `deep-server-ts`.
+- Transferred source with `git archive` from local branch `HEAD`.
+- In the disposable remote workspace only:
+  - copied `deploy/shinyproxy/practical1/dockerignore.template` to
+    `.dockerignore`;
+  - wrote `SOURCE_COMMIT.txt` containing the full source commit;
+  - confirmed the Dockerfile template contains `libuv1-dev`.
+- Remote evidence:
+  - hostname: `deep-server`
+  - architecture: `x86_64`
+  - Docker CLI: `Docker version 29.5.2, build 79eb04c`
+  - Docker info summary:
+    `ServerVersion=29.5.2 Architecture=x86_64 NCPU=64 MemTotal=135068536832 DockerRootDir=/var/lib/docker`
+  - `/data` filesystem:
+    `/dev/sdb 13T 8.1T 4.5T 65% /data`
+
+## 2026-06-06 - Continuation Image Rebuild Result
+
+- Ran exactly one bounded remote Docker image build in the disposable
+  workspace:
+  - Dockerfile:
+    `deploy/shinyproxy/practical1/Dockerfile.template`
+  - build arg:
+    `RPVA_REF=6ed24459b9a265f687d0855f6cd9bc9392e2f0ba`
+  - tag: `rpva-practical1:goal020-6ed2445`
+  - build log:
+    `/data/codex/teaching/rpva-2026/preflight/goal020-6ed2445/docker-build-continuation.log`
+- Build result: passed.
+- The build log is `869` lines.
+- Evidence that the previous defect was resolved:
+  - `libuv1-dev` was installed in the Ubuntu package layer;
+  - `fs 2.1.0` built from source successfully;
+  - `sass`, `bslib`, `rmarkdown`, and `shiny` subsequently built
+    successfully;
+  - `renv::restore()` completed with `Successfully installed 88 packages in
+    260 seconds`;
+  - `R CMD INSTALL --no-multiarch --no-test-load .` completed with
+    `* DONE (rPVA)`;
+  - Docker exported image
+    `sha256:346260b5dd1739b758e8b918aaeeddfa0a6040776fb30d576e42919e52895d76`
+    and tagged it as `rpva-practical1:goal020-6ed2445`.
+- Image state after build:
+  - tag: `rpva-practical1:goal020-6ed2445`
+  - image ID:
+    `sha256:346260b5dd1739b758e8b918aaeeddfa0a6040776fb30d576e42919e52895d76`
+  - Docker-reported size: `1786576408` bytes
+  - `docker image ls` reported about `1.79GB` disk usage.
+
+## 2026-06-06 - Continuation Local-Only Smoke
+
+- Ran exactly one short local-only container smoke on `deep-server`.
+- Container launch was bound to localhost only:
+  - container name: `rpva-goal020-6ed2445`
+  - image: `rpva-practical1:goal020-6ed2445`
+  - port mapping: `127.0.0.1:3920:3838`
+- Curl target was local to `deep-server`:
+  - `http://127.0.0.1:3920/`
+- Smoke result: passed.
+- Captured smoke response:
+  - `/tmp/rpva-goal020-smoke.html`
+  - size: `9902` bytes
+  - HTML marker: `<title>Practical 1 PVA</title>`
+- Container logs showed:
+  - `Loading required package: shiny`
+  - Shiny warning about `SHINY_PORT` naming when not using Shiny Server;
+  - `Listening on http://0.0.0.0:3838`
+- Cleanup state:
+  - the smoke container was stopped and removed;
+  - `docker ps --filter name=rpva-goal020-6ed2445` returned no rows;
+  - `docker ps -a --filter name=rpva-goal020-6ed2445` returned no rows.
+- Image state:
+  - the image `rpva-practical1:goal020-6ed2445` remains in Docker on
+    `deep-server` for SRF-A review.
+- No further scaffold dependency fix was needed in this continuation.
+- No app, package, scenario, dependency, or test files changed.
+
+## 2026-06-06 - Continuation Local Validation
+
+- Ran `git status --short --branch`:
+  - `## codex/rpva-goal020-deep-server-image-preflight...origin/codex/rpva-goal020-deep-server-image-preflight`
+  - modified:
+    - `docs/goals/020-deep-server-image-preflight/Log.md`
+- Ran `git diff --check`:
+  - passed with no output.
+- Ran marker scan over the changed Goal 020 log text:
+  - no hits.
+- Ran shell syntax check:
+  - `bash -n deploy/shinyproxy/practical1/validate-scaffold.sh`
+  - passed.
+- Ran scaffold validator:
+  - `bash deploy/shinyproxy/practical1/validate-scaffold.sh`
+  - output:
+    `Practical 1 Shiny deployment scaffold static checks passed.`
+- Ran explicit YAML parse:
+  - `ruby -e 'require "yaml"; YAML.load_file(ARGV.fetch(0)); puts "ruby yaml parse ok"' deploy/shinyproxy/practical1/application.example.yml`
+  - output: `ruby yaml parse ok`
+- Ran non-placeholder credential scan over changed/new text:
+  - hits were limited to prior policy wording in the log;
+  - no real-looking secrets, tokens, keys, passwords, credentials, or student
+    identifiers were found.
+- No R tests were run because no executable R, Shiny app, package, scenario,
+  dependency, or test files changed.
+- Boundary confirmation:
+  - no ShinyProxy installation or configuration;
+  - no nginx, systemd, firewall, DNS, TLS, Docker daemon/service, account,
+    credential, class workspace, or external-access changes;
+  - no public/student-facing/tailnet/campus exposure;
+  - no remote writes outside the disposable `/data/codex` continuation
+    workspace and Docker's normal build/container state;
+  - no host package installs outside Docker build layers;
+  - no commit or push.
