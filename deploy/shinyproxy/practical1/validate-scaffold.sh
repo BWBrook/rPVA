@@ -34,6 +34,7 @@ fi
 grep -q 'R CMD INSTALL' "$SCAFFOLD/Dockerfile.template"
 grep -q 'rPVA::run_practical1_shiny' "$SCAFFOLD/Dockerfile.template"
 grep -q 'system.file("shiny", "practical1", package = "rPVA")' "$SCAFFOLD/Dockerfile.template"
+grep -q 'libuv1-dev' "$SCAFFOLD/Dockerfile.template"
 grep -q '#{proxy.userId}' "$SCAFFOLD/application.example.yml"
 grep -q '/srv/rpva-workspaces/current:rw' "$SCAFFOLD/application.example.yml"
 grep -q 'Do not replace with a shared class-wide writable directory' "$SCAFFOLD/application.example.yml"
