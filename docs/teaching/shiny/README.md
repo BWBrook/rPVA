@@ -34,6 +34,10 @@ teaching, requirements, and deployment planning layer for future road-test work.
   current non-live deployment scaffold package. Its templates live under
   `../../../deploy/shinyproxy/practical1/` for review before any real service
   work.
+- `../../goals/020-deep-server-image-preflight/Goal.md` records the accepted
+  x86_64 image-build preflight on `deep-server`.
+- `../../goals/021-staging-gate-runbook/Goal.md` records the current
+  pre-live staging-gate checklist and approval handoff runbook.
 
 ## Design Position
 
@@ -68,6 +72,10 @@ until a later implementation goal explicitly authorizes remote service work.
 Goal 019 is the local, non-live preflight pass over that scaffold: static
 validation, safer template assumptions, and Docker availability assessment
 without remote writes or service changes.
+Goal 020 verifies the scaffold image-build path on `deep-server` `x86_64` and
+the `libuv1-dev` dependency fix with one localhost-only smoke. Goal 021 is the
+current pre-live staging gate: it records what must be approved and checked
+before any ShinyProxy/nginx/app-path staging pass.
 
 ## Current MVP Boundary
 
@@ -84,3 +92,4 @@ without remote writes or service changes.
 - No Docker build/run as a default validation gate. Goal 019 keeps image-build
   testing optional and bounded because it can pull large R base images and
   restore R packages.
+- No live staging approval yet. Goal 021 is a gate/runbook package only.

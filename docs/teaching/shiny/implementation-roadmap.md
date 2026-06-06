@@ -127,7 +127,10 @@ fallback, rollback, cleanup, and go/no-go gates before any service changes.
 Goal 018 adds a non-live ShinyProxy/Docker/nginx scaffold for review before any
 remote implementation work.
 Goal 019 is the local deployment-preflight pass that tightens the scaffold and
-records what can be validated without writing to `deep-server`.
+records what can be validated without writing to `deep-server`. Goal 020 proves
+the x86_64 image-build path on `deep-server` and records one localhost-only
+smoke. Goal 021 is the current pre-live staging-gate/runbook package for a
+future approved ShinyProxy/nginx/app-path staging pass.
 
 Purpose: prove that the selected hosting path can survive class use.
 
@@ -213,9 +216,9 @@ After the road test, consider:
 
 ## Recommended Next Goal
 
-The next bounded implementation goal should follow review of Goal 019. It
-should either run a deliberately bounded local image build/staging check or, if
-CoS/BB explicitly authorize it, perform a pre-approved ShinyProxy/deep-server
-staging implementation. Keep deployment work separate from app pedagogy,
-Practical 2 Woodhen content, and future research-grade Lord Howe Island
-woodhen recovery analysis.
+The next bounded implementation goal should follow SRF-A review of Goal 021.
+It should either remain a pre-live approval refinement or, if Barry/SRF
+explicitly authorize it, perform a narrow non-student ShinyProxy/deep-server
+staging implementation with the Goal 021 gates as hard stop rules. Keep
+deployment work separate from app pedagogy, Practical 2 Woodhen content, and
+future research-grade Lord Howe Island woodhen recovery analysis.
