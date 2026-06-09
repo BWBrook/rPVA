@@ -129,8 +129,11 @@ remote implementation work.
 Goal 019 is the local deployment-preflight pass that tightens the scaffold and
 records what can be validated without writing to `deep-server`. Goal 020 proves
 the x86_64 image-build path on `deep-server` and records one localhost-only
-smoke. Goal 021 is the current pre-live staging-gate/runbook package for a
-future approved ShinyProxy/nginx/app-path staging pass.
+smoke. Goal 021 is the pre-live staging-gate/runbook package for a future
+approved ShinyProxy/nginx/app-path staging pass. Goal 022 adds CI repair, a
+local Mac mini Shiny smoke, and read-only remote staging discovery; it stops
+before remote app staging because ShinyProxy is not yet installed on
+`deep-server`.
 
 Purpose: prove that the selected hosting path can survive class use.
 
@@ -216,9 +219,9 @@ After the road test, consider:
 
 ## Recommended Next Goal
 
-The next bounded implementation goal should follow SRF-A review of Goal 021.
-It should either remain a pre-live approval refinement or, if Barry/SRF
-explicitly authorize it, perform a narrow non-student ShinyProxy/deep-server
-staging implementation with the Goal 021 gates as hard stop rules. Keep
+The next bounded implementation goal should follow SRF-A review of Goal 022.
+It should either publish the CI/bootstrap fix after review or create a narrow
+Goal 023 service-bootstrap/staging package that installs or configures the
+missing ShinyProxy layer before any non-student app URL is exposed. Keep
 deployment work separate from app pedagogy, Practical 2 Woodhen content, and
 future research-grade Lord Howe Island woodhen recovery analysis.

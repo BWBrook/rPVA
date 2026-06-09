@@ -38,6 +38,8 @@ teaching, requirements, and deployment planning layer for future road-test work.
   x86_64 image-build preflight on `deep-server`.
 - `../../goals/021-staging-gate-runbook/Goal.md` records the current
   pre-live staging-gate checklist and approval handoff runbook.
+- `../../goals/022-local-remote-staging-validation/Goal.md` records the current
+  local Shiny smoke, CI repair, and remote read-only staging discovery package.
 
 ## Design Position
 
@@ -73,9 +75,12 @@ Goal 019 is the local, non-live preflight pass over that scaffold: static
 validation, safer template assumptions, and Docker availability assessment
 without remote writes or service changes.
 Goal 020 verifies the scaffold image-build path on `deep-server` `x86_64` and
-the `libuv1-dev` dependency fix with one localhost-only smoke. Goal 021 is the
-current pre-live staging gate: it records what must be approved and checked
-before any ShinyProxy/nginx/app-path staging pass.
+the `libuv1-dev` dependency fix with one localhost-only smoke. Goal 021 records
+what must be approved and checked before any ShinyProxy/nginx/app-path staging
+pass. Goal 022 adds the first local-plus-remote validation pass: the local Mac
+mini Shiny smoke works, CI has a focused bootstrap repair on the Goal 022
+branch, and remote discovery stops before staging because ShinyProxy is absent
+on `deep-server`.
 
 ## Current MVP Boundary
 
@@ -92,4 +97,6 @@ before any ShinyProxy/nginx/app-path staging pass.
 - No Docker build/run as a default validation gate. Goal 019 keeps image-build
   testing optional and bounded because it can pull large R base images and
   restore R packages.
-- No live staging approval yet. Goal 021 is a gate/runbook package only.
+- No live student release yet. Goal 022 permits local Shiny smoke and
+  read-only remote discovery, but stops before remote app staging until a
+  separate service-bootstrap/staging package is approved.
