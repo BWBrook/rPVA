@@ -40,6 +40,8 @@ teaching, requirements, and deployment planning layer for future road-test work.
   pre-live staging-gate checklist and approval handoff runbook.
 - `../../goals/022-local-remote-staging-validation/Goal.md` records the current
   local Shiny smoke, CI repair, and remote read-only staging discovery package.
+- `../../goals/023-practical-1-evidence-export-road-test-hardening/Goal.md`
+  records the compact session-local evidence export hardening package.
 
 ## Design Position
 
@@ -80,7 +82,8 @@ what must be approved and checked before any ShinyProxy/nginx/app-path staging
 pass. Goal 022 adds the first local-plus-remote validation pass: the local Mac
 mini Shiny smoke works, CI has a focused bootstrap repair on the Goal 022
 branch, and remote discovery stops before staging because ShinyProxy is absent
-on `deep-server`.
+on `deep-server`. Goal 023 adds compact session-local evidence downloads before
+any service-bootstrap/staging work resumes.
 
 ## Current MVP Boundary
 
@@ -99,4 +102,6 @@ on `deep-server`.
   restore R packages.
 - No live student release yet. Goal 022 permits local Shiny smoke and
   read-only remote discovery, but stops before remote app staging until a
-  separate service-bootstrap/staging package is approved.
+  separate service-bootstrap/staging package is approved. Goal 023 keeps
+  exports local to the browser session and does not add authentication,
+  persistence, or workspaces.

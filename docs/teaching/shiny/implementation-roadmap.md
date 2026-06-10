@@ -96,7 +96,7 @@ Automated checks:
 - Shiny launch smoke test,
 - Chrome-based interaction test for the complete staged flow,
 - output existence checks for plots and tables,
-- download/export checks if exports are implemented,
+- download/export checks for the comparison CSV and evidence-notes files,
 - regression check that the app does not write into the repo during ordinary
   use.
 
@@ -133,7 +133,8 @@ smoke. Goal 021 is the pre-live staging-gate/runbook package for a future
 approved ShinyProxy/nginx/app-path staging pass. Goal 022 adds CI repair, a
 local Mac mini Shiny smoke, and read-only remote staging discovery; it stops
 before remote app staging because ShinyProxy is not yet installed on
-`deep-server`.
+`deep-server`. Goal 023 hardens the road-test product before service work by
+adding compact session-local evidence downloads from the Compare flow.
 
 Purpose: prove that the selected hosting path can survive class use.
 
@@ -219,9 +220,9 @@ After the road test, consider:
 
 ## Recommended Next Goal
 
-The next bounded implementation goal should follow SRF-A review of Goal 022.
-It should either publish the CI/bootstrap fix after review or create a narrow
-Goal 023 service-bootstrap/staging package that installs or configures the
-missing ShinyProxy layer before any non-student app URL is exposed. Keep
-deployment work separate from app pedagogy, Practical 2 Woodhen content, and
-future research-grade Lord Howe Island woodhen recovery analysis.
+The next bounded implementation goal should follow review of Goal 023 evidence
+export hardening. If the local road-test path is accepted, use a separate
+service-bootstrap/staging goal to install or configure the missing ShinyProxy
+layer before any non-student app URL is exposed. Keep deployment work separate
+from app pedagogy, Practical 2 Woodhen content, and future research-grade Lord
+Howe Island woodhen recovery analysis.

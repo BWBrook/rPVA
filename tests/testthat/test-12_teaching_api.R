@@ -151,3 +151,39 @@ test_that("compare_teaching_runs preserves run order and labels", {
   expect_error(compare_teaching_runs(list()), "non-empty list")
   expect_error(compare_teaching_runs(list(list(stage = "broken"))), "run_teaching_pva")
 })
+
+test_that("teaching evidence export keeps comparison, settings, and interpretation prompt compact", {
+  det <- run_teaching_pva("deterministic_baseline", keep_traj = FALSE, seed = 42)
+  ceiling <- run_teaching_pva(
+    "carrying_capacity",
+    controls = list(K = 40),
+    keep_traj = FALSE,
+    seed = 42
+  )
+  before <- list.files(".", all.files = TRUE, recursive = FALSE)
+
+  export <- build_teaching_evidence_export(
+    list(det, ceiling),
+    generated_at = as.POSIXct("2026-06-10 00:00:00", tz = "UTC")
+  )
+  after <- list.files(".", all.files = TRUE, recursive = FALSE)
+
+  expect_named(export, c("comparison", "settings", "notes"))
+  expect_s3_class(export$comparison, "data.frame")
+  expect_s3_class(export$settings, "data.frame")
+  expect_type(export$notes, "character")
+
+  expect_true(all(c("run_id", "stage", "label", "PE", "Nmed") %in% names(export$comparison)))
+  expect_equal(export$comparison$run_id, 1:2)
+  expect_equal(export$comparison$stage, c("deterministic_baseline", "carrying_capacity"))
+
+  expect_true(all(c("run_id", "stage", "label", "setting", "value") %in% names(export$settings)))
+  expect_true(any(export$settings$setting == "control_K" & export$settings$value == "40"))
+  expect_true(any(grepl("Generated: 2026-06-10 00:00:00 UTC", export$notes, fixed = TRUE)))
+  expect_false(any(grepl("UTC UTC", export$notes, fixed = TRUE)))
+  expect_true(any(grepl("evidence, not an answer", export$notes, fixed = TRUE)))
+  expect_true(any(grepl("Fixed teaching seed: 42", export$notes, fixed = TRUE)))
+  expect_false(any(grepl("raw trajectory", export$notes, fixed = TRUE)))
+  expect_equal(after, before)
+  expect_no_local_artifacts()
+})

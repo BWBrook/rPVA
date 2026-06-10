@@ -96,7 +96,7 @@ Minimum content:
 - scenario comparison table with extinction probability and final abundance,
 - selected plot panel,
 - prompt asking what changed and why,
-- export button for a compact table/plot bundle in a later implementation.
+- export buttons for a compact comparison CSV and evidence-notes file.
 
 ### 4. Exit Screen
 
@@ -125,6 +125,8 @@ The interface should reveal:
 - extinction/inbreeding/sex-ratio plot when relevant,
 - concise diagnostic messages from `diagnose_pva_result()`,
 - a plain-language record of settings used for each run.
+- compact downloads that preserve comparison output, settings, and prompts
+  without saving full simulation objects.
 
 The interface should use the real vocabulary students need later: extinction
 probability, median abundance, uncertainty interval, demographic stochasticity,

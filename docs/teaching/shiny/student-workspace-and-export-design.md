@@ -194,6 +194,12 @@ For a first road test, the app should also enforce soft limits:
 
 ## Export Types
 
+Current local Practical 1 Shiny export baseline:
+
+- comparison table as CSV;
+- evidence-notes Markdown file with run settings/provenance and prompts;
+- session-local downloads only, with no server-side workspace assumption.
+
 Recommended export bundle:
 
 - scenario comparison table as CSV,

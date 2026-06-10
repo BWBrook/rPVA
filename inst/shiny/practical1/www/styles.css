@@ -101,6 +101,13 @@ body {
   margin-top: 12px;
 }
 
+.export-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 12px;
+}
+
 .diagnostic-list {
   margin: 0;
   padding-left: 18px;
@@ -164,6 +171,22 @@ body {
 .settings-table,
 .compare-table {
   overflow-x: auto;
+}
+
+.compare-table {
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px;
+}
+
+.compare-table table {
+  min-width: 960px;
+  table-layout: auto;
+}
+
+.compare-table th,
+.compare-table td {
+  white-space: nowrap;
+  overflow-wrap: normal;
 }
 
 .stage-badge {

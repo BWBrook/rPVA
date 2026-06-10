@@ -75,3 +75,26 @@ test_that("stage runs collect only visible controls", {
   expect_true(grepl("allowed <- visible_stage_controls(stage)", app_text, fixed = TRUE))
   expect_false(grepl("strsplit\\(implemented\\$controls", app_text))
 })
+
+test_that("comparison view exposes compact evidence downloads", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
+
+  expect_true(grepl('downloadButton("download_comparison"', app_text, fixed = TRUE))
+  expect_true(grepl('downloadButton("download_evidence_notes"', app_text, fixed = TRUE))
+  expect_true(grepl("output$download_comparison <- downloadHandler", app_text, fixed = TRUE))
+  expect_true(grepl("output$download_evidence_notes <- downloadHandler", app_text, fixed = TRUE))
+  expect_true(grepl("build_teaching_evidence_export", app_text, fixed = TRUE))
+  expect_true(grepl("evidence, not an answer", app_text, fixed = TRUE))
+})
+
+test_that("comparison table is styled for horizontal scanning", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  style_text <- paste(readLines(file.path(app_dir, "www", "styles.css"), warn = FALSE), collapse = "\n")
+
+  expect_match(style_text, "\\.compare-table\\s*\\{[^}]*overflow-x:\\s*auto")
+  expect_match(style_text, "\\.compare-table\\s*\\{[^}]*-webkit-overflow-scrolling:\\s*touch")
+  expect_match(style_text, "\\.compare-table table\\s*\\{[^}]*min-width:")
+  expect_match(style_text, "\\.compare-table th,\\s*\\.compare-table td\\s*\\{[^}]*white-space:\\s*nowrap")
+  expect_match(style_text, "\\.compare-table th,\\s*\\.compare-table td\\s*\\{[^}]*overflow-wrap:\\s*normal")
+})

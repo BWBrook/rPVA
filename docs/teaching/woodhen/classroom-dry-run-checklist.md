@@ -30,6 +30,8 @@ error for later setup work.
   device.
 - Students can explain why `keep_traj = TRUE` matters for trajectory/extinction
   plots.
+- If using the Practical 1 Shiny concept lab, students can save the comparison
+  CSV and evidence-notes Markdown file from the Compare screen.
 
 ## Practical 2 Checkpoints
 
@@ -53,6 +55,8 @@ Each group should leave with:
 
 - their command log,
 - one toy-model figure or output table,
+- the Practical 1 Shiny comparison CSV and evidence-notes file, if the browser
+  app was used,
 - one Woodhen scenario table,
 - one management-scenario plot,
 - one bounded sensitivity table,

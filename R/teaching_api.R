@@ -167,6 +167,49 @@ compare_teaching_runs <- function(runs) {
   )
 }
 
+build_teaching_evidence_export <- function(runs, generated_at = Sys.time(), seed = 42) {
+  comparison <- compare_teaching_runs(runs)
+  comparison <- data.frame(
+    run_id = seq_len(nrow(comparison)),
+    comparison,
+    row.names = NULL,
+    stringsAsFactors = FALSE
+  )
+
+  settings <- do.call(
+    rbind,
+    lapply(seq_along(runs), function(i) {
+      run_settings <- runs[[i]]$settings
+      if (!nrow(run_settings)) {
+        return(data.frame(
+          run_id = integer(),
+          stage = character(),
+          label = character(),
+          setting = character(),
+          value = character(),
+          stringsAsFactors = FALSE
+        ))
+      }
+
+      data.frame(
+        run_id = rep(i, nrow(run_settings)),
+        stage = run_settings$stage,
+        label = run_settings$label,
+        setting = run_settings$setting,
+        value = run_settings$value,
+        stringsAsFactors = FALSE
+      )
+    })
+  )
+  rownames(settings) <- NULL
+
+  list(
+    comparison = comparison,
+    settings = settings,
+    notes = teaching_evidence_notes(comparison, settings, generated_at, seed)
+  )
+}
+
 #' Create a compact teaching settings record
 #'
 #' @param stage Teaching stage ID.
@@ -449,4 +492,48 @@ collapse_setting_value <- function(value) {
     return("NA")
   }
   as.character(value)
+}
+
+teaching_evidence_notes <- function(comparison, settings, generated_at, seed) {
+  seed_label <- if (is.null(seed)) "not fixed" else as.character(seed)
+
+  c(
+    "# Practical 1 PVA Evidence Notes",
+    "",
+    paste0("Generated: ", format_teaching_export_time(generated_at)),
+    paste0("Runs included: ", nrow(comparison)),
+    paste0("Fixed teaching seed: ", seed_label),
+    "",
+    "Use this export with the comparison CSV from the same browser session.",
+    "This export is evidence, not an answer; use it to support your own interpretation.",
+    "",
+    "## Comparison table",
+    utils::capture.output(utils::write.table(
+      comparison,
+      sep = "\t",
+      row.names = FALSE,
+      quote = FALSE
+    )),
+    "",
+    "## Settings and provenance",
+    utils::capture.output(utils::write.table(
+      settings,
+      sep = "\t",
+      row.names = FALSE,
+      quote = FALSE
+    )),
+    "",
+    "## Interpretation prompts",
+    "- What changed between the runs you compared?",
+    "- Which output supports your explanation of extinction risk?",
+    "- Which output supports your explanation of final abundance and uncertainty?",
+    "- What caveat would you report before turning this evidence into a recommendation?"
+  )
+}
+
+format_teaching_export_time <- function(generated_at) {
+  if (inherits(generated_at, "POSIXt")) {
+    return(format(generated_at, "%Y-%m-%d %H:%M:%S %Z"))
+  }
+  as.character(generated_at)
 }

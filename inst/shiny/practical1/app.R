@@ -227,6 +227,13 @@ ui <- navbarPage(
           class = "panel-block",
           h3("Run comparison"),
           div(class = "compare-table", tableOutput("comparison_table")),
+          h4("Save evidence"),
+          p(class = "muted", "Download a compact comparison table and notes for your own report. These files are evidence, not an answer."),
+          div(
+            class = "export-actions",
+            downloadButton("download_comparison", "Comparison CSV"),
+            downloadButton("download_evidence_notes", "Evidence notes")
+          ),
           actionButton("clear_runs", label = tagList(icon("trash"), "Reset comparison")),
           div(class = "prompt", "What changed between runs, and which output supports your explanation?")
         ),
@@ -272,6 +279,9 @@ server <- function(input, output, session) {
   baseline <- run_stage(default_stage)
   current_run <- reactiveVal(baseline)
   run_history <- reactiveVal(list(baseline))
+  evidence_export <- reactive({
+    rPVA:::build_teaching_evidence_export(run_history())
+  })
 
   observeEvent(input$run_baseline, {
     baseline_run <- run_stage(default_stage)
@@ -355,6 +365,24 @@ server <- function(input, output, session) {
   output$comparison_table <- renderTable({
     rPVA::compare_teaching_runs(run_history())
   }, striped = TRUE, bordered = TRUE, spacing = "s")
+
+  output$download_comparison <- downloadHandler(
+    filename = function() {
+      paste0("practical1-comparison-", format(Sys.Date(), "%Y%m%d"), ".csv")
+    },
+    content = function(file) {
+      utils::write.csv(evidence_export()$comparison, file, row.names = FALSE)
+    }
+  )
+
+  output$download_evidence_notes <- downloadHandler(
+    filename = function() {
+      paste0("practical1-evidence-notes-", format(Sys.Date(), "%Y%m%d"), ".md")
+    },
+    content = function(file) {
+      writeLines(evidence_export()$notes, file, useBytes = TRUE)
+    }
+  )
 }
 
 shinyApp(ui, server)
