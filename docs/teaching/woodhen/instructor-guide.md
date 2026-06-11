@@ -14,6 +14,8 @@ engine internals.
   the first student session.
 - Keep `practical-1-fallback-pack.md` open as the static recovery path if
   hosted Shiny, local Shiny, or app downloads are unavailable.
+- For the app-led Practical 1 path, keep `practical-1-instructor-beat-sheet.md`
+  and `practical-1-mission-worksheet.md` open alongside the Shiny app.
 - Open an R session and run:
 
 ```r
@@ -80,6 +82,9 @@ source("bootstrap.R")
   first road test.
 - For first delivery, prioritize clarity of interpretation prompts over adding new
   helper wrappers.
+- For app-led Practical 1 delivery, protect the two-hour mission arc from being
+  swallowed by setup or lecture; use the beat sheet's compression options if
+  the class is slow.
 - Before releasing AT1, confirm whether students will use R-only outputs, Shiny
   exports, or both, then tune the optional artefact wording accordingly.
 - For the first road test, do not let app trouble consume the interpretation

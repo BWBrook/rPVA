@@ -11,6 +11,8 @@ teaching, requirements, and deployment planning layer for future road-test work.
 
 - `practical-1-design-brief.md` defines the student learning experience as a
   staged concept lab before students move to the Lord Howe Island woodhen case.
+- `practical-1-mission-tutorial.md` maps the current Shiny screens and
+  implemented stages to a two-hour app-led Practical 1 mission arc.
 - `engine-affordance-audit.md` maps the current `rPVA` engine, helpers, and
   scenarios to the concept lab and identifies the smallest app-facing API likely
   needed.
@@ -54,6 +56,9 @@ teaching, requirements, and deployment planning layer for future road-test work.
   request pack that turns the Goal 027 DNS/certificate blocker into concrete
   hostname, DNS, certificate, renewal, nginx/TLS ownership, and access-policy
   questions.
+- `../../goals/029-practical-1-mission-tutorial-curriculum/Goal.md` records
+  the app-led Practical 1 mission tutorial, lightweight worksheet, instructor
+  beat sheet, and later app-support gap list.
 
 ## Design Position
 
@@ -73,7 +78,9 @@ UTAS-supported Posit Connect is not expected to be available.
 The app should teach interpretation, not file mechanics. Students should be able
 to change one concept at a time, see immediate visual and numerical outputs,
 export compact evidence, and then transfer those ideas to the Woodhen Practical
-2 workflow.
+2 workflow. Goal 029 turns that design position into a mission tutorial: the
+app remains the main classroom surface, while the worksheet records observations
+and caveats without becoming a heavy handout.
 
 Goal 017 is the current pre-deployment bridge between the local MVP and any
 service implementation. Its read-only refresh confirmed the tailnet health

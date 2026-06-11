@@ -9,6 +9,8 @@ Target students: ecology, conservation, or applied modelling classes.
 ## Contents
 
 - `practical-1-pva-foundations.md`
+- `practical-1-mission-worksheet.md`
+- `practical-1-instructor-beat-sheet.md`
 - `practical-2-woodhen-management.md`
 - `instructor-guide.md`
 - `expected-outputs.md`
@@ -63,6 +65,11 @@ render path are still working.
 If hosted or local Shiny is unavailable, use `practical-1-fallback-pack.md` to
 continue Practical 1 with command-line toy-model outputs, static reference
 tables, and report-scaffold rendering.
+
+For the app-led Practical 1 path, use `practical-1-mission-worksheet.md` as the
+student observation log and `practical-1-instructor-beat-sheet.md` for timing,
+recaps, roaming prompts, and wrap-up. The detailed Shiny mission arc lives in
+`../shiny/practical-1-mission-tutorial.md`.
 
 Draft 2026 AT1 assessment materials are provided as review documents in this
 folder. The student-facing starting point is `assessment-brief-2026-draft.md`;
