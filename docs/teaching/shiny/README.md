@@ -67,6 +67,9 @@ teaching, requirements, and deployment planning layer for future road-test work.
   records the local delivery-candidate rehearsal, day-of-class pack, and
   go/no-go checklist separating local readiness from hosted student URL
   release readiness.
+- `../../goals/032-practical-1-student-launch-pack/Goal.md` records the
+  student launch page, Moodle/upload manifest, and student-zero rehearsal for
+  the Practical 1 delivery candidate.
 
 ## Design Position
 

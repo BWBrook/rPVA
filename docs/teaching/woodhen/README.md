@@ -9,7 +9,9 @@ Target students: ecology, conservation, or applied modelling classes.
 ## Contents
 
 - `practical-1-pva-foundations.md`
+- `practical-1-student-launch-page.md`
 - `practical-1-mission-worksheet.md`
+- `practical-1-moodle-upload-manifest.md`
 - `practical-1-instructor-beat-sheet.md`
 - `practical-1-day-of-class-pack.md`
 - `practical-1-go-no-go-checklist.md`
@@ -68,13 +70,15 @@ If hosted or local Shiny is unavailable, use `practical-1-fallback-pack.md` to
 continue Practical 1 with command-line toy-model outputs, static reference
 tables, and report-scaffold rendering.
 
-For the app-led Practical 1 path, use `practical-1-mission-worksheet.md` as the
-student observation log and `practical-1-instructor-beat-sheet.md` for timing,
-recaps, roaming prompts, and wrap-up. The detailed Shiny mission arc lives in
-`../shiny/practical-1-mission-tutorial.md`. On the day of class, use
-`practical-1-day-of-class-pack.md` and
-`practical-1-go-no-go-checklist.md` to separate local teaching readiness from
-hosted URL/TLS/student-release readiness.
+For the app-led Practical 1 path, use `practical-1-student-launch-page.md` as
+the student entry surface and `practical-1-mission-worksheet.md` as the student
+observation log. Use `practical-1-moodle-upload-manifest.md` to assemble the
+Moodle or local handoff set, and `practical-1-instructor-beat-sheet.md` for
+timing, recaps, roaming prompts, and wrap-up. The detailed Shiny mission arc
+lives in `../shiny/practical-1-mission-tutorial.md`. On the day of class, use
+`practical-1-day-of-class-pack.md` and `practical-1-go-no-go-checklist.md` to
+separate local teaching readiness from hosted URL/TLS/student-release
+readiness.
 
 Draft 2026 AT1 assessment materials are provided as review documents in this
 folder. The student-facing starting point is `assessment-brief-2026-draft.md`;

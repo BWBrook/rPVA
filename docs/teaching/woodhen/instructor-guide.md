@@ -15,6 +15,9 @@ engine internals.
 - Use `practical-1-day-of-class-pack.md` and
   `practical-1-go-no-go-checklist.md` for the final Practical 1 day-of-class
   decision.
+- Use `practical-1-student-launch-page.md` as the student-facing start page,
+  and `practical-1-moodle-upload-manifest.md` when assembling the Moodle or
+  local handoff set.
 - Keep `practical-1-fallback-pack.md` open as the static recovery path if
   hosted Shiny, local Shiny, or app downloads are unavailable.
 - For the app-led Practical 1 path, keep `practical-1-instructor-beat-sheet.md`
@@ -25,8 +28,10 @@ engine internals.
 source("bootstrap.R")
 ```
 
-- Ask students to open:
-  - `docs/teaching/woodhen/practical-1-pva-foundations.md`
+- Ask Practical 1 students to open:
+  - `docs/teaching/woodhen/practical-1-student-launch-page.md`
+  - `docs/teaching/woodhen/practical-1-mission-worksheet.md`
+- Ask Practical 2 students to open:
   - `docs/teaching/woodhen/practical-2-woodhen-management.md`
 - For assessment design review, read:
   - `docs/teaching/woodhen/assessment-brief-2026-draft.md`

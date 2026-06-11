@@ -14,6 +14,7 @@ student-ready.
 Before students arrive:
 
 - Open this pack, `practical-1-mission-worksheet.md`,
+  `practical-1-student-launch-page.md`,
   `practical-1-instructor-beat-sheet.md`, `practical-1-go-no-go-checklist.md`,
   `practical-1-fallback-pack.md`, `troubleshooting.md`, and
   `expected-outputs.md`.
@@ -49,6 +50,7 @@ Render DOCX and PDF sequentially rather than in parallel.
 Students need:
 
 - the Practical 1 Shiny app route approved for the class session;
+- `practical-1-student-launch-page.md` as the start-here instruction page;
 - `practical-1-mission-worksheet.md` as their observation log;
 - a local folder where they can save two evidence exports from the Compare
   screen.
