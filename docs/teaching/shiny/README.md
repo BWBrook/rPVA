@@ -50,6 +50,10 @@ teaching, requirements, and deployment planning layer for future road-test work.
 - `../../goals/027-trusted-class-hostname-tls-gate/Goal.md` records the
   trusted class-hostname TLS gate and current DNS/certificate ownership
   blocker.
+- `../../goals/028-campus-it-tls-request-pack/Goal.md` records the campus IT
+  request pack that turns the Goal 027 DNS/certificate blocker into concrete
+  hostname, DNS, certificate, renewal, nginx/TLS ownership, and access-policy
+  questions.
 
 ## Design Position
 
@@ -101,7 +105,9 @@ self-signed certificate for `deep-server`, not a trusted class hostname. Goal
 027 finds no approved class hostname or browser-trusted certificate path
 available on `deep-server`; the reverse-DNS name
 `SET-BIO-2621GL2.zoo.utas.edu.au` is a campus-IT lead to assess, not an
-approved teaching URL.
+approved teaching URL. Goal 028 packages that blocker into a sendable campus
+IT request and technical appendix, with rPVA Practical 1 as the immediate
+tested service and KPZ314 as future shared teaching-Shiny context only.
 
 ## Current MVP Boundary
 
