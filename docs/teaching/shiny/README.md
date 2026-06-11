@@ -59,6 +59,10 @@ teaching, requirements, and deployment planning layer for future road-test work.
 - `../../goals/029-practical-1-mission-tutorial-curriculum/Goal.md` records
   the app-led Practical 1 mission tutorial, lightweight worksheet, instructor
   beat sheet, and later app-support gap list.
+- `../../goals/030-practical-1-mission-mode-app-affordance-polish/Goal.md`
+  records the small app-visible mission cues, run-1 baseline wording,
+  one-factor-change guidance, and Compare guidance added for the Goal 029
+  tutorial path.
 
 ## Design Position
 

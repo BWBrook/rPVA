@@ -88,6 +88,18 @@ test_that("comparison view exposes compact evidence downloads", {
   expect_true(grepl("evidence, not an answer", app_text, fixed = TRUE))
 })
 
+test_that("app exposes mission-mode classroom guidance", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
+
+  expect_true(grepl("Mission 1: Baseline compass", app_text, fixed = TRUE))
+  expect_true(grepl("creates or restores your baseline as run 1", app_text, fixed = TRUE))
+  expect_true(grepl("changing one visible control at a time", app_text, fixed = TRUE))
+  expect_true(grepl("Choose a clean comparison: baseline run 1, one risk mechanism, and one intervention or vortex run.", app_text, fixed = TRUE))
+  expect_true(grepl("Repeated clicks are less useful than a targeted one-factor change.", app_text, fixed = TRUE))
+  expect_true(grepl("Use this stage only as a recovery run after resetting comparison.", app_text, fixed = TRUE))
+})
+
 test_that("comparison table is styled for horizontal scanning", {
   app_dir <- rPVA:::practical1_shiny_app_dir()
   style_text <- paste(readLines(file.path(app_dir, "www", "styles.css"), warn = FALSE), collapse = "\n")

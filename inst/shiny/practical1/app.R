@@ -25,6 +25,26 @@ stage_prompts <- c(
   intervention = "Ask whether abundance improves without ignoring remaining uncertainty.",
   extinction_vortex = "Use this as a warning that mechanisms can reinforce each other."
 )
+stage_missions <- c(
+  deterministic_baseline = "Mission 1: Baseline compass",
+  carrying_capacity = "Mission 2: Island ceiling",
+  demographic_stochasticity = "Mission 3: Individual chance",
+  environmental_stochasticity = "Mission 4: Shared bad years",
+  genetic_stochasticity = "Mission 5: Small-population pressure",
+  catastrophe = "Mission 6: Rare bad years",
+  intervention = "Mission 7a: Rescue attempt",
+  extinction_vortex = "Mission 7b: Vortex comparison"
+)
+stage_mission_guidance <- c(
+  deterministic_baseline = "Use this stage only as a recovery run after resetting comparison.",
+  carrying_capacity = "Change one visible control, then compare with baseline run 1.",
+  demographic_stochasticity = "Keep the habitat setting close to Mission 2 so individual chance is the main change.",
+  environmental_stochasticity = "Adjust bad-year variation, then compare uncertainty with earlier runs.",
+  genetic_stochasticity = "Change one small-population pressure and watch risk as well as abundance.",
+  catastrophe = "Change catastrophe chance or severity, not both, before comparing risk.",
+  intervention = "Treat intervention as evidence comparison, not an automatic win.",
+  extinction_vortex = "Use this as the compounded-risk contrast for your final comparison."
+)
 risk_plot_stages <- c("genetic_stochasticity", "catastrophe", "extinction_vortex")
 
 default_stage <- "deterministic_baseline"
@@ -170,6 +190,12 @@ ui <- navbarPage(
             div(class = "life-stage", strong("Adults"), p(class = "muted", "Adults survive, stay, and produce recruits."))
           ),
           actionButton("run_baseline", label = tagList(icon("play"), "Start baseline"), class = "btn-primary"),
+          div(
+            class = "mission-cue start-mission",
+            span(class = "mission-label", "Mission 1: Baseline compass"),
+            p("Start baseline creates or restores your baseline as run 1 for later comparison."),
+            p(class = "muted", "Inspect run 1 before changing controls; keep it as the reference for later comparison.")
+          ),
           p(class = "muted", "Prepares you for Woodhen.")
         ),
         div(
@@ -190,6 +216,7 @@ ui <- navbarPage(
         div(
           class = "panel-block",
           h3("Choose one mechanism"),
+          p(class = "mission-path", "Work through the mission path by changing one visible control at a time, then compare."),
           selectInput("stage", "Teaching stage", choices = stage_choices, selected = default_stage),
           uiOutput("stage_text"),
           uiOutput("stage_controls"),
@@ -226,6 +253,12 @@ ui <- navbarPage(
         div(
           class = "panel-block",
           h3("Run comparison"),
+          div(
+            class = "mission-cue compare-guidance",
+            span(class = "mission-label", "Compare mission evidence"),
+            p("Choose a clean comparison: baseline run 1, one risk mechanism, and one intervention or vortex run."),
+            p(class = "muted", "Repeated clicks are less useful than a targeted one-factor change.")
+          ),
           div(class = "compare-table", tableOutput("comparison_table")),
           h4("Save evidence"),
           p(class = "muted", "Download a compact comparison table and notes for your own report. These files are evidence, not an answer."),
@@ -310,7 +343,12 @@ server <- function(input, output, session) {
     info <- implemented[implemented$stage == stage, , drop = FALSE]
     tagList(
       div(class = "stage-badge", info$label[[1]]),
-      p(strong(stage_questions[[stage]])),
+      div(
+        class = "mission-cue",
+        span(class = "mission-label", stage_missions[[stage]]),
+        p(strong(stage_questions[[stage]])),
+        p(class = "mission-guidance", stage_mission_guidance[[stage]])
+      ),
       p(class = "muted", info$concept[[1]])
     )
   })

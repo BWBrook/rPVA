@@ -101,6 +101,42 @@ body {
   margin-top: 12px;
 }
 
+.mission-path {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.mission-cue {
+  border-left: 4px solid var(--green);
+  padding: 10px 12px;
+  background: #f4f9f1;
+  margin: 12px 0;
+}
+
+.mission-cue p {
+  margin: 4px 0 0;
+}
+
+.mission-label {
+  display: block;
+  color: var(--green);
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+
+.mission-guidance {
+  font-weight: 600;
+}
+
+.compare-guidance {
+  border-left-color: var(--teal);
+  background: #eef7f8;
+}
+
+.compare-guidance .mission-label {
+  color: var(--teal);
+}
+
 .export-actions {
   display: flex;
   flex-wrap: wrap;
