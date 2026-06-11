@@ -92,6 +92,13 @@ Before the wrap-up, go to Compare and save:
 If downloads are unavailable, copy the visible comparison table into your notes
 and tell the demonstrator.
 
+Record what you saved:
+
+| Evidence item | Filename or fallback location |
+| --- | --- |
+| Comparison CSV or copied comparison table |  |
+| Evidence-notes Markdown or fallback note |  |
+
 ## Transfer Questions
 
 Answer these in two or three sentences each.

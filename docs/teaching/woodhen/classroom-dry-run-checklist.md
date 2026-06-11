@@ -11,6 +11,8 @@ package internals.
 - Open `practical-1-pva-foundations.md`, `practical-2-woodhen-management.md`,
   `expected-outputs.md`, `troubleshooting.md`, and
   `practical-1-fallback-pack.md`.
+- Open `practical-1-day-of-class-pack.md` and
+  `practical-1-go-no-go-checklist.md` for the app-led delivery decision.
 - Render the report scaffold to a temp output folder:
 
 ```sh
@@ -19,7 +21,7 @@ quarto render docs/teaching/woodhen/report-scaffold.qmd --to pdf --output-dir /t
 ```
 
 If PDF fails but DOCX succeeds, keep teaching with DOCX and record the PDF tool
-error for later setup work.
+error for later setup work. Render DOCX and PDF sequentially.
 
 ## Practical 1 Checkpoints
 

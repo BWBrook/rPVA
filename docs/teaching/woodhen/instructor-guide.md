@@ -12,6 +12,9 @@ engine internals.
 - Start from the repo root.
 - Work through `classroom-dry-run-checklist.md` on the teaching machine before
   the first student session.
+- Use `practical-1-day-of-class-pack.md` and
+  `practical-1-go-no-go-checklist.md` for the final Practical 1 day-of-class
+  decision.
 - Keep `practical-1-fallback-pack.md` open as the static recovery path if
   hosted Shiny, local Shiny, or app downloads are unavailable.
 - For the app-led Practical 1 path, keep `practical-1-instructor-beat-sheet.md`
@@ -85,6 +88,9 @@ source("bootstrap.R")
 - For app-led Practical 1 delivery, protect the two-hour mission arc from being
   swallowed by setup or lecture; use the beat sheet's compression options if
   the class is slow.
+- Keep local/in-room teaching readiness separate from hosted student URL
+  release readiness. A local rehearsal can be usable while a raw-IP or insecure
+  HTTPS route remains not student-ready.
 - Before releasing AT1, confirm whether students will use R-only outputs, Shiny
   exports, or both, then tune the optional artefact wording accordingly.
 - For the first road test, do not let app trouble consume the interpretation

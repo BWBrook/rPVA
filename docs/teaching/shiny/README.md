@@ -63,6 +63,10 @@ teaching, requirements, and deployment planning layer for future road-test work.
   records the small app-visible mission cues, run-1 baseline wording,
   one-factor-change guidance, and Compare guidance added for the Goal 029
   tutorial path.
+- `../../goals/031-practical-1-delivery-candidate-rehearsal-pack/Goal.md`
+  records the local delivery-candidate rehearsal, day-of-class pack, and
+  go/no-go checklist separating local readiness from hosted student URL
+  release readiness.
 
 ## Design Position
 
