@@ -47,6 +47,9 @@ teaching, requirements, and deployment planning layer for future road-test work.
 - `../../goals/026-campus-route-tls-readiness/Goal.md` records the current
   campus-route and TLS/browser-trust diagnostic boundary for the non-student
   staging service.
+- `../../goals/027-trusted-class-hostname-tls-gate/Goal.md` records the
+  trusted class-hostname TLS gate and current DNS/certificate ownership
+  blocker.
 
 ## Design Position
 
@@ -94,7 +97,11 @@ commit `5c9d500`, with rollback details in its staging report; it is not a
 student release. Goal 026 confirms that Barry can reach the ShinyProxy login
 page from inside the University network at the campus IP route, but the current
 browser-trust state is still not student-ready because the gateway serves a
-self-signed certificate for `deep-server`, not a trusted class hostname.
+self-signed certificate for `deep-server`, not a trusted class hostname. Goal
+027 finds no approved class hostname or browser-trusted certificate path
+available on `deep-server`; the reverse-DNS name
+`SET-BIO-2621GL2.zoo.utas.edu.au` is a campus-IT lead to assess, not an
+approved teaching URL.
 
 ## Current MVP Boundary
 
@@ -118,4 +125,7 @@ self-signed certificate for `deep-server`, not a trusted class hostname.
   authentication, persistent student workspaces, campus/TLS polish, and any
   student-facing rollout remain separate approval gates. Goal 026 keeps the
   current service at non-student staging status until a trusted URL/certificate
-  route and campus authenticated app path are separately proven.
+  route and campus authenticated app path are separately proven. Goal 027 adds
+  that a future TLS implementation needs an approved hostname, DNS owner,
+  certificate owner/issuance mechanism, renewal owner, and permission for a
+  narrow reversible nginx TLS edit.
