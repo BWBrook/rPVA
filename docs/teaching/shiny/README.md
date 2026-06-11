@@ -44,6 +44,9 @@ teaching, requirements, and deployment planning layer for future road-test work.
   records the compact session-local evidence export hardening package.
 - `../../goals/025-nonstudent-shinyproxy-staging-bootstrap/Goal.md` records
   the current non-student ShinyProxy staging bootstrap on `deep-server`.
+- `../../goals/026-campus-route-tls-readiness/Goal.md` records the current
+  campus-route and TLS/browser-trust diagnostic boundary for the non-student
+  staging service.
 
 ## Design Position
 
@@ -88,7 +91,10 @@ on `deep-server`. Goal 023 adds compact session-local evidence downloads before
 any service-bootstrap/staging work resumes. Goal 025 installs and configures a
 single non-student authenticated ShinyProxy staging service for Practical 1 at
 commit `5c9d500`, with rollback details in its staging report; it is not a
-student release.
+student release. Goal 026 confirms that Barry can reach the ShinyProxy login
+page from inside the University network at the campus IP route, but the current
+browser-trust state is still not student-ready because the gateway serves a
+self-signed certificate for `deep-server`, not a trusted class hostname.
 
 ## Current MVP Boundary
 
@@ -110,4 +116,6 @@ student release.
 - No live student release yet. Goal 025 permits only authenticated non-student
   staging and keeps exports local to the browser session. Student/class
   authentication, persistent student workspaces, campus/TLS polish, and any
-  student-facing rollout remain separate approval gates.
+  student-facing rollout remain separate approval gates. Goal 026 keeps the
+  current service at non-student staging status until a trusted URL/certificate
+  route and campus authenticated app path are separately proven.
