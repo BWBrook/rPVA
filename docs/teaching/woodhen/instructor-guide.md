@@ -12,6 +12,8 @@ engine internals.
 - Start from the repo root.
 - Work through `classroom-dry-run-checklist.md` on the teaching machine before
   the first student session.
+- Keep `practical-1-fallback-pack.md` open as the static recovery path if
+  hosted Shiny, local Shiny, or app downloads are unavailable.
 - Open an R session and run:
 
 ```r
@@ -80,3 +82,6 @@ source("bootstrap.R")
   helper wrappers.
 - Before releasing AT1, confirm whether students will use R-only outputs, Shiny
   exports, or both, then tune the optional artefact wording accordingly.
+- For the first road test, do not let app trouble consume the interpretation
+  window. Switch to the fallback pack once retrying the app would cost more
+  than a few minutes of class time.

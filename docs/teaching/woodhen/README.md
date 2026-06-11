@@ -14,6 +14,7 @@ Target students: ecology, conservation, or applied modelling classes.
 - `expected-outputs.md`
 - `glossary.md`
 - `troubleshooting.md`
+- `practical-1-fallback-pack.md`
 - `report-scaffold.qmd`
 - `marking-rubric.md`
 - `classroom-dry-run-checklist.md`
@@ -58,6 +59,10 @@ For each worksheet:
 For demonstrators, use `classroom-dry-run-checklist.md` before class and at the
 end of each practical to confirm that the expected tables, plots, and report
 render path are still working.
+
+If hosted or local Shiny is unavailable, use `practical-1-fallback-pack.md` to
+continue Practical 1 with command-line toy-model outputs, static reference
+tables, and report-scaffold rendering.
 
 Draft 2026 AT1 assessment materials are provided as review documents in this
 folder. The student-facing starting point is `assessment-brief-2026-draft.md`;

@@ -110,3 +110,26 @@ sampling error.
   “what-if” with written justification.
 - Do not edit `years`, `n0`, `reps`, or stage lengths in the same run as a
   sensitivity exercise.
+
+## Practical 1 Shiny fallback
+
+### The app is unavailable or too slow
+
+Use `practical-1-fallback-pack.md` rather than spending the class session on
+service diagnosis. The fallback keeps the same teaching target by using
+`run_toy_demo()`, expected output tables, and report-scaffold rendering.
+
+### Evidence downloads fail
+
+Ask the student to retry the Compare-screen downloads once. If the CSV or
+Markdown file still does not appear, continue with the fallback pack and ask the
+student to save the visible comparison table or command-line toy summary as
+evidence.
+
+### Students read the export as the answer
+
+Use this wording:
+
+*The export records what you ran and what the model returned. It supports your
+interpretation, but your report still needs to explain the ecological mechanism
+and the uncertainty.*

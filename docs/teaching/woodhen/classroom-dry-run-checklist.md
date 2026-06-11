@@ -9,7 +9,8 @@ package internals.
 - Start from the repository root.
 - Run `source("bootstrap.R")` in R and confirm the ready message appears.
 - Open `practical-1-pva-foundations.md`, `practical-2-woodhen-management.md`,
-  `expected-outputs.md`, and `troubleshooting.md`.
+  `expected-outputs.md`, `troubleshooting.md`, and
+  `practical-1-fallback-pack.md`.
 - Render the report scaffold to a temp output folder:
 
 ```sh
@@ -32,6 +33,8 @@ error for later setup work.
   plots.
 - If using the Practical 1 Shiny concept lab, students can save the comparison
   CSV and evidence-notes Markdown file from the Compare screen.
+- If Shiny is unavailable, use `practical-1-fallback-pack.md` and keep the same
+  interpretation target: extinction risk, final abundance, and uncertainty.
 
 ## Practical 2 Checkpoints
 
@@ -71,3 +74,6 @@ Each group should leave with:
   horizon length, and unmodelled ecological processes.
 - If scenario tables differ from `expected-outputs.md`, check whether a seed,
   scenario key, or one-factor sensitivity input was changed.
+- If app downloads fail, ask students to retry once, then switch to the
+  fallback pack rather than losing class time to browser-specific download
+  debugging.
