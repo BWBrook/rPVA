@@ -42,6 +42,8 @@ teaching, requirements, and deployment planning layer for future road-test work.
   local Shiny smoke, CI repair, and remote read-only staging discovery package.
 - `../../goals/023-practical-1-evidence-export-road-test-hardening/Goal.md`
   records the compact session-local evidence export hardening package.
+- `../../goals/025-nonstudent-shinyproxy-staging-bootstrap/Goal.md` records
+  the current non-student ShinyProxy staging bootstrap on `deep-server`.
 
 ## Design Position
 
@@ -71,8 +73,8 @@ warning, so TLS trust / student-friendly URL polish and eventual app-path
 verification remain go/no-go gates before exposing the app.
 
 Goal 018 adds an inert ShinyProxy/Docker/nginx scaffold for review. The
-scaffold is not live configuration and must not be copied to `deep-server`
-until a later implementation goal explicitly authorizes remote service work.
+scaffold remains repo-local design material, but Goal 025 explicitly authorized
+the first non-student remote staging bootstrap on `deep-server`.
 Goal 019 is the local, non-live preflight pass over that scaffold: static
 validation, safer template assumptions, and Docker availability assessment
 without remote writes or service changes.
@@ -83,14 +85,19 @@ pass. Goal 022 adds the first local-plus-remote validation pass: the local Mac
 mini Shiny smoke works, CI has a focused bootstrap repair on the Goal 022
 branch, and remote discovery stops before staging because ShinyProxy is absent
 on `deep-server`. Goal 023 adds compact session-local evidence downloads before
-any service-bootstrap/staging work resumes.
+any service-bootstrap/staging work resumes. Goal 025 installs and configures a
+single non-student authenticated ShinyProxy staging service for Practical 1 at
+commit `5c9d500`, with rollback details in its staging report; it is not a
+student release.
 
 ## Current MVP Boundary
 
 - Practical 1 concept-lab scaffold only.
-- No ShinyProxy, Docker, nginx, systemd, or other deployment implementation.
-- No authentication, accounts, persistent student workspaces, quotas, or usage
-  tracing.
+- No student-facing ShinyProxy release.
+- One non-student authenticated ShinyProxy staging surface now exists on
+  `deep-server` under Goal 025 for Practical 1 inspection only.
+- No class accounts, class tokens, student identifiers, persistent student
+  workspaces, quotas, or usage tracing.
 - No Practical 2 Woodhen app mode.
 - No assessment redesign, scenario YAML change, or core engine behaviour change.
 - No research-grade Lord Howe Island woodhen recovery analysis. Teaching
@@ -100,8 +107,7 @@ any service-bootstrap/staging work resumes.
 - No Docker build/run as a default validation gate. Goal 019 keeps image-build
   testing optional and bounded because it can pull large R base images and
   restore R packages.
-- No live student release yet. Goal 022 permits local Shiny smoke and
-  read-only remote discovery, but stops before remote app staging until a
-  separate service-bootstrap/staging package is approved. Goal 023 keeps
-  exports local to the browser session and does not add authentication,
-  persistence, or workspaces.
+- No live student release yet. Goal 025 permits only authenticated non-student
+  staging and keeps exports local to the browser session. Student/class
+  authentication, persistent student workspaces, campus/TLS polish, and any
+  student-facing rollout remain separate approval gates.
