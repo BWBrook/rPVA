@@ -12,6 +12,7 @@ Target students: ecology, conservation, or applied modelling classes.
 - `practical-1-student-launch-page.md`
 - `practical-1-mission-worksheet.md`
 - `practical-1-moodle-upload-manifest.md`
+- `practical-1-moodle-ready-bundle/`
 - `practical-1-instructor-beat-sheet.md`
 - `practical-1-day-of-class-pack.md`
 - `practical-1-go-no-go-checklist.md`
@@ -72,10 +73,12 @@ tables, and report-scaffold rendering.
 
 For the app-led Practical 1 path, use `practical-1-student-launch-page.md` as
 the student entry surface and `practical-1-mission-worksheet.md` as the student
-observation log. Use `practical-1-moodle-upload-manifest.md` to assemble the
-Moodle or local handoff set, and `practical-1-instructor-beat-sheet.md` for
-timing, recaps, roaming prompts, and wrap-up. The detailed Shiny mission arc
-lives in `../shiny/practical-1-mission-tutorial.md`. On the day of class, use
+observation log. Use `practical-1-moodle-ready-bundle/` for the compact Moodle
+handoff surface and generated-artefact manifest, with
+`practical-1-moodle-upload-manifest.md` as the higher-level upload policy. Use
+`practical-1-instructor-beat-sheet.md` for timing, recaps, roaming prompts, and
+wrap-up. The detailed Shiny mission arc lives in
+`../shiny/practical-1-mission-tutorial.md`. On the day of class, use
 `practical-1-day-of-class-pack.md` and `practical-1-go-no-go-checklist.md` to
 separate local teaching readiness from hosted URL/TLS/student-release
 readiness.

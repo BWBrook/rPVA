@@ -18,6 +18,9 @@ engine internals.
 - Use `practical-1-student-launch-page.md` as the student-facing start page,
   and `practical-1-moodle-upload-manifest.md` when assembling the Moodle or
   local handoff set.
+- Use `practical-1-moodle-ready-bundle/` when Barry or a demonstrator needs
+  paste-ready Moodle section text, generated-artefact commands, checksums, and
+  upload visibility labels in one place.
 - Keep `practical-1-fallback-pack.md` open as the static recovery path if
   hosted Shiny, local Shiny, or app downloads are unavailable.
 - For the app-led Practical 1 path, keep `practical-1-instructor-beat-sheet.md`
