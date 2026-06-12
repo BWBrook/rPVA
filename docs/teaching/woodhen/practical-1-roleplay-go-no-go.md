@@ -3,6 +3,12 @@
 Use this checklist before spending Barry's time on the human roleplay. It does
 not approve student release or hosted infrastructure.
 
+For the two-route roleplay path, use
+`practical-1-dual-route-roleplay-runbook.md` and
+`practical-1-dual-route-go-no-go.md` alongside this checklist. The hosted
+warning route is for Barry/instructor testing only and remains separate from
+student release.
+
 ## Roleplay Pack Readiness
 
 Barry roleplay execution is `GO` only if each item is green:

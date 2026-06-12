@@ -70,6 +70,10 @@ teaching, requirements, and deployment planning layer for future road-test work.
 - `../../goals/032-practical-1-student-launch-pack/Goal.md` records the
   student launch page, Moodle/upload manifest, and student-zero rehearsal for
   the Practical 1 delivery candidate.
+- `../../goals/035-practical-1-dual-route-roleplay-preflight/Goal.md` records
+  the dual-route roleplay preflight that separates the controlled local Mac
+  test, the instructor-only hosted warning-route test, and the still-blocked
+  student release route.
 
 ## Design Position
 

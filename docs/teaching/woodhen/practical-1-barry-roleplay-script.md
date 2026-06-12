@@ -1,8 +1,9 @@
 # Practical 1 Barry-As-Student Roleplay Script
 
-Use this script when Barry is ready to roleplay a Practical 1 student. The aim
-is to test the student experience, not to debug or improve the app during the
-session.
+Use this script when Barry is ready to roleplay a Practical 1 student. For a
+two-route test, choose the route and stop rules first from
+`practical-1-dual-route-roleplay-runbook.md`. The aim is to test the student
+experience, not to debug or improve the app during the session.
 
 ## Role
 

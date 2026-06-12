@@ -24,7 +24,10 @@ engine internals.
 - Use `practical-1-barry-roleplay-script.md`,
   `practical-1-roleplay-notes-template.md`, and
   `practical-1-roleplay-go-no-go.md` before spending Barry's time on the
-  student-roleplay pass.
+  student-roleplay pass. If testing both the local Mac route and the hosted
+  warning route, add `practical-1-dual-route-roleplay-runbook.md`,
+  `practical-1-roleplay-feedback-return-template.md`, and
+  `practical-1-dual-route-go-no-go.md`.
 - Keep `practical-1-fallback-pack.md` open as the static recovery path if
   hosted Shiny, local Shiny, or app downloads are unavailable.
 - For the app-led Practical 1 path, keep `practical-1-instructor-beat-sheet.md`

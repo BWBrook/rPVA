@@ -16,6 +16,9 @@ Target students: ecology, conservation, or applied modelling classes.
 - `practical-1-barry-roleplay-script.md`
 - `practical-1-roleplay-notes-template.md`
 - `practical-1-roleplay-go-no-go.md`
+- `practical-1-dual-route-roleplay-runbook.md`
+- `practical-1-roleplay-feedback-return-template.md`
+- `practical-1-dual-route-go-no-go.md`
 - `practical-1-instructor-beat-sheet.md`
 - `practical-1-day-of-class-pack.md`
 - `practical-1-go-no-go-checklist.md`
@@ -85,9 +88,12 @@ wrap-up. The detailed Shiny mission arc lives in
 `practical-1-day-of-class-pack.md` and `practical-1-go-no-go-checklist.md` to
 separate local teaching readiness from hosted URL/TLS/student-release
 readiness. Before asking Barry to roleplay a Practical 1 student, use
+`practical-1-dual-route-roleplay-runbook.md`,
 `practical-1-barry-roleplay-script.md`,
-`practical-1-roleplay-notes-template.md`, and
-`practical-1-roleplay-go-no-go.md`.
+`practical-1-roleplay-notes-template.md`,
+`practical-1-roleplay-feedback-return-template.md`,
+`practical-1-roleplay-go-no-go.md`, and
+`practical-1-dual-route-go-no-go.md`.
 
 Draft 2026 AT1 assessment materials are provided as review documents in this
 folder. The student-facing starting point is `assessment-brief-2026-draft.md`;
