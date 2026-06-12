@@ -22,6 +22,7 @@ engine internals.
   paste-ready Moodle section text, generated-artefact commands, checksums, and
   upload visibility labels in one place.
 - Use `practical-1-barry-roleplay-script.md`,
+  `practical-1-barry-roleplay-session-brief.md`,
   `practical-1-roleplay-notes-template.md`, and
   `practical-1-roleplay-go-no-go.md` before spending Barry's time on the
   student-roleplay pass. If testing both the local Mac route and the hosted

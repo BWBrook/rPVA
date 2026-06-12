@@ -33,14 +33,15 @@ fallback notes.
 
 ## Stage A: Local Mac Route
 
-Start a local app route from the repo root:
+The operator should start a local app route from the repo root before Barry
+enters student mode:
 
 ```r
 source("bootstrap.R")
 run_practical1_shiny(host = "127.0.0.1", port = 3901, launch.browser = FALSE)
 ```
 
-Use this route for the local roleplay:
+Supply this route for the local roleplay:
 
 ```text
 http://127.0.0.1:3901/
@@ -65,7 +66,8 @@ Stop Stage A and report if the app does not open, baseline is not run 1,
 Compare does not show the expected rows, either evidence download fails after
 one retry, or the instructions require instructor/developer knowledge.
 
-After Stage A, stop the local app route and confirm the local port is closed.
+After Stage A, the operator should stop the local app route and confirm the
+local port is closed.
 
 ## Stage B: Hosted Deep-Server Route
 

@@ -14,6 +14,7 @@ Target students: ecology, conservation, or applied modelling classes.
 - `practical-1-moodle-upload-manifest.md`
 - `practical-1-moodle-ready-bundle/`
 - `practical-1-barry-roleplay-script.md`
+- `practical-1-barry-roleplay-session-brief.md`
 - `practical-1-roleplay-notes-template.md`
 - `practical-1-roleplay-go-no-go.md`
 - `practical-1-dual-route-roleplay-runbook.md`
@@ -88,6 +89,7 @@ wrap-up. The detailed Shiny mission arc lives in
 `practical-1-day-of-class-pack.md` and `practical-1-go-no-go-checklist.md` to
 separate local teaching readiness from hosted URL/TLS/student-release
 readiness. Before asking Barry to roleplay a Practical 1 student, use
+`practical-1-barry-roleplay-session-brief.md`,
 `practical-1-dual-route-roleplay-runbook.md`,
 `practical-1-barry-roleplay-script.md`,
 `practical-1-roleplay-notes-template.md`,
