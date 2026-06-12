@@ -21,6 +21,10 @@ engine internals.
 - Use `practical-1-moodle-ready-bundle/` when Barry or a demonstrator needs
   paste-ready Moodle section text, generated-artefact commands, checksums, and
   upload visibility labels in one place.
+- Use `practical-1-barry-roleplay-script.md`,
+  `practical-1-roleplay-notes-template.md`, and
+  `practical-1-roleplay-go-no-go.md` before spending Barry's time on the
+  student-roleplay pass.
 - Keep `practical-1-fallback-pack.md` open as the static recovery path if
   hosted Shiny, local Shiny, or app downloads are unavailable.
 - For the app-led Practical 1 path, keep `practical-1-instructor-beat-sheet.md`

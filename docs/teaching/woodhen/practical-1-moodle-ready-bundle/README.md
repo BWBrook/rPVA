@@ -57,8 +57,10 @@ no-go.
 
 ## Ready For Barry-As-Student Roleplay When
 
+- Barry has `../practical-1-barry-roleplay-script.md`.
+- Barry has `../practical-1-roleplay-notes-template.md`.
 - Barry has the start-here page or Moodle section text.
-- Barry has the mission worksheet or a note-taking equivalent.
+- Barry has the mission worksheet.
 - Barry has an approved local or class app route for the roleplay session.
 - Barry knows to save the comparison CSV and evidence-notes Markdown.
-- The orchestrator has a short note-capture template for Barry's observations.
+- The orchestrator has checked `../practical-1-roleplay-go-no-go.md`.
