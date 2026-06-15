@@ -32,7 +32,9 @@ Accepted Goal 025-027 records establish the following state:
 
 - Host: `deep-server`.
 - Campus/public IP route under discussion: `131.217.90.193`.
-- Reverse-DNS lead for that IP: `SET-BIO-2621GL2.zoo.utas.edu.au`.
+- Forward and reverse DNS currently agree:
+  `SET-BIO-2621GL2.zoo.utas.edu.au` -> `131.217.90.193`, and
+  `131.217.90.193` -> `SET-BIO-2621GL2.zoo.utas.edu.au`.
 - ShinyProxy staging service: active, authenticated, non-student only.
 - App id: `practical1`.
 - App image: `rpva-practical1:goal025-5c9d500`.
@@ -41,6 +43,15 @@ Accepted Goal 025-027 records establish the following state:
 - Barry's campus-side browser reached a ShinyProxy sign-in page at
   `https://131.217.90.193/login`.
 - The raw-IP route still showed crossed-out HTTPS / not-secure browser status.
+
+Follow-up campus/on-domain probe on `2026-06-15` confirmed:
+
+- `https://131.217.90.193/login` returns HTTP `200` with `curl -k`, but
+  trusted TLS verification fails with `self-signed certificate`;
+- `https://SET-BIO-2621GL2.zoo.utas.edu.au/login` returns HTTP `200` with
+  `curl -k`, but trusted TLS verification fails with the same error;
+- nginx is active on `deep-server`, listening on `443`, and proxying to the
+  localhost-bound ShinyProxy listener on `3838`.
 
 No student accounts, class tokens, student identifiers, class workspaces, or
 student release have been created or approved.
@@ -63,6 +74,18 @@ Read-only inspection recorded:
 - no Subject Alternative Name for the tailnet IP route;
 - no approved class hostname or trusted certificate path available on the host.
 
+The `2026-06-15` on-campus certificate probe against
+`131.217.90.193:443` with SNI `SET-BIO-2621GL2.zoo.utas.edu.au` still saw:
+
+```text
+subject=CN = deep-server
+issuer=CN = deep-server
+notBefore=Nov  3 05:03:54 2025 GMT
+notAfter=Nov  1 05:03:54 2035 GMT
+X509v3 Subject Alternative Name:
+    DNS:deep-server
+```
+
 Goal 027 stopped before live changes because the implementation gate failed:
 
 - no approved student/supervisor hostname was explicit;
@@ -73,6 +96,36 @@ Goal 027 stopped before live changes because the implementation gate failed:
 The reverse-DNS name `SET-BIO-2621GL2.zoo.utas.edu.au` is a useful campus-IT
 lead to assess, but rPVA cannot assume it is approved as a teaching URL or that
 the project may obtain a trusted certificate for it.
+
+## UTAS PKI Follow-Up Evidence
+
+A `2026-06-15` check from a University-managed Windows/WSL machine on campus
+found an internal UTAS PKI path that appears relevant, but not self-service for
+the current user/machine:
+
+- reachable enterprise CAs:
+  - `SUBCA01.utas.ad.internal\UTAS ENTERPRISE CA 1`;
+  - `SUBCA02.utas.ad.internal\UTAS ENTERPRISE CA 2`;
+- both CAs respond to `certutil -ping`;
+- both CAs advertise a certificate template named `UTASWebSSL` /
+  `UTAS Web SSL`;
+- template EKU: Server Authentication;
+- template validity: 1 year;
+- renewal period: 6 weeks;
+- subject/SAN: enrollee supplies subject;
+- enrolment flag: `CT_FLAG_PEND_ALL_REQUESTS`, meaning requests are pending
+  rather than immediate self-issuance;
+- visible enrolment principals include `UTAS\ITS-PKI-Web-Servers` and
+  `UTAS\ITS-PKI-Web-Requests`;
+- `certutil -catemplates` reports `Access is denied` for `UTASWebSSL` from the
+  current account/machine.
+
+This suggests the likely internal request is: ask IT whether
+`SET-BIO-2621GL2.zoo.utas.edu.au` may use the `UTASWebSSL` template, and ask IT
+to either issue the certificate/key material or grant/operate the appropriate
+request workflow. It does not answer whether a UTAS-internal CA certificate is
+acceptable for student BYOD browsers; IT still needs to decide whether the
+class route requires public-browser trust instead.
 
 ## Why Raw IP And Tailnet Routes Are Not Enough
 
@@ -98,15 +151,19 @@ rPVA team needs written answers to these questions:
 4. Should the DNS record target `131.217.90.193`, or should IT use another
    gateway, alias, or reverse-proxy path?
 5. Who owns browser-trusted certificate issuance for the approved hostname?
-6. Will IT place certificate and key files on `deep-server`, or provide an
+6. Is `UTASWebSSL` on `UTAS ENTERPRISE CA 1/2` the approved internal
+   certificate path for this service?
+7. If the class route must work on unmanaged student browsers, should IT
+   instead provide or nominate a publicly trusted certificate path?
+8. Will IT place certificate and key files on `deep-server`, or provide an
    approved non-interactive issuance mechanism?
-7. Who owns certificate renewal, expiry monitoring, and replacement?
-8. Should IT own nginx TLS termination, or may the rPVA team make a narrow,
+9. Who owns certificate renewal, expiry monitoring, and replacement?
+10. Should IT own nginx TLS termination, or may the rPVA team make a narrow,
    reversible nginx TLS edit after IT approves the hostname and certificate
    paths?
-9. What access model is approved for the class route: campus-only, VPN-gated,
+11. What access model is approved for the class route: campus-only, VPN-gated,
    public internet with authentication, or another model?
-10. Can the same hostname pattern or platform decision support later teaching
+12. Can the same hostname pattern or platform decision support later teaching
     Shiny services, including the planned KPZ314 SDM practical GUI?
 
 ## Post-Approval Implementation Outline

@@ -124,3 +124,56 @@ Recommended next gate:
 - A later implementation/proof goal should start only after IT provides the
   approved hostname, DNS target, certificate issuance/path, renewal owner,
   nginx/TLS ownership decision, and access-policy decision.
+
+## 2026-06-15 - On-Campus PKI Probe From Windows/WSL
+
+Barry asked whether the TLS blocker could be resolved from an on-campus
+Windows/WSL Codex session before contacting IT.
+
+Live checks from the on-campus machine confirmed:
+
+- private repo access to `BWBrook/rPVA` was available;
+- forward DNS: `SET-BIO-2621GL2.zoo.utas.edu.au` resolves to
+  `131.217.90.193`;
+- reverse DNS: `131.217.90.193` resolves to
+  `SET-BIO-2621GL2.zoo.utas.edu.au`;
+- `https://131.217.90.193/login` returns HTTP `200` with insecure TLS;
+- `https://SET-BIO-2621GL2.zoo.utas.edu.au/login` returns HTTP `200` with
+  insecure TLS;
+- trusted TLS verification fails because the server presents a self-signed
+  certificate;
+- the presented certificate remains `subject=CN = deep-server`, `issuer=CN =
+  deep-server`, SAN `DNS:deep-server`;
+- `deep-server` nginx is active and listening on `443`, proxying to the
+  ShinyProxy listener on localhost `3838`.
+
+`deep-server` inspection found no installed `certbot`, `acme.sh`, `lego`, or
+`/etc/letsencrypt` path. The active nginx site
+`/etc/nginx/sites-enabled/deep-server-app-gateway` uses:
+
+```text
+ssl_certificate /etc/ssl/certs/ssl-cert-snakeoil.pem;
+ssl_certificate_key /etc/ssl/private/ssl-cert-snakeoil.key;
+```
+
+Windows AD CS inspection found:
+
+- `SUBCA01.utas.ad.internal\UTAS ENTERPRISE CA 1`;
+- `SUBCA02.utas.ad.internal\UTAS ENTERPRISE CA 2`;
+- both CAs respond to `certutil -ping`;
+- both advertise `UTASWebSSL` / `UTAS Web SSL`;
+- the template is for Server Authentication, 1-year validity, 6-week renewal,
+  enrollee-supplied subject, and pending requests;
+- enrolment rights are held by IT-controlled principals including
+  `UTAS\ITS-PKI-Web-Servers` and `UTAS\ITS-PKI-Web-Requests`;
+- the current account/machine receives `Access is denied` for enrolling the
+  `UTASWebSSL` template.
+
+Conclusion:
+
+- The likely internal UTAS PKI path has been identified, but this session
+  should not issue or install a certificate.
+- The email/request pack was updated to ask IT specifically whether
+  `UTASWebSSL` is the approved path, whether IT should issue/place the
+  certificate or grant a request workflow, and whether internal-CA trust is
+  enough for student devices or a public-browser-trusted certificate is needed.
