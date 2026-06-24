@@ -1,8 +1,9 @@
 # Practical 1 Shiny Deployment Scaffold
 
 This directory is a non-live deployment scaffold for reviewing how the
-Practical 1 Shiny concept lab could be packaged for ShinyProxy on
-`deep-server`.
+Practical 1 Shiny concept lab could be packaged for ShinyProxy. The older
+`deep-server` work remains development/staging evidence; the current
+student-hosting direction is the ITS-managed RedHat 9/rootless-Docker VM.
 
 Nothing in this directory is active configuration. The files are examples and
 templates only. They must be reviewed, copied into an approved deployment
@@ -19,6 +20,12 @@ implementation goal before any student-facing service is exposed.
 - `application.example.yml`: ShinyProxy application example with inert
   placeholders for class accounts, image names, workspace mapping, and
   resource limits.
+- `application.its-staging.example.yml`: ITS VM staging example using the
+  `kpz308-rpva-practical1` app id, Gitea image-name shape, rootless-Docker
+  path assumptions, and non-student auth decision points.
+- `its-vm-handoff.md`: ITS-facing handoff for the dedicated teaching Shiny VM.
+- `gitea-registry-runbook.md`: Gitea image naming, tag/digest, update, tarball
+  fallback, and rollback guidance for future approved staging work.
 - `nginx-practical1.example.conf`: nginx location/upstream example showing how
   the existing HTTPS gateway could proxy to ShinyProxy.
 - `validate-scaffold.sh`: local static validation helper for the scaffold
@@ -34,6 +41,8 @@ This scaffold does not:
 - edit nginx, systemd, firewall, DNS, TLS, or Docker service configuration;
 - create users, tokens, workspaces, directories, containers, or volumes;
 - write to `deep-server`;
+- create or access ITS VM, Gitea, registry, rootless Docker, or service-user
+  state;
 - expose a public or student-facing service;
 - change app, package, scenario, dependency, or test code.
 
@@ -57,9 +66,12 @@ draft, not an operations script.
    bash deploy/shinyproxy/practical1/validate-scaffold.sh
    ```
 
-7. In a later implementation goal, copy reviewed templates into the approved
-   remote/deployment location and replace placeholders with approved values.
-8. Test a non-student staging URL before any live class URL is issued.
+7. Review `its-vm-handoff.md`, `application.its-staging.example.yml`, and
+   `gitea-registry-runbook.md` before asking ITS to create the VM/Gitea
+   staging surface.
+8. In a later implementation goal, copy reviewed templates into the approved
+   deployment location and replace placeholders with approved values.
+9. Test a non-student staging URL before any live class URL is issued.
 
 ## Image Runtime Model
 
@@ -93,15 +105,15 @@ sensitivity analysis, and manuscript review.
 
 ## Expected Later Deployment Shape
 
-The later implementation goal should decide and record:
+The later ITS implementation goal should decide and record:
 
 - exact image tag or source commit;
 - whether the final build uses `rocker/r-ver:4.6.0` or a locally approved
   mirror/base image;
 - final ShinyProxy internal port;
-- whether nginx keeps proxying to `127.0.0.1:3838` or is updated to the chosen
-  ShinyProxy port;
-- TLS certificate and student-friendly URL ownership;
+- ITS VM service-user name, app data root, and rootless Docker network;
+- Gitea registry URL, access group, and image tag/digest convention;
+- TLS certificate, DNS, and student-friendly URL ownership;
 - generated account/token list process;
 - workspace root and quota enforcement;
 - load-test ladder and monitoring cadence;

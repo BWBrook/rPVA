@@ -1,0 +1,63 @@
+# Non-live ITS ShinyProxy staging example for review only.
+# Do not copy to a VM without replacing angle-bracket values under an approved
+# implementation goal.
+
+proxy:
+  title: "KPZ308 rPVA Practical 1"
+  port: 3838
+  bind-address: "127.0.0.1"
+  hide-navbar: true
+  landing-page: "/app/kpz308-rpva-practical1"
+  heartbeat-rate: 10000
+  heartbeat-timeout: 60000
+
+  # Decision point:
+  # - Use simple auth only for non-student staging if ITS approves it.
+  # - Prefer ITS-managed SSO or proxy authentication for class release.
+  authentication: "simple"
+  admin-groups:
+    - "ecology-teaching-shiny-admin"
+  users:
+    - name: "<NON_STUDENT_STAGING_USER>"
+      password: "<ITS_APPROVED_SECRET_SOURCE_OR_HASH>"
+      groups:
+        - "ecology-teaching-shiny-staging"
+    - name: "<DEMONSTRATOR_STAGING_USER>"
+      password: "<ITS_APPROVED_SECRET_SOURCE_OR_HASH>"
+      groups:
+        - "ecology-teaching-shiny-admin"
+
+  specs:
+    - id: "kpz308-rpva-practical1"
+      display-name: "KPZ308 rPVA Practical 1"
+      description: "Bounded Practical 1 concept lab for KPZ308/rPVA teaching"
+      container-image: "<GITEA_REGISTRY>/ecology-teaching-shiny/kpz308-rpva-practical1:<TAG>"
+      container-network: "<ROOTLESS_DOCKER_NETWORK>"
+      container-memory-limit: "1g"
+      container-cpu-limit: 1.0
+      access-groups:
+        - "ecology-teaching-shiny-staging"
+        - "ecology-teaching-shiny-admin"
+      port: 3838
+      target-path: "/"
+      container-env:
+        SHINY_HOST: "0.0.0.0"
+        SHINY_PORT: "3838"
+        RPVA_STUDENT_ID: "#{proxy.userId}"
+        RPVA_STUDENT_WORKSPACE_ROOT: "/srv/rpva-workspaces/current"
+      container-volumes:
+        # Must resolve to one writable host directory per authenticated user.
+        # Do not replace with a shared class-wide writable directory.
+        - "<ITS_APP_DATA_ROOT>/kpz308-rpva-practical1/workspaces/#{proxy.userId}:/srv/rpva-workspaces/current:rw"
+
+    # Future app identity only, not a runnable spec in this rPVA handoff:
+    # kpz314-sdm-practical
+
+server:
+  servlet:
+    context-path: "/"
+  forward-headers-strategy: "native"
+
+logging:
+  level:
+    eu.openanalytics: "INFO"

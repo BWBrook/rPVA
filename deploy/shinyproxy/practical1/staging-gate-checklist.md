@@ -13,12 +13,18 @@ configure, restart, expose, or edit any live service.
 - Goal 020 proved that image `rpva-practical1:goal020-6ed2445` builds on
   `deep-server` `x86_64` and returns the Practical 1 PVA page from a
   localhost-only smoke.
+- Goal 037 records the newer ITS direction: `deep-server` is no longer the
+  intended student-hosting machine, and the next staging handoff should target
+  the ITS-managed RedHat 9 `x86_64/amd64` VM with rootless Docker, ITS-managed
+  TLS/DNS, and Gitea project/team `ecology-teaching-shiny`.
 
 ## Approval Handoff
 
 Before any future staging goal starts, Barry/SRF must approve:
 
 - source commit or image tag for staging;
+- ITS VM target, service-user boundary, and app data root;
+- Gitea registry path, project/team, access group, and tag/digest convention;
 - DNS/URL and app path;
 - TLS/certificate owner and acceptable trust state;
 - identity model and account/token distribution channel;
@@ -40,6 +46,8 @@ Before any future staging goal starts, Barry/SRF must approve:
 | Workspaces | One host workspace per authenticated student is mapped read/write | One shared writable class directory would be used |
 | Quotas | Per-student target and cleanup policy are approved | Unlimited workspace growth is possible during class |
 | Image | Exact image tag/source commit is approved | Image provenance or rebuild path is ambiguous |
+| Registry | Gitea registry path and pull permissions are approved | Image access depends on ad hoc credentials |
+| Rootless Docker | Service-user paths, network, mounts, and restart path are approved | Config assumes root-owned paths or privileged networking |
 | ShinyProxy config | Application config has reviewed concrete values outside the repo | Real credentials or student identifiers would be committed |
 | nginx route | Upstream and app path match ShinyProxy and are reversible | Gateway route is edited without rollback notes |
 | Local test | `deep-server` localhost app-path smoke passes | Local path fails or container/service state is unclear |
@@ -72,6 +80,7 @@ Capture in the future approved staging goal:
 - Do not edit nginx, systemd, firewall, DNS, TLS, Docker daemon/service,
   accounts, credentials, class workspaces, or external-access settings.
 - Do not build an image.
+- Do not push to Gitea or any registry.
 - Do not launch a container.
 - Do not expose a public, campus, tailnet, or student-facing service.
 - Do not create or store real passwords, tokens, student identifiers, private

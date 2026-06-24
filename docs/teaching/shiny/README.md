@@ -74,6 +74,10 @@ teaching, requirements, and deployment planning layer for future road-test work.
   the dual-route roleplay preflight that separates the controlled local Mac
   test, the instructor-only hosted warning-route test, and the still-blocked
   student release route.
+- `../../goals/037-its-shinyproxy-vm-handoff-pack/Goal.md` records the ITS
+  ShinyProxy VM handoff pack, shifting the student-hosting direction from
+  `deep-server` to an ITS-managed RedHat 9/rootless-Docker VM with Gitea image
+  naming and ITS-managed TLS/DNS.
 
 ## Design Position
 
@@ -82,13 +86,13 @@ road test, backed by the current `rPVA` engine and a small teaching-facing API
 layer. A local instructor/demo path should remain available for resilience and
 for students who want to continue work in R after class.
 
-The platform feasibility recommendation is to keep `deep-server` as the
-preferred candidate host. After follow-up infrastructure work, an nginx HTTPS
-gateway on `443` now responds to health checks from both the Tailscale route and
-Barry's WSL/campus route. The preferred self-managed platform candidate is
-ShinyProxy backed by Docker, with generated class accounts or tokens for the
-first road test. The free Posit tier is too small for this class platform, and
-UTAS-supported Posit Connect is not expected to be available.
+The platform direction has moved from `deep-server` student hosting to an
+ITS-managed teaching Shiny VM. `deep-server` remains useful as development and
+non-student staging evidence, but ITS has indicated that student hosting should
+use a dedicated RedHat 9 `x86_64/amd64` ShinyProxy VM with rootless Docker,
+ITS-managed TLS/DNS, and Gitea-backed image delivery. The free Posit tier is
+too small for this class platform, and UTAS-supported Posit Connect is not
+expected to be available.
 
 The app should teach interpretation, not file mechanics. Students should be able
 to change one concept at a time, see immediate visual and numerical outputs,
@@ -129,7 +133,10 @@ available on `deep-server`; the reverse-DNS name
 `SET-BIO-2621GL2.zoo.utas.edu.au` is a campus-IT lead to assess, not an
 approved teaching URL. Goal 028 packages that blocker into a sendable campus
 IT request and technical appendix, with rPVA Practical 1 as the immediate
-tested service and KPZ314 as future shared teaching-Shiny context only.
+tested service and KPZ314 as future shared teaching-Shiny context only. Goal
+037 turns the newer ITS VM/Gitea/rootless-Docker facts into a sanitized
+handoff pack for ITS review before any implementation, registry, VM, or student
+release work.
 
 ## Current MVP Boundary
 
