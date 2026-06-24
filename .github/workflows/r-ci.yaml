@@ -17,6 +17,18 @@ jobs:
         with:
           use-public-rspm: true
 
+      - name: Prime renv restore dependency
+        run: |
+          Rscript --vanilla - <<'RS'
+          source("renv/activate.R")
+          install.packages(
+            "https://cran.r-project.org/src/contrib/Archive/listenv/listenv_0.10.1.tar.gz",
+            repos = NULL,
+            type = "source",
+            lib = .libPaths()[1]
+          )
+          RS
+
       - name: Bootstrap
         run: Rscript -e 'source("bootstrap.R")'
 
