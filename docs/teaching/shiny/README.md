@@ -78,6 +78,10 @@ teaching, requirements, and deployment planning layer for future road-test work.
   ShinyProxy VM handoff pack, shifting the student-hosting direction from
   `deep-server` to an ITS-managed RedHat 9/rootless-Docker VM with Gitea image
   naming and ITS-managed TLS/DNS.
+- `../../goals/039-gitea-handoff-identity-refresh/Goal.md` records the
+  confirmed ITS Gitea source repository
+  `https://git.its.utas.edu.au/UTAS/kpz308-rpva-practical.git` and canonical
+  app/repo id `kpz308-rpva-practical`.
 
 ## Design Position
 
@@ -90,9 +94,11 @@ The platform direction has moved from `deep-server` student hosting to an
 ITS-managed teaching Shiny VM. `deep-server` remains useful as development and
 non-student staging evidence, but ITS has indicated that student hosting should
 use a dedicated RedHat 9 `x86_64/amd64` ShinyProxy VM with rootless Docker,
-ITS-managed TLS/DNS, and Gitea-backed image delivery. The free Posit tier is
-too small for this class platform, and UTAS-supported Posit Connect is not
-expected to be available.
+ITS-managed TLS/DNS, and Gitea-backed image delivery. The current private ITS
+Gitea repository is `UTAS/kpz308-rpva-practical`; the no-`1` app/repo id is
+intentional because it is the KPZ308 rPVA practical app identity for both rPVA
+teaching weeks. The free Posit tier is too small for this class platform, and
+UTAS-supported Posit Connect is not expected to be available.
 
 The app should teach interpretation, not file mechanics. Students should be able
 to change one concept at a time, see immediate visual and numerical outputs,
@@ -136,7 +142,9 @@ IT request and technical appendix, with rPVA Practical 1 as the immediate
 tested service and KPZ314 as future shared teaching-Shiny context only. Goal
 037 turns the newer ITS VM/Gitea/rootless-Docker facts into a sanitized
 handoff pack for ITS review before any implementation, registry, VM, or student
-release work.
+release work. Goal 039 refreshes that handoff pack with the confirmed
+`kpz308-rpva-practical` Gitea/app identity and source clone URL, without
+testing Gitea access from the Mac mini or touching deployment state.
 
 ## Current MVP Boundary
 

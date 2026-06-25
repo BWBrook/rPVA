@@ -16,7 +16,12 @@ configure, restart, expose, or edit any live service.
 - Goal 037 records the newer ITS direction: `deep-server` is no longer the
   intended student-hosting machine, and the next staging handoff should target
   the ITS-managed RedHat 9 `x86_64/amd64` VM with rootless Docker, ITS-managed
-  TLS/DNS, and Gitea project/team `ecology-teaching-shiny`.
+  TLS/DNS, and a possible teaching-Shiny coordination/access-group label
+  `ecology-teaching-shiny`.
+- Goal 039 refreshes the current handoff identity to Barry's confirmed private
+  ITS Gitea repo `UTAS/kpz308-rpva-practical` and canonical ShinyProxy app id
+  `kpz308-rpva-practical`. The no-`1` app id is intentional because the app
+  identity should cover both KPZ308 rPVA practical weeks.
 
 ## Approval Handoff
 
@@ -24,7 +29,8 @@ Before any future staging goal starts, Barry/SRF must approve:
 
 - source commit or image tag for staging;
 - ITS VM target, service-user boundary, and app data root;
-- Gitea registry path, project/team, access group, and tag/digest convention;
+- Gitea registry path, source repo `UTAS/kpz308-rpva-practical`, access group,
+  and tag/digest convention;
 - DNS/URL and app path;
 - TLS/certificate owner and acceptable trust state;
 - identity model and account/token distribution channel;

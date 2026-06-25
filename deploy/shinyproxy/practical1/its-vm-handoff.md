@@ -23,23 +23,45 @@ Current ITS facts to use for the next staging step:
 - Barry/rPVA owns application-stack maintenance and class-day application
   support, with ITS help during setup.
 - ITS can create Gitea access groups and a team/project space.
+- ITS has provided Gitea at `https://git.its.utas.edu.au/`.
+- Barry has created the uninitialized private repository
+  `UTAS/kpz308-rpva-practical`.
 
 The older `deep-server` work remains useful as development/staging evidence,
 but it is no longer the intended student-hosting target.
 
 ## Project And App Names
 
-Recommended Gitea team/project name:
+Possible teaching-Shiny coordination or access-group label:
 
 ```text
 ecology-teaching-shiny
 ```
 
-First app:
+This is not the confirmed Gitea repository owner/path. The confirmed current
+repository owner/path is `UTAS/kpz308-rpva-practical` unless ITS later moves it.
+
+Current Gitea source repository:
 
 ```text
-kpz308-rpva-practical1
+https://git.its.utas.edu.au/UTAS/kpz308-rpva-practical.git
 ```
+
+Repository owner/path:
+
+```text
+UTAS/kpz308-rpva-practical
+```
+
+Canonical app and repository id:
+
+```text
+kpz308-rpva-practical
+```
+
+The no-`1` id is intentional: this ShinyProxy app is the KPZ308 rPVA practical
+container identity for both rPVA teaching weeks, even though the first packaged
+teaching surface is the Practical 1 concept lab.
 
 Future app identity only:
 
@@ -55,22 +77,26 @@ does not inspect or implement KPZ314 materials.
 Use this image-name shape once ITS creates the registry location:
 
 ```text
-<GITEA_REGISTRY>/ecology-teaching-shiny/kpz308-rpva-practical1:<TAG>
+<ITS_GITEA_REGISTRY>/<CONFIRMED_ORG_OR_REGISTRY_NAMESPACE>/kpz308-rpva-practical:<TAG>
 ```
 
 Suggested tag patterns:
 
 ```text
-kpz308-prac1-<short-sha>-staging
-kpz308-prac1-<YYYYMMDD>-candidate
+kpz308-rpva-<short-sha>-staging
+kpz308-rpva-<YYYYMMDD>-candidate
 ```
 
 Prefer immutable tags or image digests over `latest`. For ShinyProxy review and
 rollback, a digest is better than a mutable tag:
 
 ```text
-<GITEA_REGISTRY>/ecology-teaching-shiny/kpz308-rpva-practical1@sha256:<DIGEST>
+<ITS_GITEA_REGISTRY>/<CONFIRMED_ORG_OR_REGISTRY_NAMESPACE>/kpz308-rpva-practical@sha256:<DIGEST>
 ```
+
+Confirm the registry host/path and namespace with ITS. Do not assume the HTTPS
+clone URL or `UTAS` source owner/path is also the container registry endpoint or
+namespace unless ITS says so.
 
 ## Source And Build Inputs
 
@@ -89,8 +115,9 @@ package before launching:
 rPVA::run_practical1_shiny(...)
 ```
 
-That preserves the accepted app behavior. Goal 037 does not change app code,
-Shiny UI/CSS/server code, science/YAML/model defaults, dependencies, or tests.
+That preserves the accepted app behavior. This handoff does not change app
+code, Shiny UI/CSS/server code, science/YAML/model defaults, dependencies, or
+tests.
 
 ## Authentication Boundary
 
@@ -124,7 +151,7 @@ Implications for the ITS example config:
 The ITS staging YAML example uses an angle-bracket path such as:
 
 ```text
-<ITS_APP_DATA_ROOT>/kpz308-rpva-practical1/workspaces/#{proxy.userId}
+<ITS_APP_DATA_ROOT>/kpz308-rpva-practical/workspaces/#{proxy.userId}
 ```
 
 Do not replace that with a shared writable class directory.
@@ -155,7 +182,7 @@ registry setup lags. Prefer registry pull by digest once Gitea is available.
 | VM provisioning | ITS | RedHat 9, `x86_64/amd64`, rootless Docker platform. |
 | DNS and TLS | ITS | ITS manages registration, certificate issuance, renewal, and trust. |
 | OS patching, host backup, host monitoring | ITS | Underlying server care stays with ITS. |
-| Gitea team/project/access groups | ITS | Recommended project/team: `ecology-teaching-shiny`. |
+| Gitea repository/access groups | ITS | Current private repo: `UTAS/kpz308-rpva-practical`; `ecology-teaching-shiny` is only a possible coordination/access-group label unless ITS creates such a namespace. |
 | App image content | Barry/rPVA | Reviewed rPVA source, Dockerfile template, package install, app behavior. |
 | ShinyProxy app config content | Barry/rPVA with ITS review | App id, image tag/digest, workspace mapping, resource assumptions. |
 | First staging proof | Shared | ITS platform setup plus rPVA app-path smoke and evidence export check. |
@@ -164,7 +191,7 @@ registry setup lags. Prefer registry pull by digest once Gitea is available.
 
 ## Open ITS Questions
 
-1. What Gitea registry URL should replace `<GITEA_REGISTRY>`?
+1. What Gitea registry URL and package path should replace `<ITS_GITEA_REGISTRY>/<CONFIRMED_ORG_OR_REGISTRY_NAMESPACE>/kpz308-rpva-practical`?
 2. What service user and app data root should replace `<ITS_APP_DATA_ROOT>`?
 3. Should non-student staging use ShinyProxy simple auth, ITS SSO, or another
    ITS-managed access layer?

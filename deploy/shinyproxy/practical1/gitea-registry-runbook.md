@@ -1,22 +1,47 @@
-# Gitea Registry Runbook For Practical 1 Staging
+# Gitea Registry Runbook For KPZ308 rPVA Staging
 
-This runbook describes the intended image handoff once ITS creates the Gitea
-team/project space and registry access. It is not a registry login, build, push,
-VM login, or deployment instruction.
+This runbook describes the intended image handoff once ITS confirms Gitea
+registry access for the current private repo. It is not a registry login,
+build, push, VM login, or deployment instruction.
 
 ## Names
 
-Gitea team/project:
+Possible teaching-Shiny coordination or access-group label:
 
 ```text
 ecology-teaching-shiny
 ```
 
-First app:
+This is not the confirmed Gitea repository owner/path. The confirmed current
+repository owner/path is `UTAS/kpz308-rpva-practical` unless ITS later moves it.
+
+Current Gitea instance:
 
 ```text
-kpz308-rpva-practical1
+https://git.its.utas.edu.au/
 ```
+
+Current private source repository:
+
+```text
+https://git.its.utas.edu.au/UTAS/kpz308-rpva-practical.git
+```
+
+Repository owner/path:
+
+```text
+UTAS/kpz308-rpva-practical
+```
+
+Canonical app and repository id:
+
+```text
+kpz308-rpva-practical
+```
+
+The no-`1` id is deliberate because the ShinyProxy app identity should cover
+both KPZ308 rPVA practical weeks, even while this scaffold currently packages
+the Practical 1 app surface.
 
 Future app identity only:
 
@@ -27,14 +52,19 @@ kpz314-sdm-practical
 Image name shape:
 
 ```text
-<GITEA_REGISTRY>/ecology-teaching-shiny/kpz308-rpva-practical1:<TAG>
+<ITS_GITEA_REGISTRY>/<CONFIRMED_ORG_OR_REGISTRY_NAMESPACE>/kpz308-rpva-practical:<TAG>
 ```
+
+ITS still needs to confirm the container registry host/path and namespace. Do
+not assume the HTTPS clone URL or `UTAS` source owner/path is also the registry
+endpoint or namespace unless ITS says so. Do not substitute credentials, tokens,
+or live registry values in this repo.
 
 Recommended tags:
 
 ```text
-kpz308-prac1-<short-sha>-staging
-kpz308-prac1-<YYYYMMDD>-candidate
+kpz308-rpva-<short-sha>-staging
+kpz308-rpva-<YYYYMMDD>-candidate
 ```
 
 Avoid `latest` for ShinyProxy app config. Use an immutable tag or digest.
@@ -49,7 +79,7 @@ docker build \
   --platform linux/amd64 \
   -f deploy/shinyproxy/practical1/Dockerfile.template \
   --build-arg RPVA_REF=<REVIEWED_COMMIT_OR_TAG> \
-  -t <GITEA_REGISTRY>/ecology-teaching-shiny/kpz308-rpva-practical1:<TAG> \
+  -t <ITS_GITEA_REGISTRY>/<CONFIRMED_ORG_OR_REGISTRY_NAMESPACE>/kpz308-rpva-practical:<TAG> \
   .
 ```
 
@@ -59,18 +89,18 @@ paths to the image.
 
 ## Push After ITS Creates Registry Access
 
-Once ITS creates the Gitea project, registry, and access group, an approved
+Once ITS confirms the Gitea registry path and access group, an approved
 publisher can push:
 
 ```sh
-docker push <GITEA_REGISTRY>/ecology-teaching-shiny/kpz308-rpva-practical1:<TAG>
+docker push <ITS_GITEA_REGISTRY>/<CONFIRMED_ORG_OR_REGISTRY_NAMESPACE>/kpz308-rpva-practical:<TAG>
 ```
 
 Then record the digest:
 
 ```sh
 docker image inspect \
-  <GITEA_REGISTRY>/ecology-teaching-shiny/kpz308-rpva-practical1:<TAG> \
+  <ITS_GITEA_REGISTRY>/<CONFIRMED_ORG_OR_REGISTRY_NAMESPACE>/kpz308-rpva-practical:<TAG> \
   --format '{{json .RepoDigests}}'
 ```
 
@@ -94,7 +124,7 @@ High-level update sequence:
 Example shape, to be adapted by ITS:
 
 ```sh
-docker pull <GITEA_REGISTRY>/ecology-teaching-shiny/kpz308-rpva-practical1@sha256:<DIGEST>
+docker pull <ITS_GITEA_REGISTRY>/<CONFIRMED_ORG_OR_REGISTRY_NAMESPACE>/kpz308-rpva-practical@sha256:<DIGEST>
 ```
 
 The restart command is an ITS decision because the VM uses rootless Docker and
@@ -107,9 +137,9 @@ use an image tarball as a temporary fallback:
 
 ```sh
 docker save \
-  <GITEA_REGISTRY>/ecology-teaching-shiny/kpz308-rpva-practical1:<TAG> \
-  -o /tmp/kpz308-rpva-practical1-<TAG>.tar
-shasum -a 256 /tmp/kpz308-rpva-practical1-<TAG>.tar
+  <ITS_GITEA_REGISTRY>/<CONFIRMED_ORG_OR_REGISTRY_NAMESPACE>/kpz308-rpva-practical:<TAG> \
+  -o /tmp/kpz308-rpva-practical-<TAG>.tar
+shasum -a 256 /tmp/kpz308-rpva-practical-<TAG>.tar
 ```
 
 The tarball should be transferred only through an ITS-approved channel. Do not
@@ -120,7 +150,7 @@ commit image layers or tarballs to this repo.
 After pull/update/restart, prove at minimum:
 
 - login or ITS auth reaches ShinyProxy;
-- `kpz308-rpva-practical1` opens;
+- `kpz308-rpva-practical` opens;
 - `Start baseline` works;
 - one Concept Lab stage runs;
 - Compare displays baseline plus the changed run;

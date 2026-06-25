@@ -3,11 +3,11 @@
 # implementation goal.
 
 proxy:
-  title: "KPZ308 rPVA Practical 1"
+  title: "KPZ308 rPVA Practical"
   port: 3838
   bind-address: "127.0.0.1"
   hide-navbar: true
-  landing-page: "/app/kpz308-rpva-practical1"
+  landing-page: "/app/kpz308-rpva-practical"
   heartbeat-rate: 10000
   heartbeat-timeout: 60000
 
@@ -15,6 +15,8 @@ proxy:
   # - Use simple auth only for non-student staging if ITS approves it.
   # - Prefer ITS-managed SSO or proxy authentication for class release.
   authentication: "simple"
+  # Proposed group labels only; the confirmed source repository owner/path is
+  # UTAS/kpz308-rpva-practical.
   admin-groups:
     - "ecology-teaching-shiny-admin"
   users:
@@ -28,10 +30,10 @@ proxy:
         - "ecology-teaching-shiny-admin"
 
   specs:
-    - id: "kpz308-rpva-practical1"
-      display-name: "KPZ308 rPVA Practical 1"
-      description: "Bounded Practical 1 concept lab for KPZ308/rPVA teaching"
-      container-image: "<GITEA_REGISTRY>/ecology-teaching-shiny/kpz308-rpva-practical1:<TAG>"
+    - id: "kpz308-rpva-practical"
+      display-name: "KPZ308 rPVA Practical"
+      description: "KPZ308 rPVA teaching app identity; current surface packages the Practical 1 concept lab"
+      container-image: "<ITS_GITEA_REGISTRY>/<CONFIRMED_ORG_OR_REGISTRY_NAMESPACE>/kpz308-rpva-practical:<TAG>"
       container-network: "<ROOTLESS_DOCKER_NETWORK>"
       container-memory-limit: "1g"
       container-cpu-limit: 1.0
@@ -48,7 +50,7 @@ proxy:
       container-volumes:
         # Must resolve to one writable host directory per authenticated user.
         # Do not replace with a shared class-wide writable directory.
-        - "<ITS_APP_DATA_ROOT>/kpz308-rpva-practical1/workspaces/#{proxy.userId}:/srv/rpva-workspaces/current:rw"
+        - "<ITS_APP_DATA_ROOT>/kpz308-rpva-practical/workspaces/#{proxy.userId}:/srv/rpva-workspaces/current:rw"
 
     # Future app identity only, not a runnable spec in this rPVA handoff:
     # kpz314-sdm-practical

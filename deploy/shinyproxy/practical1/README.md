@@ -21,8 +21,8 @@ implementation goal before any student-facing service is exposed.
   placeholders for class accounts, image names, workspace mapping, and
   resource limits.
 - `application.its-staging.example.yml`: ITS VM staging example using the
-  `kpz308-rpva-practical1` app id, Gitea image-name shape, rootless-Docker
-  path assumptions, and non-student auth decision points.
+  confirmed `kpz308-rpva-practical` app/repo id, Gitea image-name shape,
+  rootless-Docker path assumptions, and non-student auth decision points.
 - `its-vm-handoff.md`: ITS-facing handoff for the dedicated teaching Shiny VM.
 - `gitea-registry-runbook.md`: Gitea image naming, tag/digest, update, tarball
   fallback, and rollback guidance for future approved staging work.
@@ -67,7 +67,9 @@ draft, not an operations script.
    ```
 
 7. Review `its-vm-handoff.md`, `application.its-staging.example.yml`, and
-   `gitea-registry-runbook.md` before asking ITS to create the VM/Gitea
+   `gitea-registry-runbook.md` before asking ITS to use the confirmed private
+   Gitea repository
+   `https://git.its.utas.edu.au/UTAS/kpz308-rpva-practical.git` for the
    staging surface.
 8. In a later implementation goal, copy reviewed templates into the approved
    deployment location and replace placeholders with approved values.
@@ -112,7 +114,8 @@ The later ITS implementation goal should decide and record:
   mirror/base image;
 - final ShinyProxy internal port;
 - ITS VM service-user name, app data root, and rootless Docker network;
-- Gitea registry URL, access group, and image tag/digest convention;
+- Gitea registry URL, access group, and image tag/digest convention for
+  `UTAS/kpz308-rpva-practical`;
 - TLS certificate, DNS, and student-friendly URL ownership;
 - generated account/token list process;
 - workspace root and quota enforcement;
