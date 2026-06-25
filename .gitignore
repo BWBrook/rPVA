@@ -46,6 +46,8 @@ docs/*
 !docs/codex/**
 !docs/goals/
 !docs/goals/**
+!docs/ops/
+!docs/ops/**
 !docs/teaching/
 !docs/teaching/**
 
