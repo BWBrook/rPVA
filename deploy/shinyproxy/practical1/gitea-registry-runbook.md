@@ -1,8 +1,8 @@
 # Gitea Registry Runbook For KPZ308 rPVA Staging
 
-This runbook describes the intended image handoff once ITS confirms Gitea
-registry access for the current private repo. It is not a registry login,
-build, push, VM login, or deployment instruction.
+This runbook describes the intended image handoff now that Mark has confirmed
+the Gitea registry image path shape. It is not a Mac mini registry login,
+source clone, source push, VM login, or deployment instruction.
 
 ## Names
 
@@ -52,13 +52,11 @@ kpz314-sdm-practical
 Image name shape:
 
 ```text
-<ITS_GITEA_REGISTRY>/<CONFIRMED_ORG_OR_REGISTRY_NAMESPACE>/kpz308-rpva-practical:<TAG>
+git.its.utas.edu.au/UTAS/kpz308-rpva-practical:<TAG>
 ```
 
-ITS still needs to confirm the container registry host/path and namespace. Do
-not assume the HTTPS clone URL or `UTAS` source owner/path is also the registry
-endpoint or namespace unless ITS says so. Do not substitute credentials, tokens,
-or live registry values in this repo.
+Mark has confirmed this path shape for image publication. Do not substitute
+credentials, tokens, or live registry values in this repo.
 
 Recommended tags:
 
@@ -79,7 +77,7 @@ docker build \
   --platform linux/amd64 \
   -f deploy/shinyproxy/practical1/Dockerfile.template \
   --build-arg RPVA_REF=<REVIEWED_COMMIT_OR_TAG> \
-  -t <ITS_GITEA_REGISTRY>/<CONFIRMED_ORG_OR_REGISTRY_NAMESPACE>/kpz308-rpva-practical:<TAG> \
+  -t git.its.utas.edu.au/UTAS/kpz308-rpva-practical:<TAG> \
   .
 ```
 
@@ -87,20 +85,23 @@ The Dockerfile template installs the package and launches the installed app
 entrypoint. Do not add secrets, student identifiers, registry tokens, or VM
 paths to the image.
 
-## Push After ITS Creates Registry Access
+## Push From WSL On GlobalProtect
 
-Once ITS confirms the Gitea registry path and access group, an approved
-publisher can push:
+Barry's WSL lane on GlobalProtect is the intended human-assisted publisher
+because it can reach ITS Gitea. The Mac mini remains the source-of-truth and
+orchestration machine.
+
+After logging in safely from WSL, an approved publisher can push:
 
 ```sh
-docker push <ITS_GITEA_REGISTRY>/<CONFIRMED_ORG_OR_REGISTRY_NAMESPACE>/kpz308-rpva-practical:<TAG>
+docker push git.its.utas.edu.au/UTAS/kpz308-rpva-practical:<TAG>
 ```
 
 Then record the digest:
 
 ```sh
 docker image inspect \
-  <ITS_GITEA_REGISTRY>/<CONFIRMED_ORG_OR_REGISTRY_NAMESPACE>/kpz308-rpva-practical:<TAG> \
+  git.its.utas.edu.au/UTAS/kpz308-rpva-practical:<TAG> \
   --format '{{json .RepoDigests}}'
 ```
 
@@ -124,7 +125,7 @@ High-level update sequence:
 Example shape, to be adapted by ITS:
 
 ```sh
-docker pull <ITS_GITEA_REGISTRY>/<CONFIRMED_ORG_OR_REGISTRY_NAMESPACE>/kpz308-rpva-practical@sha256:<DIGEST>
+docker pull git.its.utas.edu.au/UTAS/kpz308-rpva-practical@sha256:<DIGEST>
 ```
 
 The restart command is an ITS decision because the VM uses rootless Docker and
@@ -137,7 +138,7 @@ use an image tarball as a temporary fallback:
 
 ```sh
 docker save \
-  <ITS_GITEA_REGISTRY>/<CONFIRMED_ORG_OR_REGISTRY_NAMESPACE>/kpz308-rpva-practical:<TAG> \
+  git.its.utas.edu.au/UTAS/kpz308-rpva-practical:<TAG> \
   -o /tmp/kpz308-rpva-practical-<TAG>.tar
 shasum -a 256 /tmp/kpz308-rpva-practical-<TAG>.tar
 ```

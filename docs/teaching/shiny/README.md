@@ -82,6 +82,11 @@ teaching, requirements, and deployment planning layer for future road-test work.
   confirmed ITS Gitea source repository
   `https://git.its.utas.edu.au/UTAS/kpz308-rpva-practical.git` and canonical
   app/repo id `kpz308-rpva-practical`.
+- `../../goals/040-its-dev-image-publication-preflight/Goal.md` records the
+  ITS dev image publication preflight: confirmed registry image path
+  `git.its.utas.edu.au/UTAS/kpz308-rpva-practical:<TAG>`, Docker network
+  `shinyproxy-net`, WSL/GlobalProtect push lane, and sendable ITS handoff
+  bundle.
 
 ## Design Position
 
@@ -144,7 +149,10 @@ tested service and KPZ314 as future shared teaching-Shiny context only. Goal
 handoff pack for ITS review before any implementation, registry, VM, or student
 release work. Goal 039 refreshes that handoff pack with the confirmed
 `kpz308-rpva-practical` Gitea/app identity and source clone URL, without
-testing Gitea access from the Mac mini or touching deployment state.
+testing Gitea access from the Mac mini or touching deployment state. Goal 040
+keeps the Mac mini as source-of-truth/orchestration while preparing a
+human-assisted WSL publishing lane for the confirmed ITS registry target and
+dev-server restart handoff.
 
 ## Current MVP Boundary
 

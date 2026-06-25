@@ -33,8 +33,8 @@ proxy:
     - id: "kpz308-rpva-practical"
       display-name: "KPZ308 rPVA Practical"
       description: "KPZ308 rPVA teaching app identity; current surface packages the Practical 1 concept lab"
-      container-image: "<ITS_GITEA_REGISTRY>/<CONFIRMED_ORG_OR_REGISTRY_NAMESPACE>/kpz308-rpva-practical:<TAG>"
-      container-network: "<ROOTLESS_DOCKER_NETWORK>"
+      container-image: "git.its.utas.edu.au/UTAS/kpz308-rpva-practical:<TAG>"
+      container-network: "shinyproxy-net"
       container-memory-limit: "1g"
       container-cpu-limit: 1.0
       access-groups:
@@ -50,7 +50,7 @@ proxy:
       container-volumes:
         # Must resolve to one writable host directory per authenticated user.
         # Do not replace with a shared class-wide writable directory.
-        - "<ITS_APP_DATA_ROOT>/kpz308-rpva-practical/workspaces/#{proxy.userId}:/srv/rpva-workspaces/current:rw"
+        - "<SERVICE_USER_HOME>/kpz308-rpva-practical/workspaces/#{proxy.userId}:/srv/rpva-workspaces/current:rw"
 
     # Future app identity only, not a runnable spec in this rPVA handoff:
     # kpz314-sdm-practical

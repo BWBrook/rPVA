@@ -26,6 +26,8 @@ implementation goal before any student-facing service is exposed.
 - `its-vm-handoff.md`: ITS-facing handoff for the dedicated teaching Shiny VM.
 - `gitea-registry-runbook.md`: Gitea image naming, tag/digest, update, tarball
   fallback, and rollback guidance for future approved staging work.
+- `wsl-image-push-runbook.md`: WSL/GlobalProtect image build and push handoff
+  for the confirmed ITS Gitea registry target.
 - `nginx-practical1.example.conf`: nginx location/upstream example showing how
   the existing HTTPS gateway could proxy to ShinyProxy.
 - `validate-scaffold.sh`: local static validation helper for the scaffold
@@ -66,11 +68,10 @@ draft, not an operations script.
    bash deploy/shinyproxy/practical1/validate-scaffold.sh
    ```
 
-7. Review `its-vm-handoff.md`, `application.its-staging.example.yml`, and
-   `gitea-registry-runbook.md` before asking ITS to use the confirmed private
-   Gitea repository
-   `https://git.its.utas.edu.au/UTAS/kpz308-rpva-practical.git` for the
-   staging surface.
+7. Review `its-vm-handoff.md`, `application.its-staging.example.yml`,
+   `gitea-registry-runbook.md`, and `wsl-image-push-runbook.md` before the
+   WSL/GlobalProtect publishing lane builds and pushes to
+   `git.its.utas.edu.au/UTAS/kpz308-rpva-practical:<TAG>`.
 8. In a later implementation goal, copy reviewed templates into the approved
    deployment location and replace placeholders with approved values.
 9. Test a non-student staging URL before any live class URL is issued.
@@ -114,8 +115,9 @@ The later ITS implementation goal should decide and record:
   mirror/base image;
 - final ShinyProxy internal port;
 - ITS VM service-user name, app data root, and rootless Docker network;
-- Gitea registry URL, access group, and image tag/digest convention for
-  `UTAS/kpz308-rpva-practical`;
+- Gitea registry access group and image tag/digest convention for
+  `git.its.utas.edu.au/UTAS/kpz308-rpva-practical:<TAG>`;
+- exact service-user home path to replace `<SERVICE_USER_HOME>`;
 - TLS certificate, DNS, and student-friendly URL ownership;
 - generated account/token list process;
 - workspace root and quota enforcement;
@@ -138,3 +140,7 @@ docker build \
 
 That build may pull a sizeable R base image and restore R packages, so it is
 intentionally not part of the default scaffold validation.
+
+For Goal 040, WSL on GlobalProtect is the intended publication lane because it
+can reach ITS Gitea. The Mac mini remains the source-of-truth and orchestration
+machine; it must not push images to ITS Gitea.

@@ -26,6 +26,20 @@ Current ITS facts to use for the next staging step:
 - ITS has provided Gitea at `https://git.its.utas.edu.au/`.
 - Barry has created the uninitialized private repository
   `UTAS/kpz308-rpva-practical`.
+- Mark has confirmed the Gitea registry image path shape:
+  `git.its.utas.edu.au/UTAS/kpz308-rpva-practical:<TAG>`.
+- Mark says the pushed image can then be linked to the Gitea repository, and
+  Gitea permissions handle source and registry access natively.
+- Mark is building a dev server for staging/testing with SSO initially limited
+  to Barry/ITS/rPVA operators.
+- ITS Docker network: `shinyproxy-net`.
+- Persistent app data will live in the OS user's home directory on the ITS dev
+  server.
+- Barry will be able to run `docker compose down` and
+  `docker compose up -d` in the deployment directory to pull new images and
+  restart the proxy.
+- Mark will merge `application.its-staging.example.yml` with the testing
+  config.
 
 The older `deep-server` work remains useful as development/staging evidence,
 but it is no longer the intended student-hosting target.
@@ -74,10 +88,10 @@ does not inspect or implement KPZ314 materials.
 
 ## Image Naming
 
-Use this image-name shape once ITS creates the registry location:
+Use this confirmed registry image path shape:
 
 ```text
-<ITS_GITEA_REGISTRY>/<CONFIRMED_ORG_OR_REGISTRY_NAMESPACE>/kpz308-rpva-practical:<TAG>
+git.its.utas.edu.au/UTAS/kpz308-rpva-practical:<TAG>
 ```
 
 Suggested tag patterns:
@@ -91,12 +105,13 @@ Prefer immutable tags or image digests over `latest`. For ShinyProxy review and
 rollback, a digest is better than a mutable tag:
 
 ```text
-<ITS_GITEA_REGISTRY>/<CONFIRMED_ORG_OR_REGISTRY_NAMESPACE>/kpz308-rpva-practical@sha256:<DIGEST>
+git.its.utas.edu.au/UTAS/kpz308-rpva-practical@sha256:<DIGEST>
 ```
 
-Confirm the registry host/path and namespace with ITS. Do not assume the HTTPS
-clone URL or `UTAS` source owner/path is also the container registry endpoint or
-namespace unless ITS says so.
+The source clone URL remains
+`https://git.its.utas.edu.au/UTAS/kpz308-rpva-practical.git`. Do not log in to
+Gitea, clone from Gitea, or push source/images from the Mac mini in this
+preflight.
 
 ## Source And Build Inputs
 
@@ -151,7 +166,7 @@ Implications for the ITS example config:
 The ITS staging YAML example uses an angle-bracket path such as:
 
 ```text
-<ITS_APP_DATA_ROOT>/kpz308-rpva-practical/workspaces/#{proxy.userId}
+<SERVICE_USER_HOME>/kpz308-rpva-practical/workspaces/#{proxy.userId}
 ```
 
 Do not replace that with a shared writable class directory.
@@ -162,15 +177,17 @@ Recommended staging update loop:
 
 1. rPVA selects a reviewed source commit.
 2. Build the image for `linux/amd64`.
-3. Push the image to the ITS Gitea registry after registry/project access is
-   created by ITS.
+3. Push the image from the approved WSL/GlobalProtect publishing lane to
+   `git.its.utas.edu.au/UTAS/kpz308-rpva-practical:<TAG>`.
 4. Record the pushed tag and digest.
-5. ITS or the dedicated service user pulls the exact tag or digest on the VM.
-6. ShinyProxy config is updated to the exact tag or digest.
-7. ShinyProxy is restarted through the ITS-approved rootless service-user path.
-8. Non-student staging proof checks app open, Compare, CSV export, and
+5. Mark links the pushed image to the Gitea repository if required.
+6. ITS or the dedicated service user pulls the exact tag or digest on the VM.
+7. ShinyProxy config is updated to the exact tag or digest.
+8. Barry or ITS runs `docker compose down` and `docker compose up -d` in the
+   deployment directory to pull the image and restart the proxy.
+9. Non-student staging proof checks app open, Compare, CSV export, and
    evidence-notes export.
-9. Rollback is a config revert to the previous tag or digest plus restart.
+10. Rollback is a config revert to the previous tag or digest plus restart.
 
 For the first deployment only, an image tarball can be a fallback if Gitea
 registry setup lags. Prefer registry pull by digest once Gitea is available.
@@ -184,26 +201,26 @@ registry setup lags. Prefer registry pull by digest once Gitea is available.
 | OS patching, host backup, host monitoring | ITS | Underlying server care stays with ITS. |
 | Gitea repository/access groups | ITS | Current private repo: `UTAS/kpz308-rpva-practical`; `ecology-teaching-shiny` is only a possible coordination/access-group label unless ITS creates such a namespace. |
 | App image content | Barry/rPVA | Reviewed rPVA source, Dockerfile template, package install, app behavior. |
-| ShinyProxy app config content | Barry/rPVA with ITS review | App id, image tag/digest, workspace mapping, resource assumptions. |
+| WSL image publication | Barry/rPVA using WSL on GlobalProtect | Build/tag/push image to `git.its.utas.edu.au/UTAS/kpz308-rpva-practical:<TAG>` and report tag/digest back to Mark. |
+| ShinyProxy app config content | Barry/rPVA with ITS review | App id, image tag/digest, `shinyproxy-net`, workspace mapping, resource assumptions. |
 | First staging proof | Shared | ITS platform setup plus rPVA app-path smoke and evidence export check. |
 | Class-day app behavior/support | Barry/rPVA | Teaching fallback remains outside the VM platform decision. |
 | Student release decision | Shared approval gate | Requires staging proof, auth, workspaces, capacity, fallback, and cleanup. |
 
 ## Open ITS Questions
 
-1. What Gitea registry URL and package path should replace `<ITS_GITEA_REGISTRY>/<CONFIRMED_ORG_OR_REGISTRY_NAMESPACE>/kpz308-rpva-practical`?
-2. What service user and app data root should replace `<ITS_APP_DATA_ROOT>`?
+1. What exact service-user home path should replace `<SERVICE_USER_HOME>`?
+2. What immutable tag convention should Barry use for the first dev-server
+   image push?
 3. Should non-student staging use ShinyProxy simple auth, ITS SSO, or another
    ITS-managed access layer?
 4. What group names should ShinyProxy use for staging and future student
    access?
-5. What rootless Docker network name should replace
-   `<ROOTLESS_DOCKER_NETWORK>`?
-6. What command should the service user run to restart ShinyProxy?
-7. Should ITS prefer tag pinning or digest pinning in the ShinyProxy config?
-8. What resource limits are appropriate for a KPZ308 class session?
-9. What logs can Barry read as the service user during class support?
-10. What is the rollback owner and expected response time during a class?
+5. Should ITS pin the ShinyProxy config to a tag or digest after the first
+   pushed image?
+6. What resource limits are appropriate for a KPZ308 class session?
+7. What logs can Barry read as the service user during class support?
+8. What is the rollback owner and expected response time during a class?
 
 ## Student Release Boundary
 

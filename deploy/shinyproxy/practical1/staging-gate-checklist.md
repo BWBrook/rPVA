@@ -22,6 +22,10 @@ configure, restart, expose, or edit any live service.
   ITS Gitea repo `UTAS/kpz308-rpva-practical` and canonical ShinyProxy app id
   `kpz308-rpva-practical`. The no-`1` app id is intentional because the app
   identity should cover both KPZ308 rPVA practical weeks.
+- Goal 040 records Mark's confirmed registry image path
+  `git.its.utas.edu.au/UTAS/kpz308-rpva-practical:<TAG>`, ITS Docker network
+  `shinyproxy-net`, service-user-home app data direction, WSL/GlobalProtect
+  publication lane, and future dev-server compose restart path.
 
 ## Approval Handoff
 
@@ -29,8 +33,9 @@ Before any future staging goal starts, Barry/SRF must approve:
 
 - source commit or image tag for staging;
 - ITS VM target, service-user boundary, and app data root;
-- Gitea registry path, source repo `UTAS/kpz308-rpva-practical`, access group,
-  and tag/digest convention;
+- Gitea registry path `git.its.utas.edu.au/UTAS/kpz308-rpva-practical:<TAG>`,
+  source repo `UTAS/kpz308-rpva-practical`, access group, and tag/digest
+  convention;
 - DNS/URL and app path;
 - TLS/certificate owner and acceptable trust state;
 - identity model and account/token distribution channel;
@@ -52,7 +57,7 @@ Before any future staging goal starts, Barry/SRF must approve:
 | Workspaces | One host workspace per authenticated student is mapped read/write | One shared writable class directory would be used |
 | Quotas | Per-student target and cleanup policy are approved | Unlimited workspace growth is possible during class |
 | Image | Exact image tag/source commit is approved | Image provenance or rebuild path is ambiguous |
-| Registry | Gitea registry path and pull permissions are approved | Image access depends on ad hoc credentials |
+| Registry | Confirmed Gitea registry path and pull permissions are approved | Image access depends on ad hoc credentials |
 | Rootless Docker | Service-user paths, network, mounts, and restart path are approved | Config assumes root-owned paths or privileged networking |
 | ShinyProxy config | Application config has reviewed concrete values outside the repo | Real credentials or student identifiers would be committed |
 | nginx route | Upstream and app path match ShinyProxy and are reversible | Gateway route is edited without rollback notes |
