@@ -1,0 +1,2 @@
+push_attempted=no
+push_status=skipped_build_failed

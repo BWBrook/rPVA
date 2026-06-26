@@ -1,0 +1,1 @@
+Manifest inspection skipped because Docker build failed and no image was pushed.

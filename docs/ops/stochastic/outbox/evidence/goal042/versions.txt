@@ -1,0 +1,165 @@
+report_branch=codex/rpva-stochastic-goal042-image-publication
+source_ref=15643e1bdd9714715bffda3b354c969c19667815
+short_sha=15643e1bdd97
+tag=dev-20260626-15643e1bdd97
+image=git.its.utas.edu.au/UTAS/kpz308-rpva-practical:dev-20260626-15643e1bdd97
+
+[pwd]
+/home/bwbrook/git/rPVA
+
+[git branch]
+codex/rpva-stochastic-goal042-image-publication
+
+[git head]
+15643e1bdd9714715bffda3b354c969c19667815
+
+[git status]
+## codex/rpva-stochastic-goal042-image-publication...origin/main
+?? docs/ops/stochastic/outbox/evidence/goal042/versions.txt
+
+[uname]
+Linux laptop 6.18.33.1-microsoft-standard-WSL2 #1 SMP PREEMPT_DYNAMIC Fri Jun  5 01:12:21 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
+
+[os-release]
+PRETTY_NAME="Ubuntu 24.04.4 LTS"
+NAME="Ubuntu"
+VERSION_ID="24.04"
+VERSION="24.04.4 LTS (Noble Numbat)"
+VERSION_CODENAME=noble
+ID=ubuntu
+ID_LIKE=debian
+HOME_URL="https://www.ubuntu.com/"
+SUPPORT_URL="https://help.ubuntu.com/"
+BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
+PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
+UBUNTU_CODENAME=noble
+
+[git version]
+git version 2.43.0
+
+[docker cli]
+Docker version 29.1.3, build 29.1.3-0ubuntu3~24.04.2
+
+[docker daemon]
+server=29.5.3 arch=x86_64 cpus=16
+
+[gitea reachability]
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+HTTP/1.1 200 OK
+Date: Fri, 26 Jun 2026 03:20:04 GMT
+Server: Apache
+Via: 1.1 git.its.utas.edu.au
+X-FRAME-OPTIONS: SAMEORIGIN
+
+
+[R availability]
+/usr/bin/Rscript
+Rscript (R) version 4.6.0 (2026-04-24)
+
+[renv status]
+# Bootstrapping renv 1.2.3 ---------------------------------------------------
+- Downloading renv ... OK
+- Installing renv  ... OK
+
+- One or more packages recorded in the lockfile are not installed.
+- Use `renv::status()` for more details.
+The following package(s) are in an inconsistent state:
+
+ package      installed recorded used
+ base64enc    n         y        n
+ bit          n         y        n
+ bit64        n         y        n
+ brio         n         y        n
+ bslib        n         y        n
+ cachem       n         y        n
+ callr        n         y        n
+ cli          n         y        n
+ clipr        n         y        n
+ commonmark   n         y        n
+ cpp11        n         y        n
+ crayon       n         y        n
+ desc         n         y        n
+ diffobj      n         y        n
+ digest       n         y        n
+ dplyr        n         y        n
+ evaluate     n         y        n
+ farver       n         y        n
+ fastmap      n         y        n
+ fontawesome  n         y        n
+ fs           n         y        n
+ future       n         y        n
+ future.apply n         y        n
+ generics     n         y        n
+ ggplot2      n         y        n
+ globals      n         y        n
+ glue         n         y        n
+ gtable       n         y        n
+ highr        n         y        n
+ hms          n         y        n
+ htmltools    n         y        n
+ httpuv       n         y        n
+ isoband      n         y        n
+ jquerylib    n         y        n
+ jsonlite     n         y        n
+ knitr        n         y        n
+ labeling     n         y        n
+ later        n         y        n
+ lifecycle    n         y        n
+ listenv      n         y        n
+ magrittr     n         y        n
+ memoise      n         y        n
+ mime         n         y        n
+ otel         n         y        n
+ parallelly   n         y        n
+ patchwork    n         y        n
+ pillar       n         y        n
+ pkgbuild     n         y        n
+ pkgconfig    n         y        n
+ pkgload      n         y        n
+ plyr         n         y        n
+ popbio       n         y        n
+ praise       n         y        n
+ prettyunits  n         y        n
+ processx     n         y        n
+ progress     n         y        n
+ promises     n         y        n
+ ps           n         y        n
+ R6           n         y        n
+ rappdirs     n         y        n
+ RColorBrewer n         y        n
+ Rcpp         n         y        n
+ readr        n         y        n
+ reshape2     n         y        n
+ rlang        n         y        n
+ rmarkdown    n         y        n
+ rprojroot    n         y        n
+ S7           n         y        n
+ sass         n         y        n
+ scales       n         y        n
+ shiny        n         y        n
+ sourcetools  n         y        n
+ stringi      n         y        n
+ stringr      n         y        n
+ testthat     n         y        n
+ tibble       n         y        n
+ tidyselect   n         y        n
+ tinytex      n         y        n
+ tzdb         n         y        n
+ utf8         n         y        n
+ vctrs        n         y        n
+ viridisLite  n         y        n
+ vroom        n         y        n
+ waldo        n         y        n
+ withr        n         y        n
+ xfun         n         y        n
+ xtable       n         y        n
+ yaml         n         y        n
+
+The following package(s) are out of sync [lockfile != library]:
+
+# CRAN -----------------------------------------------------------------------
+- spatial   [7.3-18 != 7.3-17]
+
+See `?renv::status` for advice on resolving these issues.

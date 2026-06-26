@@ -1,0 +1,11 @@
+start=2026-06-26 13:20:42 AEST +1000
+end=2026-06-26 13:20:43 AEST +1000
+source_ref=15643e1bdd9714715bffda3b354c969c19667815
+image=git.its.utas.edu.au/UTAS/kpz308-rpva-practical:dev-20260626-15643e1bdd97
+command=docker build --platform linux/amd64 -f deploy/shinyproxy/practical1/Dockerfile.template --build-arg RPVA_REF=<SOURCE_REF> -t <IMAGE> .
+build_status=1
+retry_used=no
+result=failure
+
+failure_signature_last_log_lines:
+ERROR: failed to build: invalid tag "git.its.utas.edu.au/UTAS/kpz308-rpva-practical:dev-20260626-15643e1bdd97": repository name must be lowercase
