@@ -1,2 +1,2 @@
 Local smoke skipped because Docker build failed before image creation.
-Failure class: invalid Docker image reference before Dockerfile execution.
+Latest failure class: renv restore failed after lowercase image reference passed Docker validation.

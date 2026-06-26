@@ -1,2 +1,3 @@
 push_attempted=no
 push_status=skipped_build_failed
+lowercase_image_reference_reached_build=yes
