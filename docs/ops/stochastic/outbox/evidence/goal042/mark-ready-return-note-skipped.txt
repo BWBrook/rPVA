@@ -1,1 +1,0 @@
-Mark-ready return note skipped because upstream image publication did not complete.

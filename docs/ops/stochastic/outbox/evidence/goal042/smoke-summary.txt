@@ -1,2 +1,14 @@
-Local smoke skipped because Docker build failed before image creation.
-Latest failure class: renv restore failed after lowercase image reference passed Docker validation.
+start=2026-06-26 14:13:31 AEST +1000
+end=2026-06-26 14:13:35 AEST +1000
+image=git.its.utas.edu.au/utas/kpz308-rpva-practical:dev-20260626-9524304fb748
+container_name=rpva-goal042-9524304fb748
+container_id=d741b0c1ffb8077d4769fa163a38501a54814753191e7488815dfcc1c5c1392a
+port=3904
+smoke_ok=1
+11720 /tmp/tmp.bVj3XWZ2aK
+
+matching_lines:
+<script src="bootstrap-3.4.1/accessibility/js/bootstrap-accessibility.min.js"></script>  <title>Practical 1 PVA</title>
+          <span class="navbar-brand">Practical 1 PVA</span>
+              <p>In Practical 2 you will use the same evidence habits with the Woodhen case study: compare scenarios, explain uncertainty, and make a recommendation from the model results.</p>
+Temporary HTML classified as small and non-secret before commit.

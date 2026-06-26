@@ -1,9 +1,10 @@
 report_branch=codex/rpva-stochastic-goal042-image-publication
-source_ref=15643e1bdd9714715bffda3b354c969c19667815
-short_sha=15643e1bdd97
-tag=dev-20260626-15643e1bdd97
-image=git.its.utas.edu.au/utas/kpz308-rpva-practical:dev-20260626-15643e1bdd97
+source_ref=9524304fb74805baad7672f81f219b8455a4aac8
+short_sha=9524304fb748
+tag=dev-20260626-9524304fb748
+image=git.its.utas.edu.au/utas/kpz308-rpva-practical:dev-20260626-9524304fb748
 lowercase_namespace_authorized_by_user=yes
+listenv_preinstall_authorized_by_user=yes
 
 [pwd]
 /home/bwbrook/git/rPVA
@@ -12,12 +13,22 @@ lowercase_namespace_authorized_by_user=yes
 codex/rpva-stochastic-goal042-image-publication
 
 [git head]
-e2e4016e215defc968702f0ff98e4f1f110eeb48
+9524304fb74805baad7672f81f219b8455a4aac8
 
 [git status]
-## codex/rpva-stochastic-goal042-image-publication...origin/codex/rpva-stochastic-goal042-image-publication
+## codex/rpva-stochastic-goal042-image-publication...origin/codex/rpva-stochastic-goal042-image-publication [ahead 1]
  M docs/ops/stochastic/outbox/evidence/goal042/build-summary.txt
+ M docs/ops/stochastic/outbox/evidence/goal042/manifest-stderr.txt
+ D docs/ops/stochastic/outbox/evidence/goal042/mark-ready-return-note-skipped.txt
+ M docs/ops/stochastic/outbox/evidence/goal042/push-status.txt
+ M docs/ops/stochastic/outbox/evidence/goal042/smoke-summary.txt
  M docs/ops/stochastic/outbox/evidence/goal042/versions.txt
+?? docs/ops/stochastic/outbox/evidence/goal042/digest.txt
+?? docs/ops/stochastic/outbox/evidence/goal042/docker-logout-summary.txt
+?? docs/ops/stochastic/outbox/evidence/goal042/manifest.txt
+?? docs/ops/stochastic/outbox/evidence/goal042/mark-ready-return-note.md
+?? docs/ops/stochastic/outbox/evidence/goal042/push-output.txt
+?? docs/ops/stochastic/outbox/evidence/goal042/smoke-home.html
 
 [uname]
 Linux laptop 6.18.33.1-microsoft-standard-WSL2 #1 SMP PREEMPT_DYNAMIC Fri Jun  5 01:12:21 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
@@ -47,7 +58,7 @@ server=29.5.3 arch=x86_64 cpus=16
 
 [gitea reachability]
 HTTP/1.1 200 OK
-Date: Fri, 26 Jun 2026 03:43:22 GMT
+Date: Fri, 26 Jun 2026 04:37:11 GMT
 Server: Apache
 Via: 1.1 git.its.utas.edu.au
 X-FRAME-OPTIONS: SAMEORIGIN

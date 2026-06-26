@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+  <script type="application/shiny-singletons"></script>
+  <script type="application/html-dependencies">jquery[3.7.1];shiny-css[1.13.0];shiny-busy-indicators[1.13.0];shiny-javascript[1.13.0];font-awesome[6.5.2];selectize[0.15.2];htmltools-fill[0.5.9];bootstrap[3.4.1]</script>
+<script src="jquery-3.7.1/jquery.min.js"></script>
+<link href="shiny-css-1.13.0/shiny.min.css" rel="stylesheet" />
+<link href="shiny-busy-indicators-1.13.0/busy-indicators.css" rel="stylesheet" />
+<script src="shiny-javascript-1.13.0/shiny.min.js"></script>
+<link href="font-awesome-6.5.2/css/all.min.css" rel="stylesheet" />
+<link href="font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet" />
+<link href="selectize-0.15.2/css/selectize.bootstrap3.css" rel="stylesheet" />
+<script src="selectize-0.15.2/js/selectize.min.js"></script>
+<script src="selectize-0.15.2/accessibility/js/selectize-plugin-a11y.min.js"></script>
+<link href="htmltools-fill-0.5.9/fill.css" rel="stylesheet" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="bootstrap-3.4.1/css/bootstrap.min.css" rel="stylesheet" />
+<link href="bootstrap-3.4.1/accessibility/css/bootstrap-accessibility.min.css" rel="stylesheet" />
+<script src="bootstrap-3.4.1/js/bootstrap.min.js"></script>
+<script src="bootstrap-3.4.1/accessibility/js/bootstrap-accessibility.min.js"></script>  <title>Practical 1 PVA</title>
+  <link rel="stylesheet" type="text/css" href="styles.css"/>
+</head>
+<body>
+  <body class="bslib-page-navbar">
+    <nav class="navbar navbar-default navbar-static-top" role="navigation" data-bs-theme="light">
+      <div class="container-fluid">
+        <div class="navbar-header">
+          <span class="navbar-brand">Practical 1 PVA</span>
+        </div>
+        <ul class="nav navbar-nav nav-underline shiny-tab-input" id="section" data-tabsetid="6759">
+          <li class="active">
+            <a href="#tab-6759-1" data-toggle="tab" data-bs-toggle="tab" data-value="Start">Start</a>
+          </li>
+          <li>
+            <a href="#tab-6759-2" data-toggle="tab" data-bs-toggle="tab" data-value="Concept Lab">Concept Lab</a>
+          </li>
+          <li>
+            <a href="#tab-6759-3" data-toggle="tab" data-bs-toggle="tab" data-value="Compare">Compare</a>
+          </li>
+          <li>
+            <a href="#tab-6759-4" data-toggle="tab" data-bs-toggle="tab" data-value="Transfer">Transfer</a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+    <div class="container-fluid">
+      <div class="row"></div>
+      <div class="tab-content" data-tabsetid="6759">
+        <div class="tab-pane active" data-value="Start" id="tab-6759-1">
+          <div class="page-shell">
+            <div class="intro-grid">
+              <div class="panel-block">
+                <h2>Island rail concept lab</h2>
+                <p>Use a simple three-stage island rail to see how PVA turns assumptions into many possible futures.</p>
+                <div class="species-strip">
+                  <div class="life-stage">
+                    <strong>Juveniles</strong>
+                    <p class="muted">New recruits enter the population.</p>
+                  </div>
+                  <div class="life-stage">
+                    <strong>Subadults</strong>
+                    <p class="muted">Young birds survive and move toward breeding.</p>
+                  </div>
+                  <div class="life-stage">
+                    <strong>Adults</strong>
+                    <p class="muted">Adults survive, stay, and produce recruits.</p>
+                  </div>
+                </div>
+                <button class="btn btn-default action-button btn-primary" id="run_baseline" type="button"><span class="action-label"><i class="fas fa-play" role="presentation" aria-label="play icon"></i>
+                    Start baseline</span></button>
+                <div class="mission-cue start-mission">
+                  <span class="mission-label">Mission 1: Baseline compass</span>
+                  <p>Start baseline creates or restores your baseline as run 1 for later comparison.</p>
+                  <p class="muted">Inspect run 1 before changing controls; keep it as the reference for later comparison.</p>
+                </div>
+                <p class="muted">Prepares you for Woodhen.</p>
+              </div>
+              <div class="panel-block">
+                <h3>Baseline output</h3>
+                <div id="start_summary" class="shiny-html-output"></div>
+                <div class="prompt">First question: which output would you use to describe abundance at the end of the projection?</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="tab-pane" data-value="Concept Lab" id="tab-6759-2">
+          <div class="page-shell">
+            <div class="lab-grid">
+              <div class="panel-block">
+                <h3>Choose one mechanism</h3>
+                <p class="mission-path">Work through the mission path by changing one visible control at a time, then compare.</p>
+                <div class="form-group shiny-input-container">
+                  <label class="control-label" id="stage-label" for="stage">Teaching stage</label>
+                  <div>
+                    <select id="stage" class="shiny-input-select"><option value="deterministic_baseline" selected>Deterministic baseline</option>
+<option value="carrying_capacity">Ceiling carrying capacity</option>
+<option value="demographic_stochasticity">Demographic stochasticity</option>
+<option value="environmental_stochasticity">Environmental stochasticity</option>
+<option value="genetic_stochasticity">Genetic stochasticity</option>
+<option value="catastrophe">Catastrophe</option>
+<option value="intervention">Simple intervention</option>
+<option value="extinction_vortex">Extinction vortex comparison</option></select>
+                    <script type="application/json" data-for="stage" data-nonempty="">{"plugins":["selectize-plugin-a11y"]}</script>
+                  </div>
+                </div>
+                <div id="stage_text" class="shiny-html-output"></div>
+                <div id="stage_controls" class="shiny-html-output"></div>
+                <button class="btn btn-default action-button btn-primary" id="run_stage" type="button"><span class="action-label"><i class="fas fa-play" role="presentation" aria-label="play icon"></i>
+                    Run stage</span></button>
+                <div class="prompt">
+                  <div id="stage_prompt" class="shiny-text-output"></div>
+                </div>
+              </div>
+              <div class="panel-block output-region">
+                <h3>Current run</h3>
+                <div id="summary_table" class="shiny-html-output"></div>
+                <h4>Diagnostics</h4>
+                <div id="diagnostics" class="shiny-html-output"></div>
+                <h4>Settings record</h4>
+                <div class="settings-table">
+                  <div id="settings_table" class="shiny-html-output shiny-table-output"></div>
+                </div>
+              </div>
+            </div>
+            <div class="panel-block plot-region">
+              <h3>Plots</h3>
+              <div class="row">
+                <div class="col-sm-6">
+                  <div class="shiny-plot-output html-fill-item" id="trajectory_plot" style="width:100%;height:320px;"></div>
+                </div>
+                <div class="col-sm-6">
+                  <div class="shiny-plot-output html-fill-item" id="summary_plot" style="width:100%;height:320px;"></div>
+                </div>
+              </div>
+              <div id="extinction_plot_panel" class="shiny-html-output"></div>
+            </div>
+          </div>
+        </div>
+        <div class="tab-pane" data-value="Compare" id="tab-6759-3">
+          <div class="page-shell">
+            <div class="compare-grid">
+              <div class="panel-block">
+                <h3>Run comparison</h3>
+                <div class="mission-cue compare-guidance">
+                  <span class="mission-label">Compare mission evidence</span>
+                  <p>Choose a clean comparison: baseline run 1, one risk mechanism, and one intervention or vortex run.</p>
+                  <p class="muted">Repeated clicks are less useful than a targeted one-factor change.</p>
+                </div>
+                <div class="compare-table">
+                  <div id="comparison_table" class="shiny-html-output shiny-table-output"></div>
+                </div>
+                <h4>Save evidence</h4>
+                <p class="muted">Download a compact comparison table and notes for your own report. These files are evidence, not an answer.</p>
+                <div class="export-actions">
+                  <a id="download_comparison" class="btn btn-default shiny-download-link disabled" href="" target="_blank" download aria-disabled="true" tabindex="-1">
+                    <i class="fas fa-download" role="presentation" aria-label="download icon"></i>
+                    Comparison CSV
+                  </a>
+                  <a id="download_evidence_notes" class="btn btn-default shiny-download-link disabled" href="" target="_blank" download aria-disabled="true" tabindex="-1">
+                    <i class="fas fa-download" role="presentation" aria-label="download icon"></i>
+                    Evidence notes
+                  </a>
+                </div>
+                <button id="clear_runs" type="button" class="btn btn-default action-button"><span class="action-label"><i class="fas fa-trash" role="presentation" aria-label="trash icon"></i>
+                    Reset comparison</span></button>
+                <div class="prompt">What changed between runs, and which output supports your explanation?</div>
+              </div>
+              <div class="panel-block">
+                <h3>Comparison habits</h3>
+                <ul>
+                  <li>Compare extinction risk and abundance together.</li>
+                  <li>Treat zero observed extinction as a simulation result, not proof of safety.</li>
+                  <li>Use uncertainty intervals when judging management actions.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="tab-pane" data-value="Transfer" id="tab-6759-4">
+          <div class="page-shell">
+            <div class="panel-block">
+              <h2>Transfer to the Woodhen practical</h2>
+              <p>You have explored deterministic growth, carrying capacity, stochasticity, catastrophes, genetics, intervention, and combined small-population risk.</p>
+              <ol>
+                <li>Which output shows extinction risk?</li>
+                <li>Which output shows abundance?</li>
+                <li>Which output shows uncertainty?</li>
+              </ol>
+              <p>In Practical 2 you will use the same evidence habits with the Woodhen case study: compare scenarios, explain uncertainty, and make a recommendation from the model results.</p>
+              <h3>Future concepts</h3>
+              <ul class="future-list">
+                <li>
+                  <strong>Allee effect</strong>
+                  :
+                  Low-abundance recovery thresholds need a named future engine/helper path.
+                </li>
+                <li>
+                  <strong>Correlated events</strong>
+                  :
+                  Correlated bad years need a future helper or engine extension.
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</body>
+</html>
