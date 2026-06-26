@@ -49,8 +49,17 @@ worker.
 - Default work stays in the WSL clone of rPVA.
 - `stochastic` should not create or push branches unless the current inbox task
   explicitly authorizes that.
-- If a future task authorizes a report branch, prefer a branch name beginning
-  with `codex/rpva-stochastic-` followed by the task slug.
+- If a task authorizes a report branch, create it from current `origin/main`
+  after a clean fetch/prune and fast-forward update.
+- Report branches must begin with `codex/rpva-stochastic-` followed by the task
+  slug, for example `codex/rpva-stochastic-goal042-image-publication`.
+- `stochastic` must not push `main`.
+- `stochastic` must not push to the ITS Gitea source repository unless a later
+  task explicitly authorizes that source path. Registry image push is separate
+  from source push and must be named explicitly by the inbox task.
+- Push report branches to GitHub `origin` only when the current inbox task
+  explicitly allows it, and only after confirming the staged files are
+  non-secret report/evidence files.
 - Inbox files are instructions. Do not rewrite them unless the task explicitly
   asks for that.
 - Outbox files are reports. Keep them concise, evidence-backed, and free of
