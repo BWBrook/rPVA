@@ -17,6 +17,8 @@ Allowed files:
 - `manifest-stderr.txt`: non-secret manifest inspection warning text if any.
 - `docker-logout-summary.txt`: logout result class.
 - `mark-ready-return-note.md`: sendable note for Barry to paste to Mark.
+- `its-dev-prod-validation-report.md`: non-secret dev/prod smoke, capacity,
+  monitoring, access, and release-readiness report.
 - `SHA256SUMS.txt`: checksums for committed evidence files, generated with
   `sha256sum` when available or `shasum -a 256` as a fallback.
 

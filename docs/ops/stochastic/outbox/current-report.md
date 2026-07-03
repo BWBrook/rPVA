@@ -1,4 +1,60 @@
-# Current Report From `stochastic`: Goal 042 Image Publication
+# Current Report From `stochastic`: Goal 042 And ITS Dev/Prod Validation
+
+## Latest Status: Ready To Move Forward
+
+The KPZ308 rPVA Practical ShinyProxy deployment is now validated beyond image
+publication. Dev smoke, prod smoke, prod capacity rehearsal, ITS monitoring
+review, and an independent non-Barry staff access/export check have all passed.
+
+Detailed validation report:
+
+```text
+docs/ops/stochastic/outbox/evidence/goal042/its-dev-prod-validation-report.md
+```
+
+Current readiness judgement:
+
+- Image publication to ITS Gitea: passed.
+- Dev ShinyProxy smoke: passed.
+- Prod ShinyProxy smoke: passed.
+- Prod capacity rehearsal: passed at 5, 10, 20, 40, and 60 temporary app
+  containers, with all rPVA teaching workload checks succeeding.
+- ITS monitoring review: passed, with Mark reporting substantial CPU and RAM
+  capacity remaining.
+- KPZ308 identity group: active and automatically populated from the UTAS
+  identity management platform.
+- Staff access group: `UNI-Ecology-Teaching-Shiny-Staff` is set up and applied
+  to prod SSO and prod `application.yml`.
+- Prod app access groups now include `UNI-Ecology-Teaching-Shiny-Staff` and
+  `KPZ308`.
+- KPZ314 has been added to the SSO configuration but not to the current app.
+- Independent staff access/export check: passed.
+- Known infrastructure blockers to continuing container content work: none.
+
+Recommended orchestrator action:
+
+1. Resume iteration on the content/app behavior inside the KPZ308 Practical
+   container.
+2. Keep each promotable app state tied to a new immutable image tag.
+3. Use the agreed ITS promotion path: push new tag to Gitea, update dev
+   `application.yml`, smoke dev, then update prod to the same tag.
+4. Preserve the student-release gate for July 2026: final optional staff smoke,
+   final teaching-channel link text, and fallback materials.
+
+Important caveats:
+
+- The 60-container headroom rehearsal tested host/container/app workload
+  capacity, not 60 distinct SAML identities.
+- Direct temporary capacity containers emitted an IPv4-forwarding warning, but
+  ShinyProxy browser routing was separately validated by dev and prod browser
+  smokes.
+- KPZ314 should remain a later separate app/container and access-group task.
+
+The original image-publication report follows for provenance.
+
+---
+
+# Original Report From `stochastic`: Goal 042 Image Publication
 
 ## Task
 
