@@ -60,6 +60,113 @@ body {
   align-items: start;
 }
 
+.landing-hero {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.86fr) minmax(360px, 1.14fr);
+  gap: 18px;
+  align-items: stretch;
+  margin-bottom: 16px;
+}
+
+.landing-copy,
+.landing-hero-visual,
+.landing-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  min-width: 0;
+}
+
+.landing-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 22px;
+}
+
+.landing-copy h1 {
+  margin: 6px 0 10px;
+  font-size: 34px;
+  line-height: 1.12;
+}
+
+.landing-lede {
+  font-size: 18px;
+  line-height: 1.45;
+}
+
+.landing-eyebrow {
+  color: var(--teal);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.landing-hero-visual {
+  overflow: hidden;
+  min-height: 320px;
+}
+
+.landing-hero-visual img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.landing-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.landing-card {
+  overflow: hidden;
+}
+
+.landing-visual {
+  aspect-ratio: 16 / 9;
+  background: #eef3ef;
+  border-bottom: 1px solid var(--line);
+}
+
+.landing-visual img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.landing-card-copy {
+  padding: 14px;
+}
+
+.landing-card-copy h3 {
+  margin-top: 5px;
+}
+
+.landing-card-copy p,
+.landing-card-copy li {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.landing-card-copy ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.evidence-card {
+  display: flex;
+  align-items: center;
+  background: #fffaf0;
+}
+
+.landing-start-cue {
+  margin-bottom: 0;
+}
+
 .panel-block {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -272,11 +379,25 @@ body {
     padding: 12px;
   }
 
+  .landing-hero,
+  .landing-card-grid,
   .intro-grid,
   .lab-grid,
   .compare-grid,
   .species-strip {
     grid-template-columns: 1fr;
+  }
+
+  .landing-copy {
+    padding: 17px;
+  }
+
+  .landing-copy h1 {
+    font-size: 28px;
+  }
+
+  .landing-hero-visual {
+    min-height: 220px;
   }
 
   .panel-block {

@@ -1,13 +1,14 @@
 # Practical 1 Shiny App
 
-This is the first minimum viable browser scaffold for the Practical 1 PVA
-concept lab. It uses the public teaching API in `R/teaching_api.R` and base
-Shiny only.
+This is the browser scaffold for the Practical 1 PVA concept lab. It uses the
+public teaching API in `R/teaching_api.R` and base Shiny only.
 
-The classroom surface includes mission cues for the Goal 029 Practical 1 path:
-`Start baseline` creates or restores run 1, Concept Lab asks students to change
-one visible control at a time, and Compare asks for a clean baseline/risk/
-intervention or vortex evidence comparison.
+The classroom surface opens with a local-first landing/tutorial screen:
+students get a plain-language PVA introduction, a short mission preview, and a
+clear evidence prompt before touching model controls. `Start baseline` creates
+or restores baseline as run 1, Concept Lab asks students to change one visible
+control at a time, and Compare asks for a clean baseline/risk/intervention or
+vortex evidence comparison.
 
 Students can save compact session evidence from the Compare screen:
 

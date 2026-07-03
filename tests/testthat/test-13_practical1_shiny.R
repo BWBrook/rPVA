@@ -93,11 +93,57 @@ test_that("app exposes mission-mode classroom guidance", {
   app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
 
   expect_true(grepl("Mission 1: Baseline compass", app_text, fixed = TRUE))
-  expect_true(grepl("creates or restores your baseline as run 1", app_text, fixed = TRUE))
+  expect_true(grepl("creates or restores baseline as run 1", app_text, fixed = TRUE))
   expect_true(grepl("changing one visible control at a time", app_text, fixed = TRUE))
   expect_true(grepl("Choose a clean comparison: baseline run 1, one risk mechanism, and one intervention or vortex run.", app_text, fixed = TRUE))
   expect_true(grepl("Repeated clicks are less useful than a targeted one-factor change.", app_text, fixed = TRUE))
   expect_true(grepl("Use this stage only as a recovery run after resetting comparison.", app_text, fixed = TRUE))
+})
+
+test_that("Practical 1 opens with a tutorial landing screen", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
+
+  expect_true(grepl('class = "landing-hero"', app_text, fixed = TRUE))
+  expect_true(grepl("Practical 1 PVA mission", app_text, fixed = TRUE))
+  expect_true(grepl("PVA is a way to test how a population might change", app_text, fixed = TRUE))
+  expect_true(grepl("What you will do", app_text, fixed = TRUE))
+  expect_true(grepl("Evidence to save", app_text, fixed = TRUE))
+  expect_true(grepl("Start baseline creates or restores baseline as run 1", app_text, fixed = TRUE))
+  expect_true(grepl('actionButton("run_baseline"', app_text, fixed = TRUE))
+  expect_false(grepl("run `Deterministic baseline` again", app_text, fixed = TRUE))
+})
+
+test_that("landing screen uses local accessible bitmap assets", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
+  asset_dir <- file.path(app_dir, "www", "img")
+  expected_assets <- c(
+    "landing-woodhen-population.png",
+    "landing-trajectory-evidence.png",
+    "landing-conservation-decision.png"
+  )
+
+  expect_true(dir.exists(asset_dir))
+  expect_true(all(file.exists(file.path(asset_dir, expected_assets))))
+  expect_true(grepl("img/landing-woodhen-population.png", app_text, fixed = TRUE))
+  expect_true(grepl("img/landing-trajectory-evidence.png", app_text, fixed = TRUE))
+  expect_true(grepl("img/landing-conservation-decision.png", app_text, fixed = TRUE))
+  expect_match(app_text, 'alt = "[^"]+woodhen[^"]+"')
+  expect_true(grepl("tags$img(src = image, alt = alt)", app_text, fixed = TRUE))
+  expect_true(grepl("population trajectory lines", app_text, fixed = TRUE))
+  expect_true(grepl("conservation decision scene", app_text, fixed = TRUE))
+})
+
+test_that("landing screen has responsive tutorial styling", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  style_text <- paste(readLines(file.path(app_dir, "www", "styles.css"), warn = FALSE), collapse = "\n")
+
+  expect_match(style_text, "\\.landing-hero\\s*\\{[^}]*display:\\s*grid")
+  expect_match(style_text, "\\.landing-card-grid\\s*\\{[^}]*grid-template-columns:")
+  expect_match(style_text, "\\.landing-visual\\s*\\{[^}]*aspect-ratio:")
+  expect_match(style_text, "@media \\(max-width: 780px\\)")
+  expect_match(style_text, "\\.landing-hero,\\s*\\.landing-card-grid")
 })
 
 test_that("comparison table is styled for horizontal scanning", {

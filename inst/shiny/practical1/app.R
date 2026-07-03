@@ -169,6 +169,22 @@ stage_control_values <- function(stage, input) {
   values
 }
 
+landing_card_ui <- function(image, alt, eyebrow, title, body) {
+  div(
+    class = "landing-card",
+    div(
+      class = "landing-visual",
+      tags$img(src = image, alt = alt)
+    ),
+    div(
+      class = "landing-card-copy",
+      span(class = "landing-eyebrow", eyebrow),
+      h3(title),
+      p(body)
+    )
+  )
+}
+
 ui <- navbarPage(
   title = "Practical 1 PVA",
   id = "section",
@@ -178,31 +194,57 @@ ui <- navbarPage(
     div(
       class = "page-shell",
       div(
-        class = "intro-grid",
+        class = "landing-hero",
         div(
-          class = "panel-block",
-          h2("Island rail concept lab"),
-          p("Use a simple three-stage island rail to see how PVA turns assumptions into many possible futures."),
-          div(
-            class = "species-strip",
-            div(class = "life-stage", strong("Juveniles"), p(class = "muted", "New recruits enter the population.")),
-            div(class = "life-stage", strong("Subadults"), p(class = "muted", "Young birds survive and move toward breeding.")),
-            div(class = "life-stage", strong("Adults"), p(class = "muted", "Adults survive, stay, and produce recruits."))
-          ),
+          class = "landing-copy",
+          span(class = "landing-eyebrow", "Woodhen Practical 1"),
+          h1("Practical 1 PVA mission"),
+          p(class = "landing-lede", "PVA is a way to test how a population might change when survival, breeding, habitat, and chance interact."),
+          p("You will build a short chain of model runs, compare what changed, and save evidence for discussion."),
           actionButton("run_baseline", label = tagList(icon("play"), "Start baseline"), class = "btn-primary"),
           div(
-            class = "mission-cue start-mission",
+            class = "mission-cue landing-start-cue",
             span(class = "mission-label", "Mission 1: Baseline compass"),
-            p("Start baseline creates or restores your baseline as run 1 for later comparison."),
-            p(class = "muted", "Inspect run 1 before changing controls; keep it as the reference for later comparison.")
-          ),
-          p(class = "muted", "Prepares you for Woodhen.")
+            p("Start baseline creates or restores baseline as run 1."),
+            p(class = "muted", "Keep run 1 as your reference before changing controls.")
+          )
         ),
         div(
-          class = "panel-block",
-          h3("Baseline output"),
-          uiOutput("start_summary"),
-          div(class = "prompt", "First question: which output would you use to describe abundance at the end of the projection?")
+          class = "landing-hero-visual",
+          tags$img(
+            src = "img/landing-woodhen-population.png",
+            alt = "Lord Howe woodhen-like bird in island forest with a small background population"
+          )
+        )
+      ),
+      div(
+        class = "landing-card-grid",
+        landing_card_ui(
+          "img/landing-trajectory-evidence.png",
+          "population trajectory lines and evidence marks on a field notebook page",
+          "Plain language",
+          "What is PVA?",
+          "A population viability analysis explores possible futures, not a single forecast."
+        ),
+        landing_card_ui(
+          "img/landing-conservation-decision.png",
+          "conservation decision scene with island habitat map and field notes",
+          "Your mission",
+          "What you will do",
+          "Run the baseline, change one factor at a time, compare results, and explain the tradeoffs."
+        ),
+        div(
+          class = "landing-card evidence-card",
+          div(
+            class = "landing-card-copy",
+            span(class = "landing-eyebrow", "Evidence to save"),
+            h3("Your evidence pack"),
+            tags$ul(
+              tags$li("a comparison CSV from Compare;"),
+              tags$li("evidence notes Markdown;"),
+              tags$li("one sentence about what changed and why it matters.")
+            )
+          )
         )
       )
     )
@@ -217,6 +259,7 @@ ui <- navbarPage(
           class = "panel-block",
           h3("Choose one mechanism"),
           p(class = "mission-path", "Work through the mission path by changing one visible control at a time, then compare."),
+          actionButton("show_intro", label = tagList(icon("circle-info"), "Introduction"), class = "btn-default btn-sm"),
           selectInput("stage", "Teaching stage", choices = stage_choices, selected = default_stage),
           uiOutput("stage_text"),
           uiOutput("stage_controls"),
@@ -322,6 +365,10 @@ server <- function(input, output, session) {
     run_history(list(baseline_run))
     updateNavbarPage(session, "section", selected = "Concept Lab")
     updateSelectInput(session, "stage", selected = default_stage)
+  })
+
+  observeEvent(input$show_intro, {
+    updateNavbarPage(session, "section", selected = "Start")
   })
 
   observeEvent(input$run_stage, {
