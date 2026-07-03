@@ -43,6 +43,7 @@ COPY . /opt/rpva
 
 RUN Rscript -e 'install.packages("renv", repos = "https://cloud.r-project.org")' \
   && mkdir -p "${RENV_PATHS_LIBRARY}" \
+  && Rscript -e 'install.packages("https://cran.r-project.org/src/contrib/Archive/listenv/listenv_0.10.1.tar.gz", repos = NULL, type = "source", lib = Sys.getenv("RENV_PATHS_LIBRARY"))' \
   && Rscript -e 'renv::restore(prompt = FALSE)' \
   && Rscript -e 'if (!requireNamespace("shiny", quietly = TRUE)) stop("shiny missing after renv restore", call. = FALSE)' \
   && R CMD INSTALL --no-multiarch --no-test-load . \

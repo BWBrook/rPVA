@@ -1,120 +1,36 @@
-# Current Report From `stochastic`: Goal 042 Image Publication
+# Current Report From `stochastic`: Goal 042 Completed
 
-Use this file for the latest `stochastic` report back to the rPVA orchestrator.
-Do not include credentials, tokens, passwords, private keys, shell history
-captures, Docker login config, `.env` files, full environment dumps, student
-identifiers, live service secrets, or sensitive config payloads.
-
-## Task
-
-- Task file read: `docs/ops/stochastic/inbox/current-task.md`
-- Assigned goal packet, if any:
-- Start time:
-- End time:
-
-## Report Branch And Repo State
-
-- Report branch:
-- HEAD:
-- `git status --short --branch`:
-- `SOURCE_REF`:
-- `SHORT_SHA`:
-
-## WSL And Tool Posture
-
-- Host/OS summary:
-- Git:
-- Docker CLI:
-- Docker daemon:
-- ITS Gitea host reachability:
-- R/renv optional check:
-
-## Image
-
-- Target registry:
-- `TAG`:
-- `IMAGE`:
-- Tag collision or variant reason, if any:
-- Confirmed not `latest`:
-
-## Build Result
-
-- Build command summary:
-- Build result:
-- Skipped because upstream failed:
-- Retry used:
-- Failure signature, if any:
-
-## Local Smoke Result
-
-- Container name/id:
-- Local port:
-- HTTP result:
-- Smoke evidence:
-- Temporary HTML handling:
-- Container cleanup confirmed:
-- Skipped because upstream failed:
-
-## Registry Login
-
-- Login attempted:
-- Login result class:
-- Retry used:
-- Skipped because upstream failed:
-
-## Registry Push And Digest
-
-- Push attempted:
-- Push result:
-- Push status evidence:
-- Digest:
-- Manifest inspection:
-- Digest/manifest partial status:
-- Skipped because upstream failed:
-- Docker logout result class:
-- Confirmed no source push to ITS Gitea:
-
-## Mark-Ready Return Note
-
-- Note path:
-- Content summary:
-
-## Evidence
-
-Evidence directory:
+`stochastic` completed the Goal 042 image publication and follow-on ITS
+dev/prod validation on the GitHub report branch:
 
 ```text
-docs/ops/stochastic/outbox/evidence/goal042/
+origin/codex/rpva-stochastic-goal042-image-publication
 ```
 
-List evidence files and checksums:
+Canonical rPVA-side adoption is recorded in:
 
-- Evidence file:
-- Evidence file:
-- Checksum tool used, or unavailable:
+```text
+docs/goals/043-its-dev-prod-validation-canonicalization/its-dev-prod-validation-closeout.md
+```
 
-## Blockers Or Deviations
+Raw and bulky evidence remains on the `stochastic` report branch for
+provenance. It was not copied wholesale into `main`.
 
-- Blocker:
-- Deviation:
+Durable facts adopted into `main`:
 
-## Readiness Judgement
+- Docker image references use the lowercase registry namespace:
+  `git.its.utas.edu.au/utas/kpz308-rpva-practical:<TAG>`.
+- ITS Gitea source repository references may still use:
+  `https://git.its.utas.edu.au/UTAS/kpz308-rpva-practical.git`.
+- The validated image was:
+  `git.its.utas.edu.au/utas/kpz308-rpva-practical:dev-20260626-9524304fb748`.
+- The pushed digest was:
+  `sha256:7aa013152b226d5ba3fcc34d31051fe049dd0f34c2c7e0187de83580523f4340`.
+- Dev and prod ShinyProxy browser smokes passed.
+- Prod capacity rehearsal passed at 5, 10, 20, 40, and 60 temporary app
+  containers; this was host/container/app workload capacity, not 60 distinct
+  SAML identities.
+- ITS promotion policy is dev first, prod second, using readable immutable
+  tags in ShinyProxy config.
 
-- Image publication succeeded: yes/no/partial
-- Ready for Mark/ITS dev-server link/deploy step: yes/no/partial
-- Suggested next gate:
-
-## Boundary Confirmation
-
-Confirm:
-
-- no credentials, tokens, private keys, student identifiers, or sensitive
-  service payloads were written to repo files, reports, screenshots,
-  transcripts, markdown, logs, or chat;
-- no `main` push was performed;
-- no source push to ITS Gitea was performed;
-- no source/app/Dockerfile/YAML edits were made;
-- no dev-server SSH/login, compose command, service restart, or live-state
-  change was performed;
-- no external contact, student/Moodle contact, KPZ314 work, Practical 2
-  implementation, or public exposure was performed.
+No active `stochastic` task is authorized by this report.

@@ -22,62 +22,61 @@ configure, restart, expose, or edit any live service.
   ITS Gitea repo `UTAS/kpz308-rpva-practical` and canonical ShinyProxy app id
   `kpz308-rpva-practical`. The no-`1` app id is intentional because the app
   identity should cover both KPZ308 rPVA practical weeks.
-- Goal 040 records Mark's confirmed registry image path
-  `git.its.utas.edu.au/UTAS/kpz308-rpva-practical:<TAG>`, ITS Docker network
-  `shinyproxy-net`, service-user-home app data direction, WSL/GlobalProtect
-  publication lane, and future dev-server compose restart path.
+- Goal 040 records the WSL/GlobalProtect publication lane, `shinyproxy-net`,
+  service-user-home app data direction, ITS/Gitea handoff, and future
+  dev-server compose restart path from the pre-publication handoff.
+- Goal 043 records the lowercase Docker image namespace
+  `git.its.utas.edu.au/utas/kpz308-rpva-practical:<TAG>` after `stochastic`
+  proved Docker rejects the uppercase namespace; it also adopts the Dockerfile
+  `listenv` restore fix and records dev/prod browser smoke, export-shape,
+  staff-access, capacity, monitoring, access-group, and dev-first/prod-second
+  promotion evidence.
 
-## Approval Handoff
+## Future Promotion And Release Handoff
 
-Before any future staging goal starts, Barry/SRF must approve:
+Before any future image promotion or student-release step, Barry/SRF should
+confirm:
 
-- source commit or image tag for staging;
-- ITS VM target, service-user boundary, and app data root;
-- Gitea registry path `git.its.utas.edu.au/UTAS/kpz308-rpva-practical:<TAG>`,
-  source repo `UTAS/kpz308-rpva-practical`, access group, and tag/digest
-  convention;
-- DNS/URL and app path;
-- TLS/certificate owner and acceptable trust state;
-- identity model and account/token distribution channel;
-- per-student workspace root, quota target, and retention period;
-- ShinyProxy internal port and nginx upstream alignment;
-- monitoring owner and check cadence;
+- reviewed source commit and readable immutable image tag;
+- dev-first, prod-second promotion using
+  `git.its.utas.edu.au/utas/kpz308-rpva-practical:<TAG>`;
+- source repo `UTAS/kpz308-rpva-practical` remains the source owner/path, not
+  the Docker image namespace;
+- final teaching-channel link text and Moodle wording;
+- optional final staff smoke through `UNI-Ecology-Teaching-Shiny-Staff`;
+- workspace cleanup/retention policy;
+- monitoring owner and class-day check cadence;
 - rollback owner and exact stop rule;
-- cleanup owner and cleanup date;
 - support/fallback materials location;
-- decision that staging remains non-student until an explicit release gate is
-  accepted.
+- decision timing before first planned student app contact on `2026-07-20`.
 
-## Go/No-Go Checklist
+## Student Release Go/No-Go Checklist
+
+The ITS infrastructure, SSO/auth, staff access, dev/prod browser smokes,
+exports, monitoring, and host/container/app capacity gates have passed at
+staff/tester level. The 60-container capacity rehearsal was not a test of 60
+distinct SAML identities.
 
 | Gate | Go condition | Stop condition |
 | --- | --- | --- |
-| TLS and URL | Student-facing URL is trusted or exception is explicitly accepted | Browser shows unacceptable warning or DNS ownership is unclear |
-| Identity | Generated accounts/tokens or approved institutional auth are ready and revocable | Shared unauthenticated access is required for recoverable exports |
-| Workspaces | One host workspace per authenticated student is mapped read/write | One shared writable class directory would be used |
-| Quotas | Per-student target and cleanup policy are approved | Unlimited workspace growth is possible during class |
-| Image | Exact image tag/source commit is approved | Image provenance or rebuild path is ambiguous |
-| Registry | Confirmed Gitea registry path and pull permissions are approved | Image access depends on ad hoc credentials |
-| Rootless Docker | Service-user paths, network, mounts, and restart path are approved | Config assumes root-owned paths or privileged networking |
-| ShinyProxy config | Application config has reviewed concrete values outside the repo | Real credentials or student identifiers would be committed |
-| nginx route | Upstream and app path match ShinyProxy and are reversible | Gateway route is edited without rollback notes |
-| Local test | `deep-server` localhost app-path smoke passes | Local path fails or container/service state is unclear |
-| Tailnet test | Admin/tailnet app-path smoke passes | Only localhost works |
-| Student route | Windows/WSL or equivalent student-like browser path passes | Only admin routes work, or TLS warning is unacceptable |
-| Monitoring | Status, container count, resource, disk, log, and workspace checks are ready | No one can detect overload or failed sessions |
-| Rollback | Stop/revert commands and owner are written before service edits | Rollback depends on improvisation |
-| Cleanup | Accounts/tokens, workspaces, logs, containers, and image policy are written | Cleanup is unspecified |
-| Fallback | Static worksheet, precomputed outputs, and demonstrator notes are ready | Live app is the only teaching path |
+| Image | Exact source commit and readable immutable image tag are approved | Image provenance or rebuild path is ambiguous |
+| Dev/prod promotion | Dev smoke has passed and prod is updated to the same accepted tag | Prod tag differs from accepted dev tag without explanation |
+| Staff smoke | Optional final staff login/app/export smoke is accepted or explicitly skipped | Staff tester cannot open the app or export evidence |
+| Student link text | Moodle/teaching-channel text points only to the approved route | Students would receive a raw, warning, or unapproved route |
+| Monitoring | Status, container count, resource, disk, log, and workspace checks are ready for class day | No one can detect overload or failed sessions |
+| Rollback | Stop/revert commands, owner, and response path are written before release | Rollback depends on improvisation |
+| Cleanup | Workspace retention and cleanup owner/date are written | Cleanup is unspecified |
+| Fallback | Static worksheet, precomputed outputs, demonstrator notes, and support path are ready | Live app is the only teaching path |
 
 ## Future Staging Evidence To Capture
 
-Capture in the future approved staging goal:
+Capture in the future approved promotion or release goal:
 
 - branch and source commit;
 - approved image tag and image ID;
 - ShinyProxy config path and redacted config summary;
 - nginx app path/upstream summary;
-- local, tailnet, campus/student-like route outcomes;
+- dev/prod staff or student-like route outcomes;
 - browser screenshot or text marker from the app path;
 - service status and log excerpts;
 - container count and resource snapshot;

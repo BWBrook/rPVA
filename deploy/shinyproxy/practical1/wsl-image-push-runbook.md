@@ -18,8 +18,11 @@ https://git.its.utas.edu.au/UTAS/kpz308-rpva-practical.git
 Registry image path:
 
 ```text
-git.its.utas.edu.au/UTAS/kpz308-rpva-practical:<TAG>
+git.its.utas.edu.au/utas/kpz308-rpva-practical:<TAG>
 ```
+
+Use lowercase `utas` in Docker image references. The source repository URL
+still uses `UTAS/kpz308-rpva-practical.git`.
 
 ITS dev-server Docker network:
 
@@ -64,7 +67,7 @@ Choose an immutable tag that includes the source commit or date. Avoid
 ```sh
 REVIEWED_REF=<REVIEWED_COMMIT_OR_TAG>
 TAG=dev-<YYYYMMDD>-<SHORT_SHA>
-IMAGE="git.its.utas.edu.au/UTAS/kpz308-rpva-practical:${TAG}"
+IMAGE="git.its.utas.edu.au/utas/kpz308-rpva-practical:${TAG}"
 
 docker build \
   --platform linux/amd64 \
@@ -108,7 +111,12 @@ token/password anywhere.
 ## Push And Record Digest
 
 ```sh
-docker push "${IMAGE}" | tee "push-${TAG}.log"
+if ( set -o pipefail; docker push "${IMAGE}" | tee "push-${TAG}.log" ); then
+  echo "push succeeded"
+else
+  echo "push failed; do not request deployment" >&2
+  exit 1
+fi
 grep -E "digest: sha256:" "push-${TAG}.log"
 ```
 
@@ -135,15 +143,15 @@ Send Mark only the image tag, digest, source ref, and any non-secret smoke
 result. Do not send tokens, local shell history, full credential prompts, image
 layers, or student identifiers.
 
-## After Mark Updates The Dev Server
+## Promotion Policy
 
-Mark has indicated that the pushed image can be linked to the repo and that
-Barry will be able to run the compose restart in the deployment directory:
+Use the agreed dev-first, prod-second promotion path:
 
-```sh
-docker compose down
-docker compose up -d
-```
+1. push a new readable immutable tag to Gitea;
+2. update dev `application.yml`;
+3. smoke dev;
+4. update prod `application.yml` to the same tag;
+5. smoke prod.
 
-Only run those commands on the ITS dev server after ITS has supplied the
-deployment directory and confirmed Barry's operator access.
+Mark prefers readable immutable tags in config rather than digest pins. Record
+digests for provenance and rollback evidence.

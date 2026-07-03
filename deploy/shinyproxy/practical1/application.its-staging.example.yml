@@ -33,7 +33,8 @@ proxy:
     - id: "kpz308-rpva-practical"
       display-name: "KPZ308 rPVA Practical"
       description: "KPZ308 rPVA teaching app identity; current surface packages the Practical 1 concept lab"
-      container-image: "git.its.utas.edu.au/UTAS/kpz308-rpva-practical:<TAG>"
+      # Docker image namespace is lowercase; source repo owner/path remains UTAS/kpz308-rpva-practical.
+      container-image: "git.its.utas.edu.au/utas/kpz308-rpva-practical:<TAG>"
       container-network: "shinyproxy-net"
       container-memory-limit: "1g"
       container-cpu-limit: 1.0

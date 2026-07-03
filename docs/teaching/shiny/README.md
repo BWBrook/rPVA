@@ -83,10 +83,11 @@ teaching, requirements, and deployment planning layer for future road-test work.
   `https://git.its.utas.edu.au/UTAS/kpz308-rpva-practical.git` and canonical
   app/repo id `kpz308-rpva-practical`.
 - `../../goals/040-its-dev-image-publication-preflight/Goal.md` records the
-  ITS dev image publication preflight: confirmed registry image path
-  `git.its.utas.edu.au/UTAS/kpz308-rpva-practical:<TAG>`, Docker network
-  `shinyproxy-net`, WSL/GlobalProtect push lane, and sendable ITS handoff
-  bundle.
+  ITS dev image publication preflight and WSL/GlobalProtect push lane. Goal
+  043 canonicalizes the validated lowercase Docker image path
+  `git.its.utas.edu.au/utas/kpz308-rpva-practical:<TAG>`, `shinyproxy-net`,
+  the Dockerfile build-support fix, and the agreed dev-first/prod-second
+  promotion path.
 
 ## Design Position
 

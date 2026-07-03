@@ -9,7 +9,7 @@ accounts, or approve student release.
 
 ## Platform Decision
 
-Current ITS facts to use for the next staging step:
+Current ITS facts and validation results:
 
 - ITS does not want `deep-server` used as the student-hosting machine.
 - ITS can provide a dedicated ShinyProxy VM.
@@ -26,15 +26,19 @@ Current ITS facts to use for the next staging step:
 - ITS has provided Gitea at `https://git.its.utas.edu.au/`.
 - Barry has created the uninitialized private repository
   `UTAS/kpz308-rpva-practical`.
-- Mark has confirmed the Gitea registry image path shape:
-  `git.its.utas.edu.au/UTAS/kpz308-rpva-practical:<TAG>`.
+- Docker image references use the lowercase registry namespace:
+  `git.its.utas.edu.au/utas/kpz308-rpva-practical:<TAG>`.
+- The ITS Gitea source repository owner/path remains
+  `UTAS/kpz308-rpva-practical`.
 - Mark says the pushed image can then be linked to the Gitea repository, and
   Gitea permissions handle source and registry access natively.
-- Mark is building a dev server for staging/testing with SSO initially limited
-  to Barry/ITS/rPVA operators.
+- Dev host validation has passed on `ecology-r-dev1.its.utas.edu.au`.
+- Prod host validation has passed on `ecology-r1.its.utas.edu.au`.
 - ITS Docker network: `shinyproxy-net`.
-- Persistent app data will live in the OS user's home directory on the ITS dev
-  server.
+- Reported deployment directory on dev/prod:
+  `/srv/sa-container/ecology-teaching-shiny`.
+- Persistent app data lives under the service-user controlled deployment/data
+  area configured by ITS.
 - Barry will be able to run `docker compose down` and
   `docker compose up -d` in the deployment directory to pull new images and
   restart the proxy.
@@ -91,21 +95,25 @@ does not inspect or implement KPZ314 materials.
 Use this confirmed registry image path shape:
 
 ```text
-git.its.utas.edu.au/UTAS/kpz308-rpva-practical:<TAG>
+git.its.utas.edu.au/utas/kpz308-rpva-practical:<TAG>
 ```
+
+Use lowercase `utas` for Docker image references. The uppercase
+`UTAS/kpz308-rpva-practical` string is for the Gitea source repository
+owner/path, not the Docker registry namespace.
 
 Suggested tag patterns:
 
 ```text
-kpz308-rpva-<short-sha>-staging
-kpz308-rpva-<YYYYMMDD>-candidate
+dev-<YYYYMMDD>-<SHORT_SHA>
 ```
 
-Prefer immutable tags or image digests over `latest`. For ShinyProxy review and
-rollback, a digest is better than a mutable tag:
+Prefer readable immutable tags over `latest`. Mark prefers readable immutable
+tags in ShinyProxy config rather than digest pins. After dev smoke, promote the
+same accepted tag to prod. Record digests for provenance and rollback evidence:
 
 ```text
-git.its.utas.edu.au/UTAS/kpz308-rpva-practical@sha256:<DIGEST>
+git.its.utas.edu.au/utas/kpz308-rpva-practical@sha256:<DIGEST>
 ```
 
 The source clone URL remains
@@ -173,24 +181,23 @@ Do not replace that with a shared writable class directory.
 
 ## Update Workflow
 
-Recommended staging update loop:
+Agreed promotion loop:
 
 1. rPVA selects a reviewed source commit.
 2. Build the image for `linux/amd64`.
 3. Push the image from the approved WSL/GlobalProtect publishing lane to
-   `git.its.utas.edu.au/UTAS/kpz308-rpva-practical:<TAG>`.
+   `git.its.utas.edu.au/utas/kpz308-rpva-practical:<TAG>`.
 4. Record the pushed tag and digest.
 5. Mark links the pushed image to the Gitea repository if required.
-6. ITS or the dedicated service user pulls the exact tag or digest on the VM.
-7. ShinyProxy config is updated to the exact tag or digest.
-8. Barry or ITS runs `docker compose down` and `docker compose up -d` in the
-   deployment directory to pull the image and restart the proxy.
-9. Non-student staging proof checks app open, Compare, CSV export, and
-   evidence-notes export.
-10. Rollback is a config revert to the previous tag or digest plus restart.
+6. Update dev `application.yml` to the readable immutable tag.
+7. Smoke dev.
+8. When accepted, update prod `application.yml` to the same tag.
+9. Smoke prod.
+10. Rollback is a config revert to the previous tag plus restart.
 
 For the first deployment only, an image tarball can be a fallback if Gitea
-registry setup lags. Prefer registry pull by digest once Gitea is available.
+registry setup lags. Prefer registry pull by the approved readable immutable
+tag once Gitea is available, with the digest recorded for provenance.
 
 ## Responsibility Split
 
@@ -201,37 +208,58 @@ registry setup lags. Prefer registry pull by digest once Gitea is available.
 | OS patching, host backup, host monitoring | ITS | Underlying server care stays with ITS. |
 | Gitea repository/access groups | ITS | Current private repo: `UTAS/kpz308-rpva-practical`; `ecology-teaching-shiny` is only a possible coordination/access-group label unless ITS creates such a namespace. |
 | App image content | Barry/rPVA | Reviewed rPVA source, Dockerfile template, package install, app behavior. |
-| WSL image publication | Barry/rPVA using WSL on GlobalProtect | Build/tag/push image to `git.its.utas.edu.au/UTAS/kpz308-rpva-practical:<TAG>` and report tag/digest back to Mark. |
-| ShinyProxy app config content | Barry/rPVA with ITS review | App id, image tag/digest, `shinyproxy-net`, workspace mapping, resource assumptions. |
+| WSL image publication | Barry/rPVA using WSL on GlobalProtect | Build/tag/push image to `git.its.utas.edu.au/utas/kpz308-rpva-practical:<TAG>` and report tag/digest back to Mark. |
+| ShinyProxy app config content | Barry/rPVA with ITS review | App id, readable immutable image tag, digest record, `shinyproxy-net`, workspace mapping, resource assumptions. |
 | First staging proof | Shared | ITS platform setup plus rPVA app-path smoke and evidence export check. |
 | Class-day app behavior/support | Barry/rPVA | Teaching fallback remains outside the VM platform decision. |
 | Student release decision | Shared approval gate | Requires staging proof, auth, workspaces, capacity, fallback, and cleanup. |
 
-## Open ITS Questions
+## Known ITS Facts After Goal 043
 
-1. What exact service-user home path should replace `<SERVICE_USER_HOME>`?
-2. What immutable tag convention should Barry use for the first dev-server
-   image push?
-3. Should non-student staging use ShinyProxy simple auth, ITS SSO, or another
-   ITS-managed access layer?
-4. What group names should ShinyProxy use for staging and future student
-   access?
-5. Should ITS pin the ShinyProxy config to a tag or digest after the first
-   pushed image?
-6. What resource limits are appropriate for a KPZ308 class session?
-7. What logs can Barry read as the service user during class support?
-8. What is the rollback owner and expected response time during a class?
+- Dev validation passed on `ecology-r-dev1.its.utas.edu.au`.
+- Prod validation passed on `ecology-r1.its.utas.edu.au`.
+- Dev and prod use SAML/SSO rather than app-embedded login.
+- Reported dev/prod deployment directory:
+  `/srv/sa-container/ecology-teaching-shiny`.
+- Docker network: `shinyproxy-net`.
+- Prod app access groups include:
+  - `UNI-Ecology-Teaching-Shiny-Staff`;
+  - `KPZ308`.
+- KPZ314 is present in SSO configuration but is not granted to the current
+  KPZ308 app. Treat KPZ314 as a later separate app/container/access task.
+- Prod capacity rehearsal passed at 5, 10, 20, 40, and 60 temporary app
+  containers with ITS monitoring headroom. This was host/container/app workload
+  capacity, not 60 distinct SAML identities.
+- Mark prefers readable immutable tags in `application.yml`; record digests
+  for provenance and rollback evidence rather than pinning config by digest by
+  default.
+- First planned student contact with the app is `2026-07-20`.
+
+## Remaining Operational Questions
+
+1. Who owns class-day support escalation and rollback decisions, and what is
+   the expected response path during a live class?
+2. Which logs and health checks can Barry/rPVA read directly during class
+   support, and which must be requested from ITS?
+3. What workspace cleanup and retention policy should apply after the KPZ308
+   practical period?
+4. Where should ITS/rPVA record promoted image digests if not solely in repo
+   notes and goal packets?
+5. Should one final staff smoke through `UNI-Ecology-Teaching-Shiny-Staff` be
+   run immediately before releasing the teaching-channel link?
 
 ## Student Release Boundary
 
-This handoff prepares ITS staging. It is not a student release.
+The ITS infrastructure, auth, dev/prod smoke, staff access/export, monitoring,
+and capacity gates have passed at staff/tester level. This handoff is still not
+itself a student release.
 
-Do not publish any route to students until a later gate proves:
+Before students receive the route, run a separate teaching-release gate focused
+on:
 
-- ITS staging URL works without browser trust warnings;
-- authentication/access model is approved;
-- per-user workspace mapping works;
-- expected class concurrency is tested or conservatively bounded;
-- monitoring and class-day support are agreed;
+- final teaching-channel or Moodle link text;
+- optional final staff smoke through the staff access group;
 - fallback and rollback are ready;
-- Moodle/student-facing material uses the approved class route only.
+- class-day support and log/health-check response path;
+- cleanup/retention policy;
+- release timing before the first planned student app contact on `2026-07-20`.

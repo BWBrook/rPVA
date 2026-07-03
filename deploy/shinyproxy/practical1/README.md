@@ -24,8 +24,9 @@ implementation goal before any student-facing service is exposed.
   confirmed `kpz308-rpva-practical` app/repo id, Gitea image-name shape,
   rootless-Docker path assumptions, and non-student auth decision points.
 - `its-vm-handoff.md`: ITS-facing handoff for the dedicated teaching Shiny VM.
-- `gitea-registry-runbook.md`: Gitea image naming, tag/digest, update, tarball
-  fallback, and rollback guidance for future approved staging work.
+- `gitea-registry-runbook.md`: Gitea image naming, readable immutable-tag
+  promotion, digest recording, update, tarball fallback, and rollback guidance
+  for future approved staging work.
 - `wsl-image-push-runbook.md`: WSL/GlobalProtect image build and push handoff
   for the confirmed ITS Gitea registry target.
 - `nginx-practical1.example.conf`: nginx location/upstream example showing how
@@ -70,8 +71,8 @@ draft, not an operations script.
 
 7. Review `its-vm-handoff.md`, `application.its-staging.example.yml`,
    `gitea-registry-runbook.md`, and `wsl-image-push-runbook.md` before the
-   WSL/GlobalProtect publishing lane builds and pushes to
-   `git.its.utas.edu.au/UTAS/kpz308-rpva-practical:<TAG>`.
+   WSL/GlobalProtect publishing lane builds and pushes a readable immutable tag
+   to `git.its.utas.edu.au/utas/kpz308-rpva-practical:<TAG>`.
 8. In a later implementation goal, copy reviewed templates into the approved
    deployment location and replace placeholders with approved values.
 9. Test a non-student staging URL before any live class URL is issued.
@@ -90,6 +91,10 @@ because the deployed service should be tied to a reviewed commit/tag and a
 repeatable image build. The source tree is still copied into the image during
 build so `renv.lock`, package source, `inst/shiny/practical1/`, and
 documentation metadata are available to the installer.
+
+The Dockerfile template also primes locked `listenv` 0.10.1 before
+`renv::restore()`. That mirrors the R CI workaround and the WSL build lesson
+for the known `renv` restore/listenv edge.
 
 ## Placeholder Policy
 
@@ -115,8 +120,8 @@ The later ITS implementation goal should decide and record:
   mirror/base image;
 - final ShinyProxy internal port;
 - ITS VM service-user name, app data root, and rootless Docker network;
-- Gitea registry access group and image tag/digest convention for
-  `git.its.utas.edu.au/UTAS/kpz308-rpva-practical:<TAG>`;
+- Gitea registry access group and readable immutable image-tag convention for
+  `git.its.utas.edu.au/utas/kpz308-rpva-practical:<TAG>`;
 - exact service-user home path to replace `<SERVICE_USER_HOME>`;
 - TLS certificate, DNS, and student-friendly URL ownership;
 - generated account/token list process;
@@ -141,6 +146,7 @@ docker build \
 That build may pull a sizeable R base image and restore R packages, so it is
 intentionally not part of the default scaffold validation.
 
-For Goal 040, WSL on GlobalProtect is the intended publication lane because it
-can reach ITS Gitea. The Mac mini remains the source-of-truth and orchestration
-machine; it must not push images to ITS Gitea.
+For Goal 040 and later, WSL on GlobalProtect is the intended publication lane
+because it can reach ITS Gitea. The Mac mini remains the source-of-truth and
+orchestration machine; it must not push images to ITS Gitea. Goal 043 records
+the validated dev-first, prod-second promotion path.

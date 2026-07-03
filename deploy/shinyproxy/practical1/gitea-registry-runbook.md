@@ -52,20 +52,24 @@ kpz314-sdm-practical
 Image name shape:
 
 ```text
-git.its.utas.edu.au/UTAS/kpz308-rpva-practical:<TAG>
+git.its.utas.edu.au/utas/kpz308-rpva-practical:<TAG>
 ```
 
-Mark has confirmed this path shape for image publication. Do not substitute
-credentials, tokens, or live registry values in this repo.
+Docker image references must use the lowercase `utas` namespace. Docker
+rejected the uppercase `UTAS` namespace during the first publication pass. The
+source repository owner/path remains `UTAS/kpz308-rpva-practical`.
+
+Do not substitute credentials, tokens, or live registry values in this repo.
 
 Recommended tags:
 
 ```text
-kpz308-rpva-<short-sha>-staging
-kpz308-rpva-<YYYYMMDD>-candidate
+dev-<YYYYMMDD>-<SHORT_SHA>
 ```
 
-Avoid `latest` for ShinyProxy app config. Use an immutable tag or digest.
+Avoid `latest` for ShinyProxy app config. Use a readable immutable tag in
+`application.yml`; after dev smoke, promote the same accepted tag to prod.
+Record the digest for provenance and rollback evidence.
 
 ## Build From Repo Root
 
@@ -77,7 +81,7 @@ docker build \
   --platform linux/amd64 \
   -f deploy/shinyproxy/practical1/Dockerfile.template \
   --build-arg RPVA_REF=<REVIEWED_COMMIT_OR_TAG> \
-  -t git.its.utas.edu.au/UTAS/kpz308-rpva-practical:<TAG> \
+  -t git.its.utas.edu.au/utas/kpz308-rpva-practical:<TAG> \
   .
 ```
 
@@ -94,14 +98,14 @@ orchestration machine.
 After logging in safely from WSL, an approved publisher can push:
 
 ```sh
-docker push git.its.utas.edu.au/UTAS/kpz308-rpva-practical:<TAG>
+docker push git.its.utas.edu.au/utas/kpz308-rpva-practical:<TAG>
 ```
 
 Then record the digest:
 
 ```sh
 docker image inspect \
-  git.its.utas.edu.au/UTAS/kpz308-rpva-practical:<TAG> \
+  git.its.utas.edu.au/utas/kpz308-rpva-practical:<TAG> \
   --format '{{json .RepoDigests}}'
 ```
 
@@ -113,19 +117,33 @@ ShinyProxy YAML, shell history captures, reports, or support notes.
 On the ITS VM, the dedicated ShinyProxy/Docker service user should use
 ITS-approved rootless Docker commands or wrappers.
 
-High-level update sequence:
+Agreed high-level promotion sequence:
 
-1. Pull the exact tag or digest.
+1. Push a new readable immutable tag to Gitea.
+2. Update dev `application.yml` to that tag.
+3. Pull the exact tag on dev and confirm the image id/digest.
+4. Smoke dev.
+5. When accepted, update prod `application.yml` to the same tag.
+6. Pull the exact tag on prod and confirm the image id/digest.
+7. Smoke prod.
+8. Keep the previous tag available for rollback.
+
+Mark prefers readable immutable tags in config rather than digest pins. Record
+digests for provenance and verification.
+
+Older generic update sequence, retained only as a shape for local adaptation:
+
+1. Pull the exact tag.
 2. Confirm the image id/digest.
-3. Update the ShinyProxy app config to the exact tag or digest.
+3. Update the ShinyProxy app config to the exact readable immutable tag.
 4. Restart ShinyProxy through the ITS-approved service-user path.
 5. Smoke the staging URL with a non-student account.
-6. Keep the previous tag/digest available for rollback.
+6. Keep the previous tag available for rollback.
 
 Example shape, to be adapted by ITS:
 
 ```sh
-docker pull git.its.utas.edu.au/UTAS/kpz308-rpva-practical@sha256:<DIGEST>
+docker pull git.its.utas.edu.au/utas/kpz308-rpva-practical:<TAG>
 ```
 
 The restart command is an ITS decision because the VM uses rootless Docker and
@@ -138,9 +156,9 @@ use an image tarball as a temporary fallback:
 
 ```sh
 docker save \
-  git.its.utas.edu.au/UTAS/kpz308-rpva-practical:<TAG> \
+  git.its.utas.edu.au/utas/kpz308-rpva-practical:<TAG> \
   -o /tmp/kpz308-rpva-practical-<TAG>.tar
-shasum -a 256 /tmp/kpz308-rpva-practical-<TAG>.tar
+sha256sum /tmp/kpz308-rpva-practical-<TAG>.tar
 ```
 
 The tarball should be transferred only through an ITS-approved channel. Do not
@@ -162,13 +180,14 @@ After pull/update/restart, prove at minimum:
 
 ## Rollback
 
-Rollback should be a ShinyProxy app config revert to the previous tag/digest,
-followed by the ITS-approved restart path.
+Rollback should be a ShinyProxy app config revert to the previous tag, followed
+by the ITS-approved restart path.
 
 Record before each update:
 
-- previous tag or digest;
-- new tag or digest;
+- previous tag;
+- new tag;
+- digest records for both tags if available;
 - source commit;
 - restart owner;
 - smoke result;

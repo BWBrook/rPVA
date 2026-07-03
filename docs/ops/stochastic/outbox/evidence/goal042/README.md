@@ -3,6 +3,13 @@
 This folder is for small non-secret evidence from the first controlled ITS
 Gitea registry image publication by `stochastic`.
 
+Goal 043 deliberately keeps raw Goal 042 evidence on the `stochastic` report
+branch rather than copying it wholesale into `main`. The canonical summary is:
+
+```text
+docs/goals/043-its-dev-prod-validation-canonicalization/its-dev-prod-validation-closeout.md
+```
+
 Allowed files:
 
 - `versions.txt`: non-secret OS/Git/Docker/R posture summary.
