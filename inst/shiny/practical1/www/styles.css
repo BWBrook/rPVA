@@ -323,13 +323,19 @@ body {
   margin-bottom: 10px;
 }
 
-.modal-learning-list {
+.deep-dive-modal ul {
   margin: 8px 0 12px;
   padding-left: 19px;
 }
 
-.modal-learning-list li {
+.deep-dive-modal li {
   margin-bottom: 7px;
+}
+
+.deep-dive-modal-warning {
+  border-left: 4px solid var(--gold);
+  background: #fff8e8;
+  padding: 10px 12px;
 }
 
 .metric-table table,

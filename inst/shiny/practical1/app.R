@@ -188,21 +188,46 @@ landing_card_ui <- function(image, alt, eyebrow, title, body, action = NULL, ext
   )
 }
 
+pva_deep_dive_path <- file.path("content", "pva-deep-dive.md")
+
+markdown_unavailable_ui <- function(message) {
+  div(
+    class = "deep-dive-modal-warning",
+    p(strong("Deep-dive note unavailable")),
+    p(message)
+  )
+}
+
+render_markdown_content <- function(path) {
+  if (!file.exists(path)) {
+    return(markdown_unavailable_ui("The PVA note could not be found. Please tell your demonstrator."))
+  }
+
+  if (file.access(path, mode = 4) != 0) {
+    return(markdown_unavailable_ui("The PVA note could not be read. Please tell your demonstrator."))
+  }
+
+  if (!requireNamespace("commonmark", quietly = TRUE)) {
+    return(markdown_unavailable_ui("The Markdown renderer is unavailable. Please tell your demonstrator."))
+  }
+
+  tryCatch(
+    {
+      markdown_text <- paste(readLines(path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+      HTML(commonmark::markdown_html(markdown_text))
+    },
+    error = function(...) {
+      markdown_unavailable_ui("The PVA note could not be rendered. Please tell your demonstrator.")
+    }
+  )
+}
+
 pva_deep_dive_ui <- function() {
   modalDialog(
     title = "What is PVA?",
     div(
       class = "deep-dive-modal",
-      p("Population viability analysis, or PVA, explores many possible futures under assumptions about survival, breeding, habitat limits, and chance events. Instead of giving one forecast, it asks: if the biology behaves like this, what range of outcomes could happen?"),
-      p("In this practical, each model run is one scenario. The baseline is your reference future, then later runs change one factor so you can see what moved. A good comparison is not about finding the biggest number; it is about explaining which assumption changed and how the population responded."),
-      tags$ul(
-        class = "modal-learning-list",
-        tags$li(strong("Extinction risk"), " shows how often simulated futures reach zero."),
-        tags$li(strong("Abundance"), " shows where the population tends to finish."),
-        tags$li(strong("Uncertainty"), " shows how spread out the possible futures are."),
-        tags$li(strong("Evidence for interpretation"), " means the outputs support your reasoning; they are not final answers by themselves.")
-      ),
-      p("Use the outputs as evidence for interpretation: compare scenarios, name uncertainty, and be honest about the assumptions behind the model.")
+      render_markdown_content(pva_deep_dive_path)
     ),
     footer = modalButton("Close"),
     easyClose = TRUE,

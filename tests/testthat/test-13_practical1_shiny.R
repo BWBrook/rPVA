@@ -118,18 +118,28 @@ test_that("What is PVA landing card exposes one accessible deep-dive", {
   app_dir <- rPVA:::practical1_shiny_app_dir()
   app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
   style_text <- paste(readLines(file.path(app_dir, "www", "styles.css"), warn = FALSE), collapse = "\n")
+  content_path <- file.path(app_dir, "content", "pva-deep-dive.md")
+  content_text <- if (file.exists(content_path)) {
+    paste(readLines(content_path, warn = FALSE), collapse = "\n")
+  } else {
+    ""
+  }
 
   expect_true(grepl("pva_deep_dive_ui <- function()", app_text, fixed = TRUE))
+  expect_true(file.exists(content_path))
+  expect_true(grepl('pva_deep_dive_path <- file.path("content", "pva-deep-dive.md")', app_text, fixed = TRUE))
+  expect_true(grepl("render_markdown_content(pva_deep_dive_path)", app_text, fixed = TRUE))
+  expect_false(grepl("Population viability analysis, or PVA, explores many possible futures under assumptions", app_text, fixed = TRUE))
   expect_match(app_text, 'actionButton\\(\\s*"open_pva_deep_dive"')
   expect_true(grepl('observeEvent(input$open_pva_deep_dive', app_text, fixed = TRUE))
   expect_true(grepl("showModal(pva_deep_dive_ui())", app_text, fixed = TRUE))
   expect_true(grepl('modalButton("Close")', app_text, fixed = TRUE))
   expect_true(grepl("Explore PVA", app_text, fixed = TRUE))
-  expect_true(grepl("many possible futures under assumptions", app_text, fixed = TRUE))
-  expect_true(grepl("extinction risk", app_text, fixed = TRUE))
-  expect_true(grepl("abundance", app_text, fixed = TRUE))
-  expect_true(grepl("uncertainty", app_text, fixed = TRUE))
-  expect_true(grepl("evidence for interpretation", app_text, fixed = TRUE))
+  expect_true(grepl("many possible futures under assumptions", content_text, fixed = TRUE))
+  expect_true(grepl("Extinction risk", content_text, fixed = TRUE))
+  expect_true(grepl("Abundance", content_text, fixed = TRUE))
+  expect_true(grepl("Uncertainty", content_text, fixed = TRUE))
+  expect_true(grepl("Evidence for interpretation", content_text, fixed = TRUE))
   expect_false(grepl("open_mission_deep_dive", app_text, fixed = TRUE))
   expect_false(grepl("open_evidence_deep_dive", app_text, fixed = TRUE))
 
