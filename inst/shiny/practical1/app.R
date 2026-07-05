@@ -169,9 +169,11 @@ stage_control_values <- function(stage, input) {
   values
 }
 
-landing_card_ui <- function(image, alt, eyebrow, title, body) {
+landing_card_ui <- function(image, alt, eyebrow, title, body, action = NULL, extra_class = NULL) {
+  card_class <- paste(c("landing-card", extra_class), collapse = " ")
+
   div(
-    class = "landing-card",
+    class = card_class,
     div(
       class = "landing-visual",
       tags$img(src = image, alt = alt)
@@ -180,8 +182,31 @@ landing_card_ui <- function(image, alt, eyebrow, title, body) {
       class = "landing-card-copy",
       span(class = "landing-eyebrow", eyebrow),
       h3(title),
-      p(body)
+      p(body),
+      action
     )
+  )
+}
+
+pva_deep_dive_ui <- function() {
+  modalDialog(
+    title = "What is PVA?",
+    div(
+      class = "deep-dive-modal",
+      p("Population viability analysis, or PVA, explores many possible futures under assumptions about survival, breeding, habitat limits, and chance events. Instead of giving one forecast, it asks: if the biology behaves like this, what range of outcomes could happen?"),
+      p("In this practical, each model run is one scenario. The baseline is your reference future, then later runs change one factor so you can see what moved. A good comparison is not about finding the biggest number; it is about explaining which assumption changed and how the population responded."),
+      tags$ul(
+        class = "modal-learning-list",
+        tags$li(strong("Extinction risk"), " shows how often simulated futures reach zero."),
+        tags$li(strong("Abundance"), " shows where the population tends to finish."),
+        tags$li(strong("Uncertainty"), " shows how spread out the possible futures are."),
+        tags$li(strong("Evidence for interpretation"), " means the outputs support your reasoning; they are not final answers by themselves.")
+      ),
+      p("Use the outputs as evidence for interpretation: compare scenarios, name uncertainty, and be honest about the assumptions behind the model.")
+    ),
+    footer = modalButton("Close"),
+    easyClose = TRUE,
+    size = "m"
   )
 }
 
@@ -224,7 +249,15 @@ ui <- navbarPage(
           "population trajectory lines and evidence marks on a field notebook page",
           "Plain language",
           "What is PVA?",
-          "A population viability analysis explores possible futures, not a single forecast."
+          "A population viability analysis explores possible futures, not a single forecast.",
+          action = actionButton(
+            "open_pva_deep_dive",
+            label = "Explore PVA",
+            icon = icon("circle-info"),
+            class = "btn-default landing-card-action",
+            `aria-label` = "Explore population viability analysis"
+          ),
+          extra_class = "is-interactive"
         ),
         landing_card_ui(
           "img/landing-conservation-decision.png",
@@ -369,6 +402,10 @@ server <- function(input, output, session) {
 
   observeEvent(input$show_intro, {
     updateNavbarPage(session, "section", selected = "Start")
+  })
+
+  observeEvent(input$open_pva_deep_dive, {
+    showModal(pva_deep_dive_ui())
   })
 
   observeEvent(input$run_stage, {

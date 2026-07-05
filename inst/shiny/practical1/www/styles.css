@@ -125,6 +125,11 @@ body {
   overflow: hidden;
 }
 
+.landing-card.is-interactive {
+  border-color: #b7d5d8;
+  box-shadow: 0 1px 0 rgba(18, 106, 115, 0.08);
+}
+
 .landing-visual {
   aspect-ratio: 16 / 9;
   background: #eef3ef;
@@ -155,6 +160,19 @@ body {
 .landing-card-copy ul {
   margin: 0;
   padding-left: 18px;
+}
+
+.landing-card-action {
+  margin-top: 6px;
+  color: var(--teal);
+  font-weight: 700;
+}
+
+.landing-card-action:hover,
+.landing-card-action:focus {
+  color: #0e555c;
+  border-color: #9fc5c9;
+  background: #edf7f8;
 }
 
 .evidence-card {
@@ -293,6 +311,25 @@ body {
 
 .btn-default {
   border-color: var(--line);
+}
+
+.deep-dive-modal {
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.deep-dive-modal p {
+  margin-bottom: 10px;
+}
+
+.modal-learning-list {
+  margin: 8px 0 12px;
+  padding-left: 19px;
+}
+
+.modal-learning-list li {
+  margin-bottom: 7px;
 }
 
 .metric-table table,

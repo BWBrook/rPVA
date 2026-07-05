@@ -114,6 +114,30 @@ test_that("Practical 1 opens with a tutorial landing screen", {
   expect_false(grepl("run `Deterministic baseline` again", app_text, fixed = TRUE))
 })
 
+test_that("What is PVA landing card exposes one accessible deep-dive", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
+  style_text <- paste(readLines(file.path(app_dir, "www", "styles.css"), warn = FALSE), collapse = "\n")
+
+  expect_true(grepl("pva_deep_dive_ui <- function()", app_text, fixed = TRUE))
+  expect_match(app_text, 'actionButton\\(\\s*"open_pva_deep_dive"')
+  expect_true(grepl('observeEvent(input$open_pva_deep_dive', app_text, fixed = TRUE))
+  expect_true(grepl("showModal(pva_deep_dive_ui())", app_text, fixed = TRUE))
+  expect_true(grepl('modalButton("Close")', app_text, fixed = TRUE))
+  expect_true(grepl("Explore PVA", app_text, fixed = TRUE))
+  expect_true(grepl("many possible futures under assumptions", app_text, fixed = TRUE))
+  expect_true(grepl("extinction risk", app_text, fixed = TRUE))
+  expect_true(grepl("abundance", app_text, fixed = TRUE))
+  expect_true(grepl("uncertainty", app_text, fixed = TRUE))
+  expect_true(grepl("evidence for interpretation", app_text, fixed = TRUE))
+  expect_false(grepl("open_mission_deep_dive", app_text, fixed = TRUE))
+  expect_false(grepl("open_evidence_deep_dive", app_text, fixed = TRUE))
+
+  expect_match(style_text, "\\.landing-card\\.is-interactive")
+  expect_match(style_text, "\\.landing-card-action")
+  expect_match(style_text, "\\.deep-dive-modal")
+})
+
 test_that("landing screen uses local accessible bitmap assets", {
   app_dir <- rPVA:::practical1_shiny_app_dir()
   app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
