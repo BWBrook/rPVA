@@ -189,6 +189,8 @@ landing_card_ui <- function(image, alt, eyebrow, title, body, action = NULL, ext
 }
 
 pva_deep_dive_path <- file.path("content", "pva-deep-dive.md")
+mission_deep_dive_path <- file.path("content", "mission-deep-dive.md")
+evidence_deep_dive_path <- file.path("content", "evidence-deep-dive.md")
 
 markdown_unavailable_ui <- function(message) {
   div(
@@ -200,11 +202,11 @@ markdown_unavailable_ui <- function(message) {
 
 render_markdown_content <- function(path) {
   if (!file.exists(path)) {
-    return(markdown_unavailable_ui("The PVA note could not be found. Please tell your demonstrator."))
+    return(markdown_unavailable_ui("The deep-dive note could not be found. Please tell your demonstrator."))
   }
 
   if (file.access(path, mode = 4) != 0) {
-    return(markdown_unavailable_ui("The PVA note could not be read. Please tell your demonstrator."))
+    return(markdown_unavailable_ui("The deep-dive note could not be read. Please tell your demonstrator."))
   }
 
   if (!requireNamespace("commonmark", quietly = TRUE)) {
@@ -217,22 +219,34 @@ render_markdown_content <- function(path) {
       HTML(commonmark::markdown_html(markdown_text))
     },
     error = function(...) {
-      markdown_unavailable_ui("The PVA note could not be rendered. Please tell your demonstrator.")
+      markdown_unavailable_ui("The deep-dive note could not be rendered. Please tell your demonstrator.")
     }
   )
 }
 
-pva_deep_dive_ui <- function() {
+deep_dive_modal_ui <- function(title, path) {
   modalDialog(
-    title = "What is PVA?",
+    title = title,
     div(
       class = "deep-dive-modal",
-      render_markdown_content(pva_deep_dive_path)
+      render_markdown_content(path)
     ),
     footer = modalButton("Close"),
     easyClose = TRUE,
     size = "m"
   )
+}
+
+pva_deep_dive_ui <- function() {
+  deep_dive_modal_ui("What is PVA?", pva_deep_dive_path)
+}
+
+mission_deep_dive_ui <- function() {
+  deep_dive_modal_ui("What you will do", mission_deep_dive_path)
+}
+
+evidence_deep_dive_ui <- function() {
+  deep_dive_modal_ui("Your evidence pack", evidence_deep_dive_path)
 }
 
 ui <- navbarPage(
@@ -289,10 +303,18 @@ ui <- navbarPage(
           "conservation decision scene with island habitat map and field notes",
           "Your mission",
           "What you will do",
-          "Run the baseline, change one factor at a time, compare results, and explain the tradeoffs."
+          "Run the baseline, change one factor at a time, compare results, and explain the tradeoffs.",
+          action = actionButton(
+            "open_mission_deep_dive",
+            label = "Explore mission",
+            icon = icon("route"),
+            class = "btn-default landing-card-action",
+            `aria-label` = "Explore the Practical 1 mission"
+          ),
+          extra_class = "is-interactive"
         ),
         div(
-          class = "landing-card evidence-card",
+          class = "landing-card evidence-card is-interactive",
           div(
             class = "landing-card-copy",
             span(class = "landing-eyebrow", "Evidence to save"),
@@ -301,6 +323,13 @@ ui <- navbarPage(
               tags$li("a comparison CSV from Compare;"),
               tags$li("evidence notes Markdown;"),
               tags$li("one sentence about what changed and why it matters.")
+            ),
+            actionButton(
+              "open_evidence_deep_dive",
+              label = "Explore evidence",
+              icon = icon("download"),
+              class = "btn-default landing-card-action",
+              `aria-label` = "Explore the Practical 1 evidence pack"
             )
           )
         )
@@ -431,6 +460,14 @@ server <- function(input, output, session) {
 
   observeEvent(input$open_pva_deep_dive, {
     showModal(pva_deep_dive_ui())
+  })
+
+  observeEvent(input$open_mission_deep_dive, {
+    showModal(mission_deep_dive_ui())
+  })
+
+  observeEvent(input$open_evidence_deep_dive, {
+    showModal(evidence_deep_dive_ui())
   })
 
   observeEvent(input$run_stage, {

@@ -114,34 +114,78 @@ test_that("Practical 1 opens with a tutorial landing screen", {
   expect_false(grepl("run `Deterministic baseline` again", app_text, fixed = TRUE))
 })
 
-test_that("What is PVA landing card exposes one accessible deep-dive", {
+test_that("landing cards expose Markdown-backed deep-dives", {
   app_dir <- rPVA:::practical1_shiny_app_dir()
   app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
   style_text <- paste(readLines(file.path(app_dir, "www", "styles.css"), warn = FALSE), collapse = "\n")
-  content_path <- file.path(app_dir, "content", "pva-deep-dive.md")
-  content_text <- if (file.exists(content_path)) {
-    paste(readLines(content_path, warn = FALSE), collapse = "\n")
-  } else {
-    ""
+  content_paths <- c(
+    pva = file.path(app_dir, "content", "pva-deep-dive.md"),
+    mission = file.path(app_dir, "content", "mission-deep-dive.md"),
+    evidence = file.path(app_dir, "content", "evidence-deep-dive.md")
+  )
+  content_text <- lapply(content_paths, function(path) {
+    if (file.exists(path)) {
+      paste(readLines(path, warn = FALSE), collapse = "\n")
+    } else {
+      ""
+    }
+  })
+
+  expect_true(all(file.exists(content_paths)))
+  expect_true(grepl('pva_deep_dive_path <- file.path("content", "pva-deep-dive.md")', app_text, fixed = TRUE))
+  expect_true(grepl('mission_deep_dive_path <- file.path("content", "mission-deep-dive.md")', app_text, fixed = TRUE))
+  expect_true(grepl('evidence_deep_dive_path <- file.path("content", "evidence-deep-dive.md")', app_text, fixed = TRUE))
+  expect_true(grepl("deep_dive_modal_ui <- function(title, path)", app_text, fixed = TRUE))
+  expect_true(grepl("render_markdown_content(path)", app_text, fixed = TRUE))
+  expect_true(grepl("pva_deep_dive_ui <- function()", app_text, fixed = TRUE))
+  expect_true(grepl("mission_deep_dive_ui <- function()", app_text, fixed = TRUE))
+  expect_true(grepl("evidence_deep_dive_ui <- function()", app_text, fixed = TRUE))
+  expect_false(grepl("Population viability analysis, or PVA, explores many possible futures under assumptions", app_text, fixed = TRUE))
+
+  expected_triggers <- c(
+    "open_pva_deep_dive" = "Explore PVA",
+    "open_mission_deep_dive" = "Explore mission",
+    "open_evidence_deep_dive" = "Explore evidence"
+  )
+
+  for (trigger in names(expected_triggers)) {
+    expect_match(app_text, paste0('actionButton\\(\\s*"', trigger, '"'))
+    expect_true(grepl(paste0("observeEvent(input$", trigger), app_text, fixed = TRUE))
+    expect_true(grepl(expected_triggers[[trigger]], app_text, fixed = TRUE))
   }
 
-  expect_true(grepl("pva_deep_dive_ui <- function()", app_text, fixed = TRUE))
-  expect_true(file.exists(content_path))
-  expect_true(grepl('pva_deep_dive_path <- file.path("content", "pva-deep-dive.md")', app_text, fixed = TRUE))
-  expect_true(grepl("render_markdown_content(pva_deep_dive_path)", app_text, fixed = TRUE))
-  expect_false(grepl("Population viability analysis, or PVA, explores many possible futures under assumptions", app_text, fixed = TRUE))
-  expect_match(app_text, 'actionButton\\(\\s*"open_pva_deep_dive"')
-  expect_true(grepl('observeEvent(input$open_pva_deep_dive', app_text, fixed = TRUE))
-  expect_true(grepl("showModal(pva_deep_dive_ui())", app_text, fixed = TRUE))
+  expected_modals <- c(
+    "showModal(pva_deep_dive_ui())",
+    "showModal(mission_deep_dive_ui())",
+    "showModal(evidence_deep_dive_ui())"
+  )
+
+  for (modal_call in expected_modals) {
+    expect_true(grepl(modal_call, app_text, fixed = TRUE))
+  }
+
   expect_true(grepl('modalButton("Close")', app_text, fixed = TRUE))
-  expect_true(grepl("Explore PVA", app_text, fixed = TRUE))
-  expect_true(grepl("many possible futures under assumptions", content_text, fixed = TRUE))
-  expect_true(grepl("Extinction risk", content_text, fixed = TRUE))
-  expect_true(grepl("Abundance", content_text, fixed = TRUE))
-  expect_true(grepl("Uncertainty", content_text, fixed = TRUE))
-  expect_true(grepl("Evidence for interpretation", content_text, fixed = TRUE))
-  expect_false(grepl("open_mission_deep_dive", app_text, fixed = TRUE))
-  expect_false(grepl("open_evidence_deep_dive", app_text, fixed = TRUE))
+  expect_true(grepl("many possible futures under assumptions", content_text$pva, fixed = TRUE))
+  expect_true(grepl("Extinction risk", content_text$pva, fixed = TRUE))
+  expect_true(grepl("Abundance", content_text$pva, fixed = TRUE))
+  expect_true(grepl("Uncertainty", content_text$pva, fixed = TRUE))
+  expect_true(grepl("Evidence for interpretation", content_text$pva, fixed = TRUE))
+
+  expect_true(grepl("guided concept lab", content_text$mission, fixed = TRUE))
+  expect_true(grepl("baseline as run 1", content_text$mission, fixed = TRUE))
+  expect_true(grepl("change one factor at a time", content_text$mission, fixed = TRUE))
+  expect_true(grepl("Compare", content_text$mission, fixed = TRUE))
+
+  expect_true(grepl("comparison CSV", content_text$evidence, fixed = TRUE))
+  expect_true(grepl("evidence-notes Markdown", content_text$evidence, fixed = TRUE))
+  expect_true(grepl("one-sentence interpretation", content_text$evidence, fixed = TRUE))
+  expect_true(grepl("evidence is not the answer", content_text$evidence, fixed = TRUE))
+
+  for (text in content_text) {
+    expect_false(grepl("thylacine", text, ignore.case = TRUE))
+    expect_false(grepl("Lord Howe", text, ignore.case = TRUE))
+    expect_false(grepl("Gitea|stochastic|deployment|ShinyProxy|Docker|Moodle", text, ignore.case = TRUE))
+  }
 
   expect_match(style_text, "\\.landing-card\\.is-interactive")
   expect_match(style_text, "\\.landing-card-action")
