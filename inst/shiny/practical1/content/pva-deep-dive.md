@@ -1,4 +1,4 @@
-Population viability analysis, or PVA, explores **many possible futures under assumptions** about survival, breeding, habitat limits, and chance events. Instead of giving one forecast, it asks: if the biology behaves like this, what range of outcomes could happen?
+Population viability analysis, or PVA, is a simulation-based method in conservation biology that explores **many possible futures under assumptions** about survival, breeding, habitat limits, and chance events, for managing threatened species. Instead of giving one forecast, it asks: if the biology behaves like this, what range of outcomes could happen?
 
 In this practical, each model run is one scenario. The baseline is your reference future, then later runs change one factor so you can see what moved. A good comparison should focus on explaining which input value or assumption changed, and how the population responded.
 

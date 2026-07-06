@@ -179,7 +179,8 @@ test_that("landing cards expose Markdown-backed deep-dives", {
   expect_true(grepl("comparison CSV", content_text$evidence, fixed = TRUE))
   expect_true(grepl("evidence-notes Markdown", content_text$evidence, fixed = TRUE))
   expect_true(grepl("one-sentence interpretation", content_text$evidence, fixed = TRUE))
-  expect_true(grepl("evidence is not the answer", content_text$evidence, fixed = TRUE))
+  expect_true(grepl("support your explanation", content_text$evidence, fixed = TRUE))
+  expect_true(grepl("trade-offs", content_text$evidence, fixed = TRUE))
 
   for (text in content_text) {
     expect_false(grepl("thylacine", text, ignore.case = TRUE))
