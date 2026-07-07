@@ -117,5 +117,5 @@ test_that("diagnose_pva_result prompts care when no extinctions are observed", {
 
   expect_equal(diagnostics$code, "zero_observed_extinction")
   expect_equal(diagnostics$severity, "note")
-  expect_match(diagnostics$message, "not proof of no risk")
+  expect_match(diagnostics$message, "keep uncertainty visible")
 })

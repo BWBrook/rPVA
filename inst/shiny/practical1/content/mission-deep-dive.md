@@ -4,7 +4,7 @@ Start with the **baseline as run 1**. That gives every later run a reference poi
 
 - **Start baseline** creates the reference run.
 - **Change one factor at a time** so your comparison has a clear, isolated cause.
-- **Use Compare** to look across runs rather to evaluate the impact of different changes on the population.
+- **Use Compare** to evaluate the impact of different changes on the population.
 - **Explain the trade-off** in plain language: which input or assumption changed, which output moved, and what caveat remains.
 
 This is practice in PVA thinking: test an assumption, compare evidence, and interpret uncertainty before making a conservation claim.

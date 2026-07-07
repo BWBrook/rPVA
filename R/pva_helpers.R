@@ -131,7 +131,7 @@ diagnose_pva_result <- function(out,
     add_row(
       "zero_observed_extinction",
       "note",
-      "No simulated extinctions were observed; report this as a sample result, not proof of no risk."
+      "No simulated extinctions were observed; report this as a sample result and keep uncertainty visible."
     )
   }
 

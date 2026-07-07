@@ -193,6 +193,39 @@ test_that("landing cards expose Markdown-backed deep-dives", {
   expect_match(style_text, "\\.deep-dive-modal")
 })
 
+test_that("Concept Lab exposes a guided mission rail", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
+  style_text <- paste(readLines(file.path(app_dir, "www", "styles.css"), warn = FALSE), collapse = "\n")
+
+  expect_true(grepl("mission_rail_ui <- function(current_stage, completed_stages = character())", app_text, fixed = TRUE))
+  expect_true(grepl('uiOutput("mission_rail")', app_text, fixed = TRUE))
+  expect_true(grepl('actionButton("next_mission"', app_text, fixed = TRUE))
+  expect_true(grepl("output$mission_rail <- renderUI", app_text, fixed = TRUE))
+  expect_true(grepl("observeEvent(input$next_mission", app_text, fixed = TRUE))
+  expect_match(style_text, "\\.mission-rail")
+  expect_match(style_text, "\\.mission-step\\.is-current")
+  expect_match(style_text, "\\.mission-step\\.is-complete")
+})
+
+test_that("Compare view exposes run cards, baseline deltas, and interpretation capture", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
+  style_text <- paste(readLines(file.path(app_dir, "www", "styles.css"), warn = FALSE), collapse = "\n")
+
+  expect_true(grepl("run_cards_ui <- function(runs)", app_text, fixed = TRUE))
+  expect_true(grepl('uiOutput("run_cards")', app_text, fixed = TRUE))
+  expect_true(grepl("output$run_cards <- renderUI", app_text, fixed = TRUE))
+  expect_true(grepl("compare_teaching_runs(run_history(), include_deltas = TRUE)", app_text, fixed = TRUE))
+  expect_true(grepl('textAreaInput("interpretation_note"', app_text, fixed = TRUE))
+  expect_true(grepl("interpretation = input$interpretation_note", app_text, fixed = TRUE))
+  expect_true(grepl("Delta PE", app_text, fixed = TRUE))
+  expect_true(grepl("Delta Nmed", app_text, fixed = TRUE))
+  expect_match(style_text, "\\.run-card-grid")
+  expect_match(style_text, "\\.run-card")
+  expect_match(style_text, "\\.interpretation-capture")
+})
+
 test_that("landing screen uses local accessible bitmap assets", {
   app_dir <- rPVA:::practical1_shiny_app_dir()
   app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")

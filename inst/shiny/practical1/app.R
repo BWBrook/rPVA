@@ -188,6 +188,69 @@ landing_card_ui <- function(image, alt, eyebrow, title, body, action = NULL, ext
   )
 }
 
+mission_rail_ui <- function(current_stage, completed_stages = character()) {
+  div(
+    class = "mission-rail",
+    lapply(seq_len(nrow(implemented)), function(i) {
+      stage <- implemented$stage[[i]]
+      step_class <- paste(c(
+        "mission-step",
+        if (identical(stage, current_stage)) "is-current",
+        if (stage %in% completed_stages) "is-complete"
+      ), collapse = " ")
+
+      div(
+        class = step_class,
+        span(class = "mission-step-index", i),
+        span(class = "mission-step-label", stage_missions[[stage]])
+      )
+    })
+  )
+}
+
+next_mission_stage <- function(stage) {
+  current <- match(stage, implemented$stage)
+  if (is.na(current)) {
+    return(default_stage)
+  }
+  implemented$stage[[min(current + 1, nrow(implemented))]]
+}
+
+run_changed_settings_label <- function(run) {
+  controls <- run$settings[grepl("^control_", run$settings$setting), , drop = FALSE]
+  if (!nrow(controls)) {
+    return("Reference settings")
+  }
+
+  labels <- paste0(sub("^control_", "", controls$setting), " = ", controls$value)
+  paste(labels, collapse = "; ")
+}
+
+run_cards_ui <- function(runs) {
+  comparison <- rPVA::compare_teaching_runs(runs, include_deltas = TRUE)
+
+  div(
+    class = "run-card-grid",
+    lapply(seq_along(runs), function(i) {
+      row <- comparison[i, , drop = FALSE]
+      div(
+        class = "run-card",
+        span(class = "run-card-kicker", paste("Run", i)),
+        h4(runs[[i]]$label),
+        p(class = "muted", run_changed_settings_label(runs[[i]])),
+        div(
+          class = "run-card-metrics",
+          span(strong("PE"), ": ", sprintf("%.3f", row$PE)),
+          span(strong("Nmed"), ": ", row$Nmed),
+          span(strong("Delta PE"), ": ", sprintf("%+.3f", row$delta_PE)),
+          span(strong("Delta Nmed"), ": ", sprintf("%+d", row$delta_Nmed)),
+          span(strong("Uncertainty"), ": ", row$uncertainty_change)
+        )
+      )
+    })
+  )
+}
+
 pva_deep_dive_path <- file.path("content", "pva-deep-dive.md")
 mission_deep_dive_path <- file.path("content", "mission-deep-dive.md")
 evidence_deep_dive_path <- file.path("content", "evidence-deep-dive.md")
@@ -347,10 +410,12 @@ ui <- navbarPage(
           h3("Choose one mechanism"),
           p(class = "mission-path", "Work through the mission path by changing one visible control at a time, then compare."),
           actionButton("show_intro", label = tagList(icon("circle-info"), "Introduction"), class = "btn-default btn-sm"),
+          uiOutput("mission_rail"),
           selectInput("stage", "Teaching stage", choices = stage_choices, selected = default_stage),
           uiOutput("stage_text"),
           uiOutput("stage_controls"),
           actionButton("run_stage", label = tagList(icon("play"), "Run stage"), class = "btn-primary"),
+          actionButton("next_mission", label = tagList(icon("arrow-right"), "Next mission"), class = "btn-default"),
           div(class = "prompt", textOutput("stage_prompt"))
         ),
         div(
@@ -389,7 +454,17 @@ ui <- navbarPage(
             p("Choose a clean comparison: baseline run 1, one risk mechanism, and one intervention or vortex run."),
             p(class = "muted", "Repeated clicks are less useful than a targeted one-factor change.")
           ),
+          uiOutput("run_cards"),
           div(class = "compare-table", tableOutput("comparison_table")),
+          div(
+            class = "interpretation-capture",
+            textAreaInput("interpretation_note",
+              "One-sentence interpretation",
+              value = "",
+              placeholder = "I changed... The output that moved was... My caveat is...",
+              rows = 3
+            )
+          ),
           h4("Save evidence"),
           p(class = "muted", "Download a compact comparison table and notes for your own report. These files are evidence, not an answer."),
           div(
@@ -443,7 +518,7 @@ server <- function(input, output, session) {
   current_run <- reactiveVal(baseline)
   run_history <- reactiveVal(list(baseline))
   evidence_export <- reactive({
-    rPVA:::build_teaching_evidence_export(run_history())
+    rPVA:::build_teaching_evidence_export(run_history(), interpretation = input$interpretation_note)
   })
 
   observeEvent(input$run_baseline, {
@@ -472,9 +547,15 @@ server <- function(input, output, session) {
 
   observeEvent(input$run_stage, {
     stage <- input$stage
-    run <- run_stage(stage, stage_control_values(stage, input))
-    current_run(run)
-    run_history(c(run_history(), list(run)))
+    withProgress(message = "Running mission", value = 0.5, {
+      run <- run_stage(stage, stage_control_values(stage, input))
+      current_run(run)
+      run_history(c(run_history(), list(run)))
+    })
+  })
+
+  observeEvent(input$next_mission, {
+    updateSelectInput(session, "stage", selected = next_mission_stage(input$stage))
   })
 
   observeEvent(input$clear_runs, {
@@ -501,6 +582,15 @@ server <- function(input, output, session) {
 
   output$stage_controls <- renderUI({
     stage_control_ui(input$stage)
+  })
+
+  output$mission_rail <- renderUI({
+    stage <- input$stage
+    if (is.null(stage) || !nzchar(stage)) {
+      stage <- default_stage
+    }
+    completed <- vapply(run_history(), `[[`, character(1), "stage")
+    mission_rail_ui(stage, completed)
   })
 
   output$stage_prompt <- renderText({
@@ -547,8 +637,12 @@ server <- function(input, output, session) {
   })
 
   output$comparison_table <- renderTable({
-    rPVA::compare_teaching_runs(run_history())
+    rPVA::compare_teaching_runs(run_history(), include_deltas = TRUE)
   }, striped = TRUE, bordered = TRUE, spacing = "s")
+
+  output$run_cards <- renderUI({
+    run_cards_ui(run_history())
+  })
 
   output$download_comparison <- downloadHandler(
     filename = function() {

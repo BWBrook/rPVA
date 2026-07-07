@@ -1,21 +1,22 @@
 ---
-title: "Woodhen PVA Practical Report"
-subtitle: "rPVA teaching road-test scaffold"
+title: "Woodhen PVA Conservation Advice Report"
+subtitle: "KPZ308 Assessment Task 1 scaffold"
 format:
   pdf:
     toc: true
     number-sections: true
   docx: default
 execute:
-  echo: true
+  echo: false
   warning: false
   message: false
 ---
 
-# Instructions
+# How to use this scaffold
 
-This scaffold is a report template for Practical 1 and Practical 2. Replace
-each placeholder with your own results and interpretation.
+Replace the guide text with your own evidence and interpretation. Keep the
+report within 2000 words, excluding references and optional supporting
+artefacts.
 
 ```{r setup}
 find_repo_root <- function(start = getwd()) {
@@ -30,9 +31,9 @@ find_repo_root <- function(start = getwd()) {
     parent <- dirname(current)
     if (identical(parent, current)) {
       stop(
-        "Could not find rPVA repo root from this working directory. ",
-        "Run Quarto from a directory that includes DESCRIPTION and bootstrap.R (for example the repo root), ",
-        "or use `setwd()` to switch to the repo root before rendering."
+        "Unable to find rPVA repo root from this working directory. ",
+        "Run Quarto from a directory that includes DESCRIPTION and bootstrap.R, ",
+        "or use setwd() to switch to the repo root before rendering."
       )
     }
     current <- parent
@@ -45,96 +46,101 @@ bootstrap_path <- file.path(repo_root, "bootstrap.R")
 source(bootstrap_path, chdir = TRUE)
 ```
 
+```{r woodhen-evidence}
+core_runs <- run_woodhen_management_set(
+  c("01_no_mgmt", "02_pig_control", "03_captive_pig", "04_rodent_eradication", "05_future_baseline"),
+  keep_traj = FALSE,
+  seed = 123
+)
+
+selected_run <- run_woodhen_management_scenario("02_pig_control", keep_traj = TRUE, seed = 123)
+
+chosen_sensitivity <- run_woodhen_management_set(
+  c("sensitivity_default", "K_250"),
+  keep_traj = FALSE,
+  seed = 123
+)
+```
+
 # Executive summary
 
-In 3–5 sentences, answer:
+Write 3-5 sentences that state your recommendation, name the evidence that
+supports it, and identify the main caveat.
 
-- which scenario best balances extinction risk and abundance,
-- what uncertainty is most important,
-- what recommendation you would make.
+_Write your executive summary here._
 
-_Write your answer here._
+# Context and aim
 
-# Methods
+Explain the Lord Howe Island woodhen conservation problem and the decision your
+report informs. State why PVA is useful for comparing management scenarios and
+why model outputs still need ecological judgement.
 
-## Data and model setup
+_Write your context and aim here._
 
-- Software: `rPVA`
-- R version: _fill in_
-- Number of Monte-Carlo replicates: _fill in_
-- Seed (if fixed): _fill in_
+# Methods and scenarios
 
-## Model steps
+Briefly explain the rPVA model outputs you use: extinction probability, median
+final abundance, uncertainty intervals, and diagnostics. Identify the core
+management scenarios and your chosen one-factor sensitivity comparison.
 
-```{r methods-code}
-# Example: run_scenarios and one scenario visualisation
-# Replace scenario_id as needed
-woodhen_tbl <- run_scenarios("woodhen", csv_out = NULL, rds_out = NULL, keep_traj = FALSE, parallel = FALSE)
-print(woodhen_tbl)
+Use this table to check the core scenario set.
 
-spec <- set_scenario("02_pig_control", "woodhen")
-sim <- run_pva_core(spec, keep_traj = TRUE, seed = 123, verbose = FALSE)
-sim_summary <- summarize_pva_result(sim)
-sim_diagnostics <- diagnose_pva_result(sim)
+```{r core-scenario-table}
+core_runs$comparison
 ```
 
-# Results
+_Write your methods description here._
 
-## Summary table
+# Results and interpretation
 
-```{r results-table}
-woodhen_tbl
+Compare the management scenarios using extinction risk, final abundance, and
+uncertainty. Focus on what the differences mean for management across the set.
+
+```{r selected-scenario-summary}
+selected_run$summary
+selected_run$diagnostics
 ```
 
-```{r selected-scenario-diagnostics}
-sim_summary
-sim_diagnostics
-```
-
-## Figures
-
-```{r figures, fig.height=5, fig.width=10}
+```{r selected-scenario-figure, fig.height=5, fig.width=10}
 plot_pva_panel(
-  plot_pva_traj(sim, sample = 150),
-  plot_pva_summary(sim),
-  plot_ext(sim)
+  plot_pva_traj(selected_run$result, sample = 150),
+  plot_pva_summary(selected_run$result),
+  plot_ext(selected_run$result)
 )
 ```
 
-## Sensitivity check (bounded)
+_Write your results interpretation here._
 
-```{r sensitivity}
-base <- set_scenario("sensitivity_analysis", "woodhen")
-s1 <- run_pva_core(base, keep_traj = FALSE, seed = 123)
-s2 <- run_pva_core(modifyList(base, list(surv = base$surv * 0.90)),
-                  keep_traj = FALSE, seed = 123)
-s3 <- run_pva_core(modifyList(base, list(K = 250)),
-                  keep_traj = FALSE, seed = 123)
-s4 <- run_pva_core(modifyList(base, list(cat_freq = 0.10)),
-                  keep_traj = FALSE, seed = 123)
+# Bounded sensitivity check
 
-compare_pva_results(
-  list(s1, s2, s3, s4),
-  scenarios = c("baseline", "survival_minus_10pct", "K_250", "cat_freq_0.10")
-)
+Use one bounded, one-factor sensitivity comparison to test how much one
+assumption affects the advice. You may replace the example below with another
+approved sensitivity preset from the Practical 2 app.
+
+```{r sensitivity-table}
+chosen_sensitivity$comparison
 ```
 
-# Discussion
-
-- What does the scenario ranking imply for management?
-- Where is the largest uncertainty?
-- Are any assumptions conservative or likely optimistic?
+_Write your sensitivity interpretation here._
 
 # Management recommendation
 
-State:
+State the preferred management direction, the evidence supporting it, and the
+main caveat or data need. Include at least one quantitative result from the
+scenario table and one quantitative result from your sensitivity check.
 
-1. the preferred intervention(s),
-2. the most important assumption to challenge before implementation,
-3. one data gap that would change confidence.
+_Write your recommendation here._
 
 # Limitations
 
-- model scale and parameter source uncertainty,
-- no explicit climate-projection forcing,
-- no explicit spatially explicit habitat fragmentation in this teaching setup.
+Discuss the most important limits of this teaching model for conservation
+decision-making. Useful limits may include parameter uncertainty, scenario
+horizon, unmodelled processes, climate forcing, spatial structure, or field
+implementation constraints.
+
+_Write your limitations here._
+
+# References
+
+Add sources used for biological background, PVA interpretation, or management
+context.

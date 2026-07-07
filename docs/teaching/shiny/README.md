@@ -1,11 +1,13 @@
-# Practical 1 Shiny Design Spike
+# Shiny Teaching Design Notes
 
 This directory contains the design and implementation notes for the Shiny-first
-Practical 1 experience in `rPVA`.
+KPZ308 rPVA teaching experience.
 
-The first base-Shiny MVP scaffold now lives in `inst/shiny/practical1/` and can
-be launched from R with `run_practical1_shiny()`. The documents here remain the
-teaching, requirements, and deployment planning layer for future road-test work.
+The Practical 1 concept lab lives in `inst/shiny/practical1/` and can be
+launched from R with `run_practical1_shiny()`. The Practical 2 Woodhen
+Management Lab lives in `inst/shiny/practical2/` and can be launched with
+`run_practical2_shiny()`. The documents here remain the teaching, requirements,
+and deployment planning layer for future road-test work.
 
 ## Documents
 
@@ -106,12 +108,12 @@ intentional because it is the KPZ308 rPVA practical app identity for both rPVA
 teaching weeks. The free Posit tier is too small for this class platform, and
 UTAS-supported Posit Connect is not expected to be available.
 
-The app should teach interpretation, not file mechanics. Students should be able
-to change one concept at a time, see immediate visual and numerical outputs,
-export compact evidence, and then transfer those ideas to the Woodhen Practical
-2 workflow. Goal 029 turns that design position into a mission tutorial: the
-app remains the main classroom surface, while the worksheet records observations
-and caveats without becoming a heavy handout.
+The app should teach interpretation through guided model use. Students should
+change one concept at a time, see immediate visual and numerical outputs,
+export compact evidence, and transfer those ideas to the Woodhen Practical 2
+workflow. Goal 029 turns that design position into a mission tutorial: the app
+remains the main classroom surface, while the worksheet records observations
+and caveats in a compact format.
 
 Goal 017 is the current pre-deployment bridge between the local MVP and any
 service implementation. Its read-only refresh confirmed the tailnet health
@@ -155,15 +157,15 @@ keeps the Mac mini as source-of-truth/orchestration while preparing a
 human-assisted WSL publishing lane for the confirmed ITS registry target and
 dev-server restart handoff.
 
-## Current MVP Boundary
+## Current Teaching-App Boundary
 
-- Practical 1 concept-lab scaffold only.
+- Practical 1 concept-lab scaffold and Practical 2 Woodhen Management Lab first
+  surface.
 - No student-facing ShinyProxy release.
 - One non-student authenticated ShinyProxy staging surface now exists on
   `deep-server` under Goal 025 for Practical 1 inspection only.
 - No class accounts, class tokens, student identifiers, persistent student
   workspaces, quotas, or usage tracing.
-- No Practical 2 Woodhen app mode.
 - No assessment redesign, scenario YAML change, or core engine behaviour change.
 - No research-grade Lord Howe Island woodhen recovery analysis. Teaching
   simplifications remain separate from future paper-facing scenario work.

@@ -187,3 +187,40 @@ test_that("teaching evidence export keeps comparison, settings, and interpretati
   expect_equal(after, before)
   expect_no_local_artifacts()
 })
+
+test_that("teaching comparison summary adds baseline deltas for interpretation", {
+  det <- run_teaching_pva("deterministic_baseline", keep_traj = FALSE, seed = 42)
+  ceiling <- run_teaching_pva(
+    "carrying_capacity",
+    controls = list(K = 40),
+    keep_traj = FALSE,
+    seed = 42
+  )
+
+  comparison <- compare_teaching_runs(list(det, ceiling), include_deltas = TRUE)
+
+  expect_true(all(c("delta_PE", "delta_Nmed", "uncertainty_change") %in% names(comparison)))
+  expect_equal(comparison$delta_PE[[1]], 0)
+  expect_equal(comparison$delta_Nmed[[1]], 0)
+  expect_equal(comparison$uncertainty_change[[1]], "baseline")
+  expect_type(comparison$uncertainty_change[[2]], "character")
+})
+
+test_that("teaching evidence export can include student interpretation notes", {
+  det <- run_teaching_pva("deterministic_baseline", keep_traj = FALSE, seed = 42)
+  ceiling <- run_teaching_pva(
+    "carrying_capacity",
+    controls = list(K = 40),
+    keep_traj = FALSE,
+    seed = 42
+  )
+
+  export <- build_teaching_evidence_export(
+    list(det, ceiling),
+    generated_at = as.POSIXct("2026-06-10 00:00:00", tz = "UTC"),
+    interpretation = "I changed habitat ceiling; median abundance moved; the caveat is horizon."
+  )
+
+  expect_true(any(grepl("## Student interpretation note", export$notes, fixed = TRUE)))
+  expect_true(any(grepl("I changed habitat ceiling", export$notes, fixed = TRUE)))
+})

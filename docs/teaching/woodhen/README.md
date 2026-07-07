@@ -23,6 +23,7 @@ Target students: ecology, conservation, or applied modelling classes.
 - `practical-1-instructor-beat-sheet.md`
 - `practical-1-day-of-class-pack.md`
 - `practical-1-go-no-go-checklist.md`
+- `practical-2-student-launch-page.md`
 - `practical-2-woodhen-management.md`
 - `instructor-guide.md`
 - `expected-outputs.md`
@@ -62,7 +63,8 @@ Each practical is designed to be run independently, but best delivered in this
 order:
 
 1. `practical-1-pva-foundations.md`
-2. `practical-2-woodhen-management.md`
+2. `practical-2-student-launch-page.md`
+3. `practical-2-woodhen-management.md`
 
 For each worksheet:
 
@@ -100,6 +102,8 @@ readiness. Before asking Barry to roleplay a Practical 1 student, use
 Draft 2026 AT1 assessment materials are provided as review documents in this
 folder. The student-facing starting point is `assessment-brief-2026-draft.md`;
 the instructor-facing rationale is `assessment-design-crosswalk-2026.md`.
+The report scaffold is `report-scaffold.qmd` and now uses the Practical 2
+Woodhen teaching API directly.
 
 ## Teaching outcomes
 
@@ -107,7 +111,7 @@ After these two practicals, students should be able to:
 
 - explain the core PVA mechanics (growth, stochasticity, density limits, extinction),
 - run the toy model and interpret its outputs,
-- run and compare Woodhen scenarios,
+- run and compare Woodhen scenarios in the Practical 2 app or R scaffold,
 - run a bounded one-factor sensitivity exercise,
 - produce a short assessment-style interpretation with uncertainty and management
   implications.
@@ -115,13 +119,13 @@ After these two practicals, students should be able to:
 ## What is in scope
 
 - Student-facing worksheets and assessment scaffolds.
+- Practical 1 and Practical 2 Shiny teaching surfaces.
 - Instructor guidance.
 - Terminology support and troubleshooting.
 - Expected reference outputs.
 
 ## What is explicitly out of scope
 
-- package code changes,
 - scenario/YAML edits,
 - dependency/CI adjustments,
-- Shiny implementation.
+- remote deployment, Moodle release, and ITS production operations.

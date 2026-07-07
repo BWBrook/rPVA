@@ -253,6 +253,52 @@ body {
   font-weight: 600;
 }
 
+.mission-rail {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0;
+}
+
+.mission-step {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 9px;
+  background: #fbfdfe;
+  color: var(--muted);
+}
+
+.mission-step.is-current {
+  border-color: #9fc5c9;
+  background: #edf7f8;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.mission-step.is-complete {
+  border-left: 4px solid var(--green);
+}
+
+.mission-step-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #edf1f4;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.mission-step-label {
+  overflow-wrap: anywhere;
+}
+
 .compare-guidance {
   border-left-color: var(--teal);
   background: #eef7f8;
@@ -267,6 +313,47 @@ body {
   flex-wrap: wrap;
   gap: 8px;
   margin: 10px 0 12px;
+}
+
+.run-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.run-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: #fbfdfe;
+}
+
+.run-card h4 {
+  margin: 4px 0 6px;
+}
+
+.run-card-kicker {
+  color: var(--teal);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.run-card-metrics {
+  display: grid;
+  gap: 4px;
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.interpretation-capture {
+  margin: 12px 0;
+}
+
+.interpretation-capture textarea {
+  resize: vertical;
 }
 
 .diagnostic-list {

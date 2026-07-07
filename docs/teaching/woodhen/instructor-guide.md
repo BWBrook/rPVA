@@ -43,6 +43,7 @@ source("bootstrap.R")
   - `docs/teaching/woodhen/practical-1-student-launch-page.md`
   - `docs/teaching/woodhen/practical-1-mission-worksheet.md`
 - Ask Practical 2 students to open:
+  - `docs/teaching/woodhen/practical-2-student-launch-page.md`
   - `docs/teaching/woodhen/practical-2-woodhen-management.md`
 - For assessment design review, read:
   - `docs/teaching/woodhen/assessment-brief-2026-draft.md`
@@ -59,10 +60,11 @@ source("bootstrap.R")
   - 2:00–3:00 short write-up
 
 - **Practical 2**
-  - 0:00–0:10 orient to woodhen narratives
-  - 0:10–1:15 run scenario table and visual checks
-  - 1:15–2:00 bounded sensitivity exercise
-  - 2:00–3:00 synthesis and report scaffold fill
+  - 0:00–0:10 orient to the Woodhen management decision
+  - 0:10–1:05 run core scenarios in the Woodhen Management Lab
+  - 1:05–1:45 run bounded one-factor sensitivity checks
+  - 1:45–2:25 convert evidence into recommendation sentences
+  - 2:25–3:00 report scaffold, questions, and wrap-up
 
 ## Demonstrator prompts that usually help
 
@@ -89,7 +91,7 @@ source("bootstrap.R")
 ## Expected outputs (minimum evidence per group)
 
 - Practical 1 toy summary with non-zero extinction risk only in `genetics`,
-- one `run_scenarios()` table (Practical 2),
+- one Practical 2 Woodhen Management Lab comparison export,
 - one plotted management scenario,
 - one bounded sensitivity table,
 - checkpoint answers from both practicals,
@@ -109,6 +111,9 @@ source("bootstrap.R")
   HTTPS route remains not student-ready.
 - Before releasing AT1, confirm whether students will use R-only outputs, Shiny
   exports, or both, then tune the optional artefact wording accordingly.
+- For Practical 2, use the app first and keep the R command worksheet as the
+  transparency and fallback path. This keeps class time focused on advice and
+  interpretation.
 - For the first road test, do not let app trouble consume the interpretation
   window. Switch to the fallback pack once retrying the app would cost more
   than a few minutes of class time.

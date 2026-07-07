@@ -142,9 +142,10 @@ run_teaching_pva <- function(stage,
 #' Compare Practical 1 teaching PVA runs
 #'
 #' @param runs Non-empty list of bundles returned by `run_teaching_pva()`.
+#' @param include_deltas Logical; add baseline-relative teaching deltas.
 #' @return A compact data frame preserving run order and stage labels.
 #' @export
-compare_teaching_runs <- function(runs) {
+compare_teaching_runs <- function(runs, include_deltas = FALSE) {
   if (!is.list(runs) || length(runs) == 0) {
     stop("`runs` must be a non-empty list of teaching run bundles.", call. = FALSE)
   }
@@ -158,17 +159,26 @@ compare_teaching_runs <- function(runs) {
   results <- lapply(runs, `[[`, "result")
   comparison <- compare_pva_results(results, scenarios = labels)
 
-  data.frame(
+  comparison <- data.frame(
     stage = stages,
     label = labels,
     comparison,
     row.names = NULL,
     stringsAsFactors = FALSE
   )
+
+  if (isTRUE(include_deltas)) {
+    comparison <- add_teaching_baseline_deltas(comparison)
+  }
+
+  comparison
 }
 
-build_teaching_evidence_export <- function(runs, generated_at = Sys.time(), seed = 42) {
-  comparison <- compare_teaching_runs(runs)
+build_teaching_evidence_export <- function(runs,
+                                           generated_at = Sys.time(),
+                                           seed = 42,
+                                           interpretation = NULL) {
+  comparison <- compare_teaching_runs(runs, include_deltas = TRUE)
   comparison <- data.frame(
     run_id = seq_len(nrow(comparison)),
     comparison,
@@ -206,8 +216,33 @@ build_teaching_evidence_export <- function(runs, generated_at = Sys.time(), seed
   list(
     comparison = comparison,
     settings = settings,
-    notes = teaching_evidence_notes(comparison, settings, generated_at, seed)
+    notes = teaching_evidence_notes(comparison, settings, generated_at, seed, interpretation)
   )
+}
+
+add_teaching_baseline_deltas <- function(comparison) {
+  if (!nrow(comparison)) {
+    comparison$delta_PE <- numeric()
+    comparison$delta_Nmed <- numeric()
+    comparison$uncertainty_change <- character()
+    return(comparison)
+  }
+
+  baseline <- comparison[1, , drop = FALSE]
+  baseline_width <- baseline$Nhi95 - baseline$Nlo95
+  widths <- comparison$Nhi95 - comparison$Nlo95
+
+  comparison$delta_PE <- comparison$PE - baseline$PE
+  comparison$delta_Nmed <- comparison$Nmed - baseline$Nmed
+  comparison$uncertainty_change <- ifelse(
+    seq_len(nrow(comparison)) == 1,
+    "baseline",
+    ifelse(widths > baseline_width, "wider",
+      ifelse(widths < baseline_width, "narrower", "unchanged")
+    )
+  )
+
+  comparison
 }
 
 #' Create a compact teaching settings record
@@ -494,10 +529,10 @@ collapse_setting_value <- function(value) {
   as.character(value)
 }
 
-teaching_evidence_notes <- function(comparison, settings, generated_at, seed) {
+teaching_evidence_notes <- function(comparison, settings, generated_at, seed, interpretation = NULL) {
   seed_label <- if (is.null(seed)) "not fixed" else as.character(seed)
 
-  c(
+  notes <- c(
     "# Practical 1 PVA Evidence Notes",
     "",
     paste0("Generated: ", format_teaching_export_time(generated_at)),
@@ -529,6 +564,17 @@ teaching_evidence_notes <- function(comparison, settings, generated_at, seed) {
     "- Which output supports your explanation of final abundance and uncertainty?",
     "- What caveat would you report before turning this evidence into a recommendation?"
   )
+
+  if (!is.null(interpretation) && nzchar(trimws(interpretation))) {
+    notes <- c(
+      notes,
+      "",
+      "## Student interpretation note",
+      trimws(interpretation)
+    )
+  }
+
+  notes
 }
 
 format_teaching_export_time <- function(generated_at) {
