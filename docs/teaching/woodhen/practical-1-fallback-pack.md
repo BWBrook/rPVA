@@ -1,12 +1,12 @@
 # Practical 1 Fallback Pack
 
 Use this pack if the Practical 1 Shiny concept lab is unavailable, slow, or
-cannot download evidence during class. It preserves the teaching objective:
+download evidence fails during class. It preserves the teaching objective:
 students should still compare PVA mechanisms, interpret uncertainty, and leave
 ready for the Woodhen practical.
 
-This is a demonstrator-facing index, not a replacement for the student
-worksheet. Keep `practical-1-pva-foundations.md`, `expected-outputs.md`, and
+This is a demonstrator-facing index for live-route failure or unreliable
+downloads. Keep `practical-1-pva-foundations.md`, `expected-outputs.md`, and
 `troubleshooting.md` open alongside it.
 
 ## When To Switch To Fallback
@@ -14,10 +14,10 @@ worksheet. Keep `practical-1-pva-foundations.md`, `expected-outputs.md`, and
 Switch to this path when any of these would cost more than a few minutes of
 class time:
 
-- students cannot reach the app URL;
+- students fail to reach the app URL;
 - the app is visibly slow for several students;
-- browser downloads fail and cannot be retried quickly;
-- the hosted service is not ready before class;
+- browser downloads fail and a quick retry fails too;
+- the hosted service remains unavailable before class;
 - a demonstrator needs to continue with an instructor-led local session.
 
 ## Minimum Teaching Path
@@ -88,7 +88,7 @@ Compare screen:
 
 The CSV is the compact comparison table. The Markdown file records settings,
 provenance, fixed-seed wording, and interpretation prompts. These files are
-evidence, not an answer. Students still need to explain what changed and why.
+evidence for interpretation. Students still need to explain what changed and why.
 
 ## Static Evidence From The 2026-06-11 Dry Run
 
@@ -103,7 +103,7 @@ Goal 024 generated local evidence under `/tmp` on the Mac mini:
 - `/tmp/rpva-goal024-browser/practical1-evidence-notes-chrome.md`
 - `/tmp/rpva-goal024-nonshiny/practical1-toy-plots.pdf`
 
-These paths are run evidence, not permanent course handouts. If a class handout
+These paths are run evidence for validation. If a class handout
 needs screenshots, copy only small, reviewed images into a future teaching
 materials goal.
 
@@ -128,7 +128,7 @@ Use this plain-language sequence in class:
 2. "The same outputs matter: extinction risk, final abundance, and uncertainty."
 3. "Run the toy model commands, compare your table with the reference values,
    and save one plot or table as evidence."
-4. "Your evidence supports your interpretation; it is not the interpretation."
+4. "Your evidence supports your interpretation; your judgement completes the explanation."
 
 ## After Class
 

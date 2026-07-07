@@ -4,8 +4,8 @@ Welcome to the Practical 1 PVA concept lab. Your job today is to test one
 ecological idea at a time, compare what changed, and save evidence that helps
 you explain the result.
 
-The app exports are evidence, not answers. Your explanation is the scientific
-work.
+The app exports are evidence for your explanation. Your reasoning is the
+scientific work.
 
 ## Open These Materials
 
@@ -50,7 +50,7 @@ each mission, record:
 
 ## If Something Does Not Work
 
-If the app link does not open, the app is very slow, or downloads do not appear
+If the app link fails to open, the app is very slow, or downloads are missing
 after one retry, tell your demonstrator.
 
 If the class switches to fallback evidence capture, copy the visible comparison

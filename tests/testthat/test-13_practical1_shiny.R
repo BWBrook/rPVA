@@ -85,7 +85,7 @@ test_that("comparison view exposes compact evidence downloads", {
   expect_true(grepl("output$download_comparison <- downloadHandler", app_text, fixed = TRUE))
   expect_true(grepl("output$download_evidence_notes <- downloadHandler", app_text, fixed = TRUE))
   expect_true(grepl("build_teaching_evidence_export", app_text, fixed = TRUE))
-  expect_true(grepl("evidence, not an answer", app_text, fixed = TRUE))
+  expect_true(grepl("evidence for your interpretation", app_text, fixed = TRUE))
 })
 
 test_that("app exposes mission-mode classroom guidance", {
@@ -191,6 +191,89 @@ test_that("landing cards expose Markdown-backed deep-dives", {
   expect_match(style_text, "\\.landing-card\\.is-interactive")
   expect_match(style_text, "\\.landing-card-action")
   expect_match(style_text, "\\.deep-dive-modal")
+})
+
+test_that("Concept Lab exposes Markdown-backed contextual help", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
+  style_text <- paste(readLines(file.path(app_dir, "www", "styles.css"), warn = FALSE), collapse = "\n")
+  worksheet_text <- paste(readLines(file.path(repo_root(), "docs", "teaching", "woodhen", "practical-1-mission-worksheet.md"), warn = FALSE), collapse = "\n")
+  content_paths <- c(
+    parameters = file.path(app_dir, "content", "parameter-help.md"),
+    outputs = file.path(app_dir, "content", "output-reading-help.md"),
+    diagnostics = file.path(app_dir, "content", "diagnostics-help.md"),
+    plots = file.path(app_dir, "content", "plot-reading-help.md")
+  )
+  content_text <- lapply(content_paths, function(path) {
+    if (file.exists(path)) {
+      paste(readLines(path, warn = FALSE), collapse = "\n")
+    } else {
+      ""
+    }
+  })
+
+  expect_true(all(file.exists(content_paths)))
+
+  expected_paths <- c(
+    'parameter_help_path <- file.path("content", "parameter-help.md")',
+    'output_help_path <- file.path("content", "output-reading-help.md")',
+    'diagnostic_help_path <- file.path("content", "diagnostics-help.md")',
+    'plot_help_path <- file.path("content", "plot-reading-help.md")'
+  )
+  for (path_definition in expected_paths) {
+    expect_true(grepl(path_definition, app_text, fixed = TRUE))
+  }
+
+  expected_triggers <- c(
+    "open_parameter_help" = "Control help",
+    "open_output_help" = "Read outputs",
+    "open_diagnostic_help" = "Read diagnostics",
+    "open_plot_help" = "Read plots"
+  )
+  expected_aria <- c(
+    "Open Practical 1 parameter help",
+    "Open Practical 1 output help",
+    "Open Practical 1 diagnostic help",
+    "Open Practical 1 plot help"
+  )
+
+  for (trigger in names(expected_triggers)) {
+    expect_match(app_text, paste0('actionButton\\(\\s*"', trigger, '"'))
+    expect_true(grepl(paste0("observeEvent(input$", trigger), app_text, fixed = TRUE))
+    expect_true(grepl(expected_triggers[[trigger]], app_text, fixed = TRUE))
+  }
+  for (aria_label in expected_aria) {
+    expect_true(grepl(aria_label, app_text, fixed = TRUE))
+  }
+
+  expect_true(grepl("habitat ceiling", content_text$parameters, fixed = TRUE))
+  expect_true(grepl("bad-year variation", content_text$parameters, fixed = TRUE))
+  expect_true(grepl("starting inbreeding", content_text$parameters, fixed = TRUE))
+  expect_true(grepl("catastrophe chance", content_text$parameters, fixed = TRUE))
+  expect_true(grepl("simulation futures", content_text$parameters, fixed = TRUE))
+
+  expect_true(grepl("PE", content_text$outputs, fixed = TRUE))
+  expect_true(grepl("Nmed", content_text$outputs, fixed = TRUE))
+  expect_true(grepl("uncertainty interval", content_text$outputs, fixed = TRUE))
+  expect_true(grepl("PE = 0", content_text$outputs, fixed = TRUE))
+
+  expect_true(grepl("warning", content_text$diagnostics, fixed = TRUE))
+  expect_true(grepl("caveat", content_text$diagnostics, fixed = TRUE))
+  expect_true(grepl("No major diagnostic warnings", content_text$diagnostics, fixed = TRUE))
+
+  expect_true(grepl("trajectory", content_text$plots, fixed = TRUE))
+  expect_true(grepl("summary interval", content_text$plots, fixed = TRUE))
+  expect_true(grepl("risk detail", content_text$plots, fixed = TRUE))
+
+  for (text in content_text) {
+    expect_false(grepl("Woodhen|thylacine|\\bITS\\b|Gitea|Docker|Moodle|ShinyProxy", text, ignore.case = TRUE))
+  }
+
+  expect_true(grepl("7a. Rescue attempt", worksheet_text, fixed = TRUE))
+  expect_true(grepl("7b. Vortex comparison", worksheet_text, fixed = TRUE))
+  expect_false(grepl("7. Rescue or vortex", worksheet_text, fixed = TRUE))
+  expect_match(style_text, "\\.contextual-help-button")
+  expect_match(style_text, "\\.concept-help-strip")
 })
 
 test_that("Concept Lab exposes a guided mission rail", {

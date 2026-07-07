@@ -26,7 +26,8 @@ a manager could understand.
 
 Save these files from the app:
 
-- `woodhen-management-comparison-YYYY-MM-DD.csv`
+- `woodhen-core-management-comparison-YYYY-MM-DD.csv`
+- `woodhen-sensitivity-comparison-YYYY-MM-DD.csv`
 - `woodhen-management-evidence-notes-YYYY-MM-DD.md`
 
 Also keep one short note that states:
@@ -34,6 +35,21 @@ Also keep one short note that states:
 - which scenario looked strongest,
 - which sensitivity setting changed your confidence,
 - which caveat matters most for your recommendation.
+- your decision lens and chosen sensitivity ID.
+
+## Before you export
+
+Check that you have:
+
+- run the full core Woodhen scenario set,
+- run one bounded sensitivity set,
+- filled in the student choice note,
+- saved the core comparison CSV,
+- saved the sensitivity comparison CSV,
+- saved the evidence-notes Markdown.
+
+Use filenames that match the evidence in your report. Your report should cite
+the core scenario evidence and your chosen sensitivity evidence.
 
 ## Report bridge
 

@@ -12,12 +12,12 @@ then cleaned after semester.
 
 ## Design Principles
 
-- Students should not need terminal access.
-- Workspaces should support recovery of exports, not become full home
+- Students should work entirely through the browser.
+- Workspaces should support recovery of exports within compact course
   directories.
 - Exports should help students cite and interpret their own model runs.
-- The app should preserve assessment boundaries: a saved output is evidence,
-  not the answer.
+- The app should preserve assessment boundaries: a saved output is evidence for
+  interpretation.
 - Retention should be time-limited and clearly communicated.
 - Quotas should be simple enough to enforce operationally.
 
@@ -29,7 +29,7 @@ Use one workspace per student identity:
 /data/codex/teaching/rpva-2026/workspaces/<student_id>/
 ```
 
-This path is a recommendation only; it was not created during this goal.
+This path is a recommendation only for future deployment.
 
 Suggested subdirectories:
 
@@ -67,7 +67,7 @@ Strengths:
 
 Weaknesses:
 
-- cannot reliably map exports to individual students,
+- weak mapping between exports and individual students,
 - weak workspace recovery,
 - no meaningful quota enforcement per student,
 - risk of accidental overwrites or shared-state confusion.
@@ -75,7 +75,7 @@ Weaknesses:
 Fit:
 
 - acceptable only for a no-persistence demo or static fallback,
-- not recommended for per-student recoverable workspaces.
+- a poor fit for per-student recoverable workspaces.
 
 ### Generated Class Accounts
 
@@ -118,7 +118,7 @@ Weaknesses:
 Fit:
 
 - best long-term option if support is available,
-- not required for the first R&D road test unless policy demands it.
+- optional for the first R&D road test unless policy demands it.
 
 ### Reverse-Proxy Authentication
 
@@ -157,7 +157,7 @@ Weaknesses:
 
 Fit:
 
-- viable for a prototype if generated class accounts are too heavy.
+- viable for a prototype if generated class accounts add too much setup.
 
 ## Recommended Identity Path
 
@@ -182,13 +182,13 @@ Quota enforcement options:
 - per-user directory quotas if supported by the filesystem,
 - ShinyProxy/container resource limits plus app-level export caps,
 - scheduled reporting and manual cleanup for the first road test if filesystem
-  quota setup is not ready.
+  quota setup remains unfinished.
 
 For a first road test, the app should also enforce soft limits:
 
 - maximum number of saved export bundles,
 - maximum file size per export,
-- no raw trajectory object exports by default,
+- exclude raw trajectory object exports by default,
 - automatic cleanup of `tmp/`,
 - warnings before overwriting or deleting older exports.
 

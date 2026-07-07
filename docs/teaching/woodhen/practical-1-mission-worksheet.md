@@ -13,8 +13,8 @@ Keep notes short. A good answer says:
 - what evidence supports your explanation;
 - what caveat remains.
 
-The app exports are evidence, not answers. You still need to explain the
-ecology.
+The app exports are evidence for your explanation. Your notes still need to
+explain the ecology.
 
 ## Mission Log
 
@@ -26,7 +26,8 @@ ecology.
 | 4. Shared bad years |  |  |  |  |
 | 5. Small-population pressure |  |  |  |  |
 | 6. Rare bad years |  |  |  |  |
-| 7. Rescue or vortex |  |  |  |  |
+| 7a. Rescue attempt |  |  |  |  |
+| 7b. Vortex comparison |  |  |  |  |
 
 ## Mission Prompts
 
@@ -74,13 +75,20 @@ Run catastrophe. Change only one visible control if you change anything.
 - Did the result mainly change risk, abundance, uncertainty, or more than one?
 - Which output would you show a manager first, and why?
 
-### 7. Rescue Or Vortex
+### 7a. Rescue Attempt
 
-Run simple intervention, then extinction-vortex comparison.
+Run simple intervention.
 
 - Which three runs make the clearest comparison?
-- Did the intervention remove risk, shift abundance, narrow uncertainty, or only
-  improve part of the story?
+- Did the intervention shift risk, abundance, uncertainty, or more than one?
+
+### 7b. Vortex Comparison
+
+Run extinction-vortex comparison.
+
+- What changes when small population pressure, restricted habitat, and bad years
+  act together?
+- Which output gives the strongest evidence for your final explanation?
 
 ## Evidence Export Checklist
 

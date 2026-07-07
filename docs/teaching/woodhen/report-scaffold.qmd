@@ -47,16 +47,72 @@ source(bootstrap_path, chdir = TRUE)
 ```
 
 ```{r woodhen-evidence}
+decision_lens <- Sys.getenv("RPVA_DECISION_LENS", "choose_one_decision_lens")
+selected_scenario_id <- Sys.getenv("RPVA_SELECTED_SCENARIO_ID", "choose_one_core_scenario")
+chosen_sensitivity_id <- Sys.getenv("RPVA_CHOSEN_SENSITIVITY_ID", "choose_one_sensitivity")
+sensitivity_reason <- Sys.getenv("RPVA_SENSITIVITY_REASON", "write_your_biological_reason")
+expected_direction <- Sys.getenv("RPVA_EXPECTED_DIRECTION", "write_expected_direction_before_reading_result")
+advice_change_condition <- Sys.getenv("RPVA_ADVICE_CHANGE_CONDITION", "write_condition_that_would_change_your_advice")
+
+assert_student_choices <- function(decision_lens,
+                                   selected_scenario_id,
+                                   chosen_sensitivity_id,
+                                   sensitivity_reason,
+                                   expected_direction,
+                                   advice_change_condition) {
+  values <- c(
+    decision_lens = decision_lens,
+    selected_scenario_id = selected_scenario_id,
+    chosen_sensitivity_id = chosen_sensitivity_id,
+    sensitivity_reason = sensitivity_reason,
+    expected_direction = expected_direction,
+    advice_change_condition = advice_change_condition
+  )
+  unfinished <- names(values)[
+    !nzchar(trimws(values)) |
+      grepl("^(choose_one_|write_)", values)
+  ]
+  if (length(unfinished)) {
+    stop(
+      "Complete the student choice fields before rendering: ",
+      paste(unfinished, collapse = ", "),
+      call. = FALSE
+    )
+  }
+
+  catalog <- woodhen_management_catalog()
+  selected <- catalog[catalog$scenario_id == selected_scenario_id, , drop = FALSE]
+  if (!nrow(selected) || selected$section[[1]] != "core_management") {
+    stop("selected_scenario_id must be an approved core Woodhen scenario ID.", call. = FALSE)
+  }
+
+  chosen <- catalog[catalog$scenario_id == chosen_sensitivity_id, , drop = FALSE]
+  if (!nrow(chosen) || chosen$section[[1]] != "sensitivity" || chosen_sensitivity_id == "sensitivity_default") {
+    stop("chosen_sensitivity_id must be an approved non-baseline sensitivity ID.", call. = FALSE)
+  }
+
+  invisible(TRUE)
+}
+
+assert_student_choices(
+  decision_lens,
+  selected_scenario_id,
+  chosen_sensitivity_id,
+  sensitivity_reason,
+  expected_direction,
+  advice_change_condition
+)
+
 core_runs <- run_woodhen_management_set(
   c("01_no_mgmt", "02_pig_control", "03_captive_pig", "04_rodent_eradication", "05_future_baseline"),
   keep_traj = FALSE,
   seed = 123
 )
 
-selected_run <- run_woodhen_management_scenario("02_pig_control", keep_traj = TRUE, seed = 123)
+selected_run <- run_woodhen_management_scenario(selected_scenario_id, keep_traj = TRUE, seed = 123)
 
 chosen_sensitivity <- run_woodhen_management_set(
-  c("sensitivity_default", "K_250"),
+  c("sensitivity_default", chosen_sensitivity_id),
   keep_traj = FALSE,
   seed = 123
 )
@@ -81,7 +137,26 @@ _Write your context and aim here._
 
 Briefly explain the rPVA model outputs you use: extinction probability, median
 final abundance, uncertainty intervals, and diagnostics. Identify the core
-management scenarios and your chosen one-factor sensitivity comparison.
+management scenarios, your decision lens, your selected focal scenario, and
+your chosen one-factor sensitivity comparison.
+
+Your decision lens for this scaffold is:
+
+```{r decision-lens}
+decision_lens
+```
+
+Your sensitivity reason is:
+
+```{r sensitivity-reason}
+sensitivity_reason
+```
+
+Your expected direction before reading the result is:
+
+```{r expected-direction}
+expected_direction
+```
 
 Use this table to check the core scenario set.
 
@@ -128,6 +203,12 @@ _Write your sensitivity interpretation here._
 State the preferred management direction, the evidence supporting it, and the
 main caveat or data need. Include at least one quantitative result from the
 scenario table and one quantitative result from your sensitivity check.
+
+State the condition that would change your advice:
+
+```{r advice-change-condition}
+advice_change_condition
+```
 
 _Write your recommendation here._
 

@@ -18,7 +18,7 @@ rerun the command that failed.
 - Ensure your R working directory is the repo root (`/Users/bwbrook/git/rPVA`).
 - Run `getwd()` and `setwd("/Users/bwbrook/git/rPVA")` if needed.
 
-### Report scaffold says repo root cannot be found
+### Report scaffold says repo root is missing
 
 The scaffold now searches upward for `bootstrap.R` and `DESCRIPTION`, but this
 still fails if the working directory is outside the repository.
@@ -27,8 +27,18 @@ still fails if the working directory is outside the repository.
 - Render using an absolute path from that root:
 
 ```sh
+RPVA_DECISION_LENS="classroom validation" \
+RPVA_SELECTED_SCENARIO_ID="02_pig_control" \
+RPVA_CHOSEN_SENSITIVITY_ID="K_350" \
+RPVA_SENSITIVITY_REASON="Habitat recovery may be incomplete." \
+RPVA_EXPECTED_DIRECTION="A lower habitat ceiling should reduce final abundance." \
+RPVA_ADVICE_CHANGE_CONDITION="Advice would change if lower habitat capacity sharply reduced recovery confidence." \
 quarto render docs/teaching/woodhen/report-scaffold.qmd --to docx --output-dir /tmp/rpva-teaching-report
 ```
+
+If the error says `Complete the student choice fields before rendering`, fill
+the scaffold's decision lens, selected scenario, chosen sensitivity, reason,
+expected direction, and advice-change condition before rendering.
 
 ### `quarto render ...` fails with missing render packages
 
@@ -106,23 +116,23 @@ sampling error.
 ## Scenario editing guardrails for class
 
 - Only change one factor per sensitivity run.
-- Do not remove management actions entirely unless discussing a specific
-  “what-if” with written justification.
-- Do not edit `years`, `n0`, `reps`, or stage lengths in the same run as a
+- Keep management actions in place unless discussing a specific “what-if” with
+  written justification.
+- Keep `years`, `n0`, `reps`, and stage lengths fixed in the same run as a
   sensitivity exercise.
 
 ## Practical 1 Shiny fallback
 
 ### The app is unavailable or too slow
 
-Use `practical-1-fallback-pack.md` rather than spending the class session on
-service diagnosis. The fallback keeps the same teaching target by using
+Use `practical-1-fallback-pack.md` and keep the class session focused on
+interpretation. The fallback keeps the same teaching target by using
 `run_toy_demo()`, expected output tables, and report-scaffold rendering.
 
 ### Evidence downloads fail
 
 Ask the student to retry the Compare-screen downloads once. If the CSV or
-Markdown file still does not appear, continue with the fallback pack and ask the
+Markdown file is still missing, continue with the fallback pack and ask the
 student to save the visible comparison table or command-line toy summary as
 evidence.
 
@@ -131,5 +141,5 @@ evidence.
 Use this wording:
 
 *The export records what you ran and what the model returned. It supports your
-interpretation, but your report still needs to explain the ecological mechanism
+interpretation; your report still needs to explain the ecological mechanism
 and the uncertainty.*

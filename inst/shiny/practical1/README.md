@@ -13,6 +13,13 @@ the landing screen into a manual page:
 - `content/mission-deep-dive.md` for `What you will do`
 - `content/evidence-deep-dive.md` for `Your evidence pack`
 
+The Concept Lab uses the same Markdown pattern for in-context help:
+
+- `content/parameter-help.md` for `Control help`
+- `content/output-reading-help.md` for `Read outputs`
+- `content/diagnostics-help.md` for `Read diagnostics`
+- `content/plot-reading-help.md` for `Read plots`
+
 These files can be edited without changing Shiny code. If key concepts are
 rewritten, update the focused Shiny test at the same time. `Start baseline`
 creates or restores baseline as run 1, Concept Lab asks students to change one
@@ -23,7 +30,7 @@ Students can save compact session evidence from the Compare screen:
 
 - `practical1-comparison-YYYYMMDD.csv` contains the run comparison table.
 - `practical1-evidence-notes-YYYYMMDD.md` contains settings/provenance and
-  interpretation prompts. It is evidence for the report, not an answer.
+  interpretation prompts. It is evidence for the student's explanation.
 
 The app intentionally excludes Practical 2 Woodhen scenario running,
 authentication, persistent student workspaces, deployment configuration, and

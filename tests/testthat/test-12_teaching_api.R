@@ -181,7 +181,7 @@ test_that("teaching evidence export keeps comparison, settings, and interpretati
   expect_true(any(export$settings$setting == "control_K" & export$settings$value == "40"))
   expect_true(any(grepl("Generated: 2026-06-10 00:00:00 UTC", export$notes, fixed = TRUE)))
   expect_false(any(grepl("UTC UTC", export$notes, fixed = TRUE)))
-  expect_true(any(grepl("evidence, not an answer", export$notes, fixed = TRUE)))
+  expect_true(any(grepl("evidence for your own interpretation", export$notes, fixed = TRUE)))
   expect_true(any(grepl("Fixed teaching seed: 42", export$notes, fixed = TRUE)))
   expect_false(any(grepl("raw trajectory", export$notes, fixed = TRUE)))
   expect_equal(after, before)

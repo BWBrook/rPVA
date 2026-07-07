@@ -86,10 +86,42 @@ body {
 }
 
 .scenario-card-metrics span,
-.sentence-frame {
+.sentence-frame,
+.evidence-prompt,
+.active-evidence-row {
   background: #eef4f0;
   border-radius: 6px;
   padding: 8px;
+}
+
+.scenario-help-list {
+  margin-top: 18px;
+}
+
+.scenario-help {
+  border-top: 1px solid #d9e2dc;
+  padding: 10px 0;
+}
+
+.scenario-help p {
+  margin-bottom: 6px;
+}
+
+.horizon-warning,
+.pe-note {
+  background: #fff7df;
+  border: 1px solid #ead18a;
+  border-radius: 6px;
+  margin: 12px 0;
+  padding: 10px;
+}
+
+.evidence-prompt {
+  margin-top: 10px;
+}
+
+.active-evidence-row {
+  margin-top: 12px;
 }
 
 .compare-table {

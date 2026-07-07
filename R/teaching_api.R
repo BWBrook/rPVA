@@ -540,7 +540,7 @@ teaching_evidence_notes <- function(comparison, settings, generated_at, seed, in
     paste0("Fixed teaching seed: ", seed_label),
     "",
     "Use this export with the comparison CSV from the same browser session.",
-    "This export is evidence, not an answer; use it to support your own interpretation.",
+    "This export is evidence for your own interpretation.",
     "",
     "## Comparison table",
     utils::capture.output(utils::write.table(

@@ -19,7 +19,7 @@ practical.
 
 | Time | Mode | Purpose |
 | --- | --- | --- |
-| 0:00-0:12 | Barry priming | Frame PVA as a way to compare possible futures, not a fortune-telling machine. |
+| 0:00-0:12 | Barry priming | Frame PVA as a way to compare possible futures under explicit assumptions. |
 | 0:12-0:22 | App launch and baseline | Students open the app, run the baseline, and locate extinction risk, abundance, and uncertainty. |
 | 0:22-1:18 | Missions 1-3 | Build from fixed growth to carrying capacity and individual-level chance. |
 | 1:18-1:28 | Class recap | Compare what changed in the first three missions. |
@@ -57,7 +57,7 @@ Expected observation:
 
 - The output is stable because there is no randomness.
 - Median final abundance is a reference point for later comparisons.
-- The uncertainty interval is not the main story yet.
+- The uncertainty interval is a secondary check at this point.
 
 Compare/evidence task:
 
@@ -160,7 +160,7 @@ App action:
 Expected observation:
 
 - Extinction risk may appear or rise even when habitat settings look similar.
-- Inbreeding is a small-population process, not a separate story pasted on top.
+- Inbreeding is a small-population process that interacts with abundance and stochasticity.
 
 Compare/evidence task:
 
@@ -232,10 +232,11 @@ Checkpoint question:
 By the end of Practical 1, students should be able to enter Practical 2 ready
 to:
 
-- compare scenarios rather than describe isolated runs;
+- compare scenarios and explain differences across runs;
 - report extinction probability, median abundance, and uncertainty together;
 - explain which assumption changed and why it mattered;
-- treat zero observed extinction as a simulation outcome, not proof of safety;
+- interpret zero observed extinction with the simulation horizon, replicate
+  count, and assumptions in view;
 - recognise that stochasticity and small-population processes can compound;
 - use app exports as evidence that supports interpretation;
 - write a caveat before making a conservation recommendation.
@@ -245,8 +246,8 @@ to:
 If the room is slow:
 
 - keep Missions 1, 2, 4, 6, and 7;
-- use demographic stochasticity as an instructor-led recap rather than a full
-  worksheet row;
+- use demographic stochasticity as an instructor-led recap and keep the student
+  worksheet focused on the main mission path;
 - leave genetic stochasticity as a guided demonstration if needed;
 - still require one Compare-screen evidence check and the Transfer questions.
 

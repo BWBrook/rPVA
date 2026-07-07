@@ -42,7 +42,7 @@ controls, a visible output, and a short interpretation prompt.
 | 4 | Environmental stochasticity | Increase year-to-year variation. | Wider trajectory fan and uncertainty interval. | Shared bad years can affect many individuals at once and widen long-term uncertainty. |
 | 5 | Genetic stochasticity | Turn on inbreeding effects in a small population. | Extinction risk, mean inbreeding coefficient, abundance decline or slower growth. | Genetics can interact with small population size and make recovery harder. |
 | 6 | Allee effects | Apply a low-abundance penalty or mate-limitation proxy. | Threshold-like recovery failure below a small-population level. | A population may not recover simply because its mean growth rate is positive. |
-| 7 | Extinction vortex synergy | Combine small population size, genetics, and environmental variation. | Rising extinction probability, widening uncertainty, lower median abundance. | Threats can reinforce each other; combined risk is not just a list of separate risks. |
+| 7 | Extinction vortex synergy | Combine small population size, genetics, and environmental variation. | Rising extinction probability, widening uncertainty, lower median abundance. | Threats can reinforce each other; combined risk can exceed separate risk components. |
 | 8 | Correlated events | Toggle correlated poor survival/reproduction years. | Simultaneous dips across model outputs. | Some bad years are system-wide, not independent individual mishaps. |
 | 9 | Catastrophes | Adjust catastrophe frequency or severity within a narrow range. | Step changes in trajectories and extinction probability. | Rare events can dominate risk even when ordinary years look manageable. |
 | 10 | Interventions | Add a simple release, removal reduction, or habitat/carrying-capacity improvement. | Before/after comparison table and plot panel. | Management actions should be compared against risk, abundance, and uncertainty. |
@@ -84,8 +84,7 @@ Good controls for the first build:
 - bounded sliders for `K`, `env_sd`, catastrophe frequency, catastrophe severity,
   release number, and release timing,
 - fixed seed option for repeatability,
-- replicate count as instructor-controlled rather than student-facing in the
-  first road test.
+- replicate count as instructor-controlled in the first road test.
 
 ### 3. Compare Screen
 
@@ -175,7 +174,7 @@ emphasis should be on model structure, not matrix algebra.
 
 ### Ceiling Carrying Capacity
 
-The carrying-capacity stage should show that favourable vital rates do not imply
+The carrying-capacity stage should show that favourable vital rates still operate within
 unbounded growth. The app should keep the explanation simple: the habitat can
 support only so many territory holders.
 
@@ -193,14 +192,14 @@ small-population processes can compound demographic vulnerability.
 
 ### Allee Effects
 
-The current engine does not expose a named Allee-effect module. For Practical 1,
+The current engine lacks a named Allee-effect module. For Practical 1,
 the app can teach the concept with a thin wrapper or teaching proxy, such as
 mate limitation, low-abundance fecundity penalty, or an explicitly labelled
 "conceptual Allee threshold" transformation before calling the engine.
 
 ### Extinction Vortex Synergy
 
-This should be a compare-and-reflect stage, not a new parameter. Students should
+This should be a compare-and-reflect stage focused on interaction among mechanisms. Students should
 combine demographic stochasticity, environmental stochasticity, genetics, and a
 small starting population, then compare against each mechanism alone.
 
@@ -235,13 +234,14 @@ abundance, uncertainty, or all three.
 The final Practical 1 output should prepare students to enter Practical 2 with
 the following habits:
 
-- compare scenarios rather than describe one run at a time,
+- compare scenarios across runs,
 - report extinction risk and abundance together,
-- interpret uncertainty rather than ignore it,
-- treat zero observed extinction as a model result, not proof of safety,
+- interpret uncertainty as part of every claim,
+- interpret zero observed extinction with the model horizon, replicate count,
+  and assumptions in view,
 - explain which assumption was changed and why,
 - make a recommendation that follows from evidence.
 
-The Practical 1 app should not assess students directly. Its job is to make the
+The Practical 1 app should prepare students for later assessment by making the
 Woodhen practical and later AT1 report fairer by giving everyone a shared
 conceptual base.

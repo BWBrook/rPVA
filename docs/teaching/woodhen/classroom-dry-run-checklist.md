@@ -13,10 +13,24 @@ package internals.
   `practical-1-fallback-pack.md`.
 - Open `practical-1-day-of-class-pack.md` and
   `practical-1-go-no-go-checklist.md` for the app-led delivery decision.
-- Render the report scaffold to a temp output folder:
+- Render the report scaffold to a temp output folder with sample staff
+  validation choices:
 
 ```sh
+RPVA_DECISION_LENS="classroom validation" \
+RPVA_SELECTED_SCENARIO_ID="02_pig_control" \
+RPVA_CHOSEN_SENSITIVITY_ID="K_350" \
+RPVA_SENSITIVITY_REASON="Habitat recovery may be incomplete." \
+RPVA_EXPECTED_DIRECTION="A lower habitat ceiling should reduce final abundance." \
+RPVA_ADVICE_CHANGE_CONDITION="Advice would change if lower habitat capacity sharply reduced recovery confidence." \
 quarto render docs/teaching/woodhen/report-scaffold.qmd --to docx --output-dir /tmp/rpva-teaching-report
+
+RPVA_DECISION_LENS="classroom validation" \
+RPVA_SELECTED_SCENARIO_ID="02_pig_control" \
+RPVA_CHOSEN_SENSITIVITY_ID="K_350" \
+RPVA_SENSITIVITY_REASON="Habitat recovery may be incomplete." \
+RPVA_EXPECTED_DIRECTION="A lower habitat ceiling should reduce final abundance." \
+RPVA_ADVICE_CHANGE_CONDITION="Advice would change if lower habitat capacity sharply reduced recovery confidence." \
 quarto render docs/teaching/woodhen/report-scaffold.qmd --to pdf --output-dir /tmp/rpva-teaching-report
 ```
 

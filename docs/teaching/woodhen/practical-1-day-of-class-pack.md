@@ -4,10 +4,9 @@ Use this pack on the day of the Practical 1 road test. It assumes the
 mission-mode Practical 1 Shiny app is the main classroom surface and the
 worksheet is the student evidence log.
 
-This pack does not approve a hosted student URL. Use only the route that has
-passed the current teaching go/no-go check. If the only available route is a
-raw IP address or a browser-warning HTTPS page, do not present it as
-student-ready.
+This pack applies only to a route that has passed the current teaching
+go/no-go check. The current raw IP address or browser-warning HTTPS page
+remains an instructor-only test route.
 
 ## Pre-Class Setup
 
@@ -23,7 +22,7 @@ Before students arrive:
     is green;
   - local instructor machine at `http://127.0.0.1:<port>` for local rehearsal
     or demonstration;
-  - static fallback pack if app access or downloads are not reliable.
+  - static fallback pack if app access or downloads fail reliability checks.
 - From the repo root, run:
 
 ```r
@@ -36,14 +35,29 @@ source("bootstrap.R")
 run_practical1_shiny(host = "127.0.0.1", port = 3898, launch.browser = FALSE)
 ```
 
-- Render the report scaffold into a temporary folder if students will use it:
+- Render the report scaffold into a temporary folder if students will use it.
+  The scaffold now requires explicit student-choice fields; use sample staff
+  validation values for a rehearsal render:
 
 ```sh
+RPVA_DECISION_LENS="classroom validation" \
+RPVA_SELECTED_SCENARIO_ID="02_pig_control" \
+RPVA_CHOSEN_SENSITIVITY_ID="K_350" \
+RPVA_SENSITIVITY_REASON="Habitat recovery may be incomplete." \
+RPVA_EXPECTED_DIRECTION="A lower habitat ceiling should reduce final abundance." \
+RPVA_ADVICE_CHANGE_CONDITION="Advice would change if lower habitat capacity sharply reduced recovery confidence." \
 quarto render docs/teaching/woodhen/report-scaffold.qmd --to docx --output-dir /tmp/rpva-teaching-report
+
+RPVA_DECISION_LENS="classroom validation" \
+RPVA_SELECTED_SCENARIO_ID="02_pig_control" \
+RPVA_CHOSEN_SENSITIVITY_ID="K_350" \
+RPVA_SENSITIVITY_REASON="Habitat recovery may be incomplete." \
+RPVA_EXPECTED_DIRECTION="A lower habitat ceiling should reduce final abundance." \
+RPVA_ADVICE_CHANGE_CONDITION="Advice would change if lower habitat capacity sharply reduced recovery confidence." \
 quarto render docs/teaching/woodhen/report-scaffold.qmd --to pdf --output-dir /tmp/rpva-teaching-report
 ```
 
-Render DOCX and PDF sequentially rather than in parallel.
+Render DOCX first, then PDF.
 
 ## What Students Open
 
@@ -56,16 +70,14 @@ Students need:
   screen.
 
 If the class is using a hosted URL, give students only the approved class app
-URL. Do not use the current raw-IP or insecure HTTPS route as a student-facing
-address.
+URL. Keep the current raw-IP or insecure HTTPS route for instructor-only tests.
 
 ## Barry Priming
 
 Use the first 10-12 minutes to frame the activity:
 
 - A model is a way to ask what follows from assumptions.
-- Today students are not trying to find "the answer"; they are learning how
-  outputs respond when assumptions change.
+- Today students are learning how outputs respond when assumptions change.
 - For each run, ask: what changed, which output moved, and what caveat remains?
 - The Woodhen practical uses the same habits with a real conservation case.
 
@@ -76,7 +88,7 @@ Use the first 10-12 minutes to frame the activity:
 | 0:00-0:12 | Prime the room | PVA as comparison of possible futures. |
 | 0:12-0:22 | Start baseline | Confirm baseline is run 1 and students can name abundance, risk, and uncertainty outputs. |
 | 0:22-0:55 | Missions 1-2 | Fixed baseline and carrying-capacity interpretation. |
-| 0:55-1:18 | Mission 3 | Spread among futures, not just median abundance. |
+| 0:55-1:18 | Mission 3 | Spread among futures alongside median abundance. |
 | 1:18-1:28 | Recap | What changed when randomness entered? |
 | 1:28-2:12 | Missions 4-6 | Uncertainty, genetics, catastrophe, and risk interpretation. |
 | 2:12-2:28 | Mission 7 | Intervention or vortex comparison. |
@@ -113,8 +125,8 @@ After Mission 6:
 
 - Ask students to separate median abundance from extinction risk.
 - Ask whether a rare event can matter when ordinary years look acceptable.
-- Reinforce that zero observed extinction is a simulation outcome, not proof
-  of safety.
+- Reinforce that zero observed extinction is a simulation outcome to interpret
+  with horizon, replicate count, and assumptions.
 
 Final wrap:
 
@@ -128,10 +140,10 @@ Final wrap:
 Switch to `practical-1-fallback-pack.md` if any of these would cost more than a
 few minutes of class time:
 
-- students cannot reach the approved app route;
+- students fail to reach the approved app route;
 - the app is visibly slow for several students;
 - Compare-screen downloads fail after one retry;
-- the hosted service is not ready before class;
+- the hosted service remains unavailable before class;
 - the demonstrator needs to continue with an instructor-led local session.
 
 When switching, say:

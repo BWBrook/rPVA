@@ -21,7 +21,7 @@ stage_prompts <- c(
   demographic_stochasticity = "Notice whether replicate paths stay together or spread apart.",
   environmental_stochasticity = "Focus on the uncertainty interval as well as the median.",
   genetic_stochasticity = "Check whether risk appears even when the habitat ceiling is unchanged.",
-  catastrophe = "Compare extinction risk with the baseline, not just the final median.",
+  catastrophe = "Compare extinction risk, final abundance, and uncertainty with the baseline.",
   intervention = "Ask whether abundance improves without ignoring remaining uncertainty.",
   extinction_vortex = "Use this as a warning that mechanisms can reinforce each other."
 )
@@ -42,7 +42,7 @@ stage_mission_guidance <- c(
   environmental_stochasticity = "Adjust bad-year variation, then compare uncertainty with earlier runs.",
   genetic_stochasticity = "Change one small-population pressure and watch risk as well as abundance.",
   catastrophe = "Change catastrophe chance or severity, not both, before comparing risk.",
-  intervention = "Treat intervention as evidence comparison, not an automatic win.",
+  intervention = "Treat intervention as evidence comparison with remaining uncertainty.",
   extinction_vortex = "Use this as the compounded-risk contrast for your final comparison."
 )
 risk_plot_stages <- c("genetic_stochasticity", "catastrophe", "extinction_vortex")
@@ -254,6 +254,10 @@ run_cards_ui <- function(runs) {
 pva_deep_dive_path <- file.path("content", "pva-deep-dive.md")
 mission_deep_dive_path <- file.path("content", "mission-deep-dive.md")
 evidence_deep_dive_path <- file.path("content", "evidence-deep-dive.md")
+parameter_help_path <- file.path("content", "parameter-help.md")
+output_help_path <- file.path("content", "output-reading-help.md")
+diagnostic_help_path <- file.path("content", "diagnostics-help.md")
+plot_help_path <- file.path("content", "plot-reading-help.md")
 
 markdown_unavailable_ui <- function(message) {
   div(
@@ -312,6 +316,22 @@ evidence_deep_dive_ui <- function() {
   deep_dive_modal_ui("Your evidence pack", evidence_deep_dive_path)
 }
 
+parameter_help_ui <- function() {
+  deep_dive_modal_ui("Control help", parameter_help_path)
+}
+
+output_help_ui <- function() {
+  deep_dive_modal_ui("Read outputs", output_help_path)
+}
+
+diagnostic_help_ui <- function() {
+  deep_dive_modal_ui("Read diagnostics", diagnostic_help_path)
+}
+
+plot_help_ui <- function() {
+  deep_dive_modal_ui("Read plots", plot_help_path)
+}
+
 ui <- navbarPage(
   title = "Practical 1 PVA",
   id = "section",
@@ -351,7 +371,7 @@ ui <- navbarPage(
           "population trajectory lines and evidence marks on a field notebook page",
           "Plain language",
           "What is PVA?",
-          "A population viability analysis explores possible futures, not a single forecast.",
+          "A population viability analysis explores a set of possible futures.",
           action = actionButton(
             "open_pva_deep_dive",
             label = "Explore PVA",
@@ -407,7 +427,17 @@ ui <- navbarPage(
         class = "lab-grid",
         div(
           class = "panel-block",
-          h3("Choose one mechanism"),
+          div(
+            class = "panel-heading-row",
+            h3("Choose one mechanism"),
+            actionButton(
+              "open_parameter_help",
+              label = "Control help",
+              icon = icon("sliders"),
+              class = "btn-default btn-xs contextual-help-button",
+              `aria-label` = "Open Practical 1 parameter help"
+            )
+          ),
           p(class = "mission-path", "Work through the mission path by changing one visible control at a time, then compare."),
           actionButton("show_intro", label = tagList(icon("circle-info"), "Introduction"), class = "btn-default btn-sm"),
           uiOutput("mission_rail"),
@@ -420,9 +450,30 @@ ui <- navbarPage(
         ),
         div(
           class = "panel-block output-region",
-          h3("Current run"),
+          div(
+            class = "panel-heading-row",
+            h3("Current run"),
+            actionButton(
+              "open_output_help",
+              label = "Read outputs",
+              icon = icon("table"),
+              class = "btn-default btn-xs contextual-help-button",
+              `aria-label` = "Open Practical 1 output help"
+            )
+          ),
           uiOutput("summary_table"),
-          h4("Diagnostics"),
+          div(class = "concept-help-strip", "Choose one changed input, one moved output, and one caveat."),
+          div(
+            class = "panel-heading-row",
+            h4("Diagnostics"),
+            actionButton(
+              "open_diagnostic_help",
+              label = "Read diagnostics",
+              icon = icon("triangle-exclamation"),
+              class = "btn-default btn-xs contextual-help-button",
+              `aria-label` = "Open Practical 1 diagnostic help"
+            )
+          ),
           uiOutput("diagnostics"),
           h4("Settings record"),
           div(class = "settings-table", tableOutput("settings_table"))
@@ -430,7 +481,17 @@ ui <- navbarPage(
       ),
       div(
         class = "panel-block plot-region",
-        h3("Plots"),
+        div(
+          class = "panel-heading-row",
+          h3("Plots"),
+          actionButton(
+            "open_plot_help",
+            label = "Read plots",
+            icon = icon("chart-line"),
+            class = "btn-default btn-xs contextual-help-button",
+            `aria-label` = "Open Practical 1 plot help"
+          )
+        ),
         fluidRow(
           column(6, plotOutput("trajectory_plot", height = "320px")),
           column(6, plotOutput("summary_plot", height = "320px"))
@@ -466,7 +527,7 @@ ui <- navbarPage(
             )
           ),
           h4("Save evidence"),
-          p(class = "muted", "Download a compact comparison table and notes for your own report. These files are evidence, not an answer."),
+          p(class = "muted", "Download a compact comparison table and notes for your own report. These files are evidence for your interpretation."),
           div(
             class = "export-actions",
             downloadButton("download_comparison", "Comparison CSV"),
@@ -480,7 +541,7 @@ ui <- navbarPage(
           h3("Comparison habits"),
           tags$ul(
             tags$li("Compare extinction risk and abundance together."),
-            tags$li("Treat zero observed extinction as a simulation result, not proof of safety."),
+            tags$li("Interpret zero observed extinction with the horizon, sample size, and assumptions in view."),
             tags$li("Use uncertainty intervals when judging management actions.")
           )
         )
@@ -543,6 +604,22 @@ server <- function(input, output, session) {
 
   observeEvent(input$open_evidence_deep_dive, {
     showModal(evidence_deep_dive_ui())
+  })
+
+  observeEvent(input$open_parameter_help, {
+    showModal(parameter_help_ui())
+  })
+
+  observeEvent(input$open_output_help, {
+    showModal(output_help_ui())
+  })
+
+  observeEvent(input$open_diagnostic_help, {
+    showModal(diagnostic_help_ui())
+  })
+
+  observeEvent(input$open_plot_help, {
+    showModal(plot_help_ui())
   })
 
   observeEvent(input$run_stage, {
