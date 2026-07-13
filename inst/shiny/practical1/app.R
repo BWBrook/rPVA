@@ -78,14 +78,177 @@ summary_metric_ui <- function(run) {
   )
 }
 
-settings_for_display <- function(run) {
-  out <- run$settings
-  if (!nrow(out)) {
-    return(data.frame(Setting = character(), Value = character()))
-  }
+teaching_parameter_catalog <- function() {
   data.frame(
-    Setting = out$setting,
-    Value = out$value,
+    field = c(
+      "years",
+      "reps",
+      "n0",
+      "K",
+      "K_sd",
+      "demographic_stochasticity",
+      "env_sd",
+      "mortality_pct",
+      "fecundity_pct",
+      "genetics",
+      "F_init",
+      "cat_freq",
+      "cat_surv",
+      "cat_repro"
+    ),
+    Parameter = c(
+      "Projection years",
+      "Simulation futures",
+      "Starting population",
+      "Habitat ceiling",
+      "Yearly ceiling variation",
+      "Individual chance",
+      "Bad-year variation",
+      "Mortality change",
+      "Fecundity change",
+      "Genetic pressure",
+      "Starting inbreeding",
+      "Catastrophe chance each year",
+      "Survival in catastrophe years",
+      "Breeding in catastrophe years"
+    ),
+    Meaning = c(
+      "How far ahead the model projects.",
+      "How many possible futures the model runs.",
+      "How many animals are present at the start.",
+      "The habitat limit that caps long-term abundance.",
+      "How much the habitat ceiling changes among years.",
+      "Random births and deaths among individual animals.",
+      "Shared good and bad years that move the whole population.",
+      "A preset change to survival through mortality.",
+      "A preset change to breeding output.",
+      "Small-population genetic pressure.",
+      "Initial inbreeding pressure at the start.",
+      "How often a rare bad year occurs.",
+      "How strongly survival drops in catastrophe years.",
+      "How strongly breeding changes in catastrophe years."
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
+spec_value <- function(spec, field) {
+  value <- spec[[field]]
+  if (is.null(value) || !length(value) || all(is.na(value))) {
+    return(NA)
+  }
+  value
+}
+
+format_percent <- function(value) {
+  paste0(round(100 * as.numeric(value)), "%")
+}
+
+format_parameter_value <- function(field, value) {
+  if (length(value) == 1 && is.na(value)) {
+    return("Inactive")
+  }
+
+  if (field == "n0") {
+    labels <- c("juveniles", "subadults", "adults")
+    values <- as.numeric(value)
+    return(paste(paste(values, labels[seq_along(values)]), collapse = ", "))
+  }
+
+  if (is.logical(value)) {
+    return(if (isTRUE(value)) "On" else "Off")
+  }
+
+  if (field %in% c("cat_freq", "cat_surv", "cat_repro", "F_init")) {
+    return(format_percent(value))
+  }
+
+  if (field %in% c("mortality_pct", "fecundity_pct")) {
+    value <- as.numeric(value)
+    if (identical(value, 0)) {
+      return("No change")
+    }
+    direction <- if (value < 0) "lower" else "higher"
+    return(paste0(abs(value), "% ", direction))
+  }
+
+  if (field %in% c("K", "K_sd")) {
+    return(paste0(format(round(as.numeric(value), 1), trim = TRUE), " animals"))
+  }
+
+  if (field %in% c("years", "reps")) {
+    return(format(as.integer(round(as.numeric(value))), trim = TRUE))
+  }
+
+  if (is.numeric(value) && length(value) == 1) {
+    return(format(round(value, 3), trim = TRUE))
+  }
+
+  paste(value, collapse = ", ")
+}
+
+same_parameter_value <- function(baseline, selected) {
+  format_raw <- function(value) {
+    if (length(value) == 1 && is.na(value)) {
+      return("<inactive>")
+    }
+    paste(as.character(value), collapse = "|")
+  }
+
+  identical(format_raw(baseline), format_raw(selected))
+}
+
+parameter_change_label <- function(field, baseline, selected) {
+  baseline_inactive <- length(baseline) == 1 && is.na(baseline)
+  selected_inactive <- length(selected) == 1 && is.na(selected)
+
+  if (baseline_inactive && selected_inactive) {
+    return("Same as baseline")
+  }
+
+  if (baseline_inactive && !selected_inactive) {
+    return("Added in this mission")
+  }
+
+  if (!baseline_inactive && selected_inactive) {
+    return("Removed in this mission")
+  }
+
+  if (same_parameter_value(baseline, selected)) {
+    return("Same as baseline")
+  }
+
+  if (is.logical(baseline) && is.logical(selected) && length(baseline) == 1 && length(selected) == 1) {
+    return(if (isTRUE(selected)) "Turned on" else "Turned off")
+  }
+
+  if (is.numeric(baseline) && is.numeric(selected) && length(baseline) == 1 && length(selected) == 1) {
+    return(if (selected > baseline) "Higher than baseline" else "Lower than baseline")
+  }
+
+  "Changed from baseline"
+}
+
+settings_for_display <- function(selected_spec, baseline_spec) {
+  catalog <- teaching_parameter_catalog()
+
+  values <- lapply(catalog$field, function(field) {
+    baseline_value <- spec_value(baseline_spec, field)
+    selected_value <- spec_value(selected_spec, field)
+    list(
+      baseline = format_parameter_value(field, baseline_value),
+      selected = format_parameter_value(field, selected_value),
+      change = parameter_change_label(field, baseline_value, selected_value)
+    )
+  })
+
+  data.frame(
+    Parameter = catalog$Parameter,
+    `Baseline value` = vapply(values, `[[`, character(1), "baseline"),
+    `Selected mission value` = vapply(values, `[[`, character(1), "selected"),
+    `What changed` = vapply(values, `[[`, character(1), "change"),
+    Meaning = catalog$Meaning,
+    check.names = FALSE,
     stringsAsFactors = FALSE
   )
 }
@@ -121,8 +284,8 @@ stage_control_ui <- function(stage) {
       sliderInput("reps", "Simulation futures", min = 20, max = 200, value = 100, step = 20)
     ),
     environmental_stochasticity = tagList(
-      sliderInput("env_sd", "Bad-year variation", min = 0.05, max = 0.35, value = 0.25, step = 0.05),
-      sliderInput("K", "Habitat ceiling", min = 20, max = 120, value = 35, step = 5)
+      sliderInput("env_sd", "Bad-year variation", min = 0.05, max = 0.35, value = 0.35, step = 0.05),
+      sliderInput("K", "Habitat ceiling", min = 10, max = 120, value = 15, step = 5)
     ),
     genetic_stochasticity = tagList(
       sliderInput("F_init", "Starting inbreeding", min = 0, max = 0.40, value = 0.10, step = 0.05),
@@ -143,8 +306,79 @@ stage_control_ui <- function(stage) {
   )
 }
 
-visible_stage_controls <- function(stage) {
-  switch(
+advanced_year_choices <- c(10, 25, 50, 100, 1000)
+advanced_reps_choices <- c(10, 100, 500, 1000)
+advanced_pct_choices <- c(-20, -10, -5, 0, 5, 10, 20)
+
+advanced_pct_labels <- function() {
+  c(
+    "20% lower" = "-20",
+    "10% lower" = "-10",
+    "5% lower" = "-5",
+    "No change" = "0",
+    "5% higher" = "5",
+    "10% higher" = "10",
+    "20% higher" = "20"
+  )
+}
+
+advanced_numeric_labels <- function(values) {
+  stats::setNames(as.character(values), as.character(values))
+}
+
+advanced_control_aliases <- c(
+  advanced_years = "years",
+  advanced_reps = "reps"
+)
+
+advanced_stage_controls <- function(stage) {
+  visible_controls <- visible_stage_controls(stage)
+  widgets <- list()
+  if (!"years" %in% visible_controls) {
+    widgets <- c(
+      widgets,
+      list(selectInput(
+        "advanced_years",
+        "Projection years",
+        choices = advanced_numeric_labels(advanced_year_choices),
+        selected = as.character(if (identical(stage, "environmental_stochasticity")) 50 else 25)
+      ))
+    )
+  }
+  if (!"reps" %in% visible_controls) {
+    widgets <- c(
+      widgets,
+      list(selectInput(
+        "advanced_reps",
+        "Simulation futures",
+        choices = advanced_numeric_labels(advanced_reps_choices),
+        selected = "100"
+      ))
+    )
+  }
+
+  div(
+    class = "advanced-controls",
+    h4("Advanced risk controls"),
+    p(class = "muted", "Choose preset values for the time horizon, number of futures, or vital-rate sensitivity."),
+    widgets,
+    selectInput(
+      "mortality_pct",
+      "Mortality change",
+      choices = advanced_pct_labels(),
+      selected = "0"
+    ),
+    selectInput(
+      "fecundity_pct",
+      "Fecundity change",
+      choices = advanced_pct_labels(),
+      selected = "0"
+    )
+  )
+}
+
+visible_stage_controls <- function(stage, advanced = FALSE) {
+  base <- switch(
     stage,
     deterministic_baseline = "years",
     carrying_capacity = c("K", "K_sd"),
@@ -156,14 +390,38 @@ visible_stage_controls <- function(stage) {
     extinction_vortex = c("K", "cat_freq"),
     character()
   )
+
+  if (isTRUE(advanced)) {
+    advanced_controls <- c(
+      if (!"years" %in% base) "advanced_years",
+      if (!"reps" %in% base) "advanced_reps",
+      "mortality_pct",
+      "fecundity_pct"
+    )
+    return(unique(c(base, advanced_controls)))
+  }
+
+  base
 }
 
-stage_control_values <- function(stage, input) {
-  allowed <- visible_stage_controls(stage)
+coerce_stage_control_value <- function(value) {
+  if (is.character(value) && length(value) == 1 && grepl("^-?[0-9]+(\\.[0-9]+)?$", value)) {
+    return(as.numeric(value))
+  }
+  value
+}
+
+stage_control_values <- function(stage, input, advanced = FALSE) {
+  allowed <- visible_stage_controls(stage, advanced = advanced)
   values <- list()
   for (name in allowed) {
     if (!is.null(input[[name]])) {
-      values[[name]] <- input[[name]]
+      if (name %in% names(advanced_control_aliases)) {
+        control_name <- unname(advanced_control_aliases[[name]])
+      } else {
+        control_name <- name
+      }
+      values[[control_name]] <- coerce_stage_control_value(input[[name]])
     }
   }
   values
@@ -214,6 +472,52 @@ next_mission_stage <- function(stage) {
     return(default_stage)
   }
   implemented$stage[[min(current + 1, nrow(implemented))]]
+}
+
+previous_mission_stage <- function(stage) {
+  current <- match(stage, implemented$stage)
+  if (is.na(current)) {
+    return(default_stage)
+  }
+  implemented$stage[[max(current - 1, 1)]]
+}
+
+slug_text <- function(value) {
+  slug <- gsub("[^a-z0-9]+", "-", tolower(value))
+  slug <- gsub("(^-+|-+$)", "", slug)
+  if (!nzchar(slug)) {
+    return("plot")
+  }
+  slug
+}
+
+plot_png_filename <- function(kind, run) {
+  prefix <- switch(
+    kind,
+    trajectory = "practical1-trajectory-",
+    summary = "practical1-summary-",
+    risk = "practical1-risk-",
+    paste0("practical1-", slug_text(kind), "-")
+  )
+  paste0(prefix, slug_text(run$stage), "-", format(Sys.Date(), "%Y%m%d"), ".png")
+}
+
+write_plot_png <- function(file, plot) {
+  grDevices::png(file, width = 1200, height = 800, res = 144)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  plot()
+}
+
+trajectory_plot_for_run <- function(run) {
+  rPVA::plot_pva_traj(run$result, alpha = 0.28, sample = 40, raster = FALSE)
+}
+
+summary_plot_for_run <- function(run) {
+  rPVA::plot_pva_summary(run$result)
+}
+
+extinction_plot_for_run <- function(run) {
+  rPVA::plot_ext(run$result)
 }
 
 run_changed_settings_label <- function(run) {
@@ -344,10 +648,10 @@ ui <- navbarPage(
         class = "landing-hero",
         div(
           class = "landing-copy",
-          span(class = "landing-eyebrow", "Woodhen Practical 1"),
-          h1("Practical 1 PVA mission"),
+          span(class = "landing-eyebrow", "Practical 1: Learning PVA"),
+          h1("PVA Basics"),
           p(class = "landing-lede", "PVA is a way to test how a population might change when survival, breeding, habitat, and chance interact."),
-          p("You will build a short chain of model runs, compare what changed, and save evidence for discussion."),
+          p(class = "landing-task-text", "You will build a short chain of model runs, compare what changed, and save evidence for discussion."),
           actionButton("run_baseline", label = tagList(icon("play"), "Start baseline"), class = "btn-primary"),
           div(
             class = "mission-cue landing-start-cue",
@@ -359,8 +663,8 @@ ui <- navbarPage(
         div(
           class = "landing-hero-visual",
           tags$img(
-            src = "img/landing-woodhen-population.png",
-            alt = "Lord Howe woodhen-like bird in island forest with a small background population"
+            src = "img/landing-pva-learning-futures.png",
+            alt = "Population trajectories, uncertainty bands, and evidence notes arranged on an island planning desk"
           )
         )
       ),
@@ -369,7 +673,7 @@ ui <- navbarPage(
         landing_card_ui(
           "img/landing-trajectory-evidence.png",
           "population trajectory lines and evidence marks on a field notebook page",
-          "Plain language",
+          "Background",
           "What is PVA?",
           "A population viability analysis explores a set of possible futures.",
           action = actionButton(
@@ -386,7 +690,7 @@ ui <- navbarPage(
           "conservation decision scene with island habitat map and field notes",
           "Your mission",
           "What you will do",
-          "Run the baseline, change one factor at a time, compare results, and explain the tradeoffs.",
+          "Run the baseline, change one factor at a time, compare results, and explain the trade-offs.",
           action = actionButton(
             "open_mission_deep_dive",
             label = "Explore mission",
@@ -444,8 +748,14 @@ ui <- navbarPage(
           selectInput("stage", "Teaching stage", choices = stage_choices, selected = default_stage),
           uiOutput("stage_text"),
           uiOutput("stage_controls"),
-          actionButton("run_stage", label = tagList(icon("play"), "Run stage"), class = "btn-primary"),
-          actionButton("next_mission", label = tagList(icon("arrow-right"), "Next mission"), class = "btn-default"),
+          checkboxInput("show_advanced_controls", "Show advanced risk controls", value = FALSE),
+          uiOutput("advanced_stage_controls"),
+          div(
+            class = "mission-actions",
+            actionButton("previous_mission", label = tagList(icon("arrow-left"), "Previous mission"), class = "btn-default"),
+            actionButton("run_stage", label = tagList(icon("play"), "Run stage"), class = "btn-primary"),
+            actionButton("next_mission", label = tagList(icon("arrow-right"), "Next mission"), class = "btn-default")
+          ),
           div(class = "prompt", textOutput("stage_prompt"))
         ),
         div(
@@ -495,6 +805,12 @@ ui <- navbarPage(
         fluidRow(
           column(6, plotOutput("trajectory_plot", height = "320px")),
           column(6, plotOutput("summary_plot", height = "320px"))
+        ),
+        div(
+          class = "plot-download-grid",
+          downloadButton("download_trajectory_plot", "Trajectory PNG"),
+          downloadButton("download_summary_plot", "Summary PNG"),
+          uiOutput("extinction_plot_download")
         ),
         uiOutput("extinction_plot_panel")
       )
@@ -576,16 +892,28 @@ ui <- navbarPage(
 
 server <- function(input, output, session) {
   baseline <- run_stage(default_stage)
+  baseline_run <- reactiveVal(baseline)
   current_run <- reactiveVal(baseline)
   run_history <- reactiveVal(list(baseline))
+  selected_stage_spec <- reactive({
+    stage <- input$stage
+    if (is.null(stage) || !nzchar(stage)) {
+      stage <- default_stage
+    }
+    rPVA::build_teaching_spec(
+      stage,
+      controls = stage_control_values(stage, input, advanced = isTRUE(input$show_advanced_controls))
+    )
+  })
   evidence_export <- reactive({
     rPVA:::build_teaching_evidence_export(run_history(), interpretation = input$interpretation_note)
   })
 
   observeEvent(input$run_baseline, {
-    baseline_run <- run_stage(default_stage)
-    current_run(baseline_run)
-    run_history(list(baseline_run))
+    baseline <- run_stage(default_stage)
+    baseline_run(baseline)
+    current_run(baseline)
+    run_history(list(baseline))
     updateNavbarPage(session, "section", selected = "Concept Lab")
     updateSelectInput(session, "stage", selected = default_stage)
   })
@@ -625,7 +953,7 @@ server <- function(input, output, session) {
   observeEvent(input$run_stage, {
     stage <- input$stage
     withProgress(message = "Running mission", value = 0.5, {
-      run <- run_stage(stage, stage_control_values(stage, input))
+      run <- run_stage(stage, stage_control_values(stage, input, advanced = isTRUE(input$show_advanced_controls)))
       current_run(run)
       run_history(c(run_history(), list(run)))
     })
@@ -635,10 +963,15 @@ server <- function(input, output, session) {
     updateSelectInput(session, "stage", selected = next_mission_stage(input$stage))
   })
 
+  observeEvent(input$previous_mission, {
+    updateSelectInput(session, "stage", selected = previous_mission_stage(input$stage))
+  })
+
   observeEvent(input$clear_runs, {
-    baseline_run <- run_stage(default_stage)
-    current_run(baseline_run)
-    run_history(list(baseline_run))
+    baseline <- run_stage(default_stage)
+    baseline_run(baseline)
+    current_run(baseline)
+    run_history(list(baseline))
     updateSelectInput(session, "stage", selected = default_stage)
   })
 
@@ -659,6 +992,17 @@ server <- function(input, output, session) {
 
   output$stage_controls <- renderUI({
     stage_control_ui(input$stage)
+  })
+
+  output$advanced_stage_controls <- renderUI({
+    if (!isTRUE(input$show_advanced_controls)) {
+      return(NULL)
+    }
+    stage <- input$stage
+    if (is.null(stage) || !nzchar(stage)) {
+      stage <- default_stage
+    }
+    advanced_stage_controls(stage)
   })
 
   output$mission_rail <- renderUI({
@@ -683,7 +1027,7 @@ server <- function(input, output, session) {
   })
 
   output$settings_table <- renderTable({
-    settings_for_display(current_run())
+    settings_for_display(selected_stage_spec(), baseline_run()$spec)
   }, striped = TRUE, bordered = TRUE, spacing = "s")
 
   output$diagnostics <- renderUI({
@@ -691,11 +1035,36 @@ server <- function(input, output, session) {
   })
 
   output$trajectory_plot <- renderPlot({
-    rPVA::plot_pva_traj(current_run()$result, alpha = 0.28, sample = 40, raster = FALSE)
+    trajectory_plot_for_run(current_run())
   })
 
   output$summary_plot <- renderPlot({
-    rPVA::plot_pva_summary(current_run()$result)
+    summary_plot_for_run(current_run())
+  })
+
+  output$download_trajectory_plot <- downloadHandler(
+    filename = function() {
+      plot_png_filename("trajectory", current_run())
+    },
+    content = function(file) {
+      write_plot_png(file, function() trajectory_plot_for_run(current_run()))
+    }
+  )
+
+  output$download_summary_plot <- downloadHandler(
+    filename = function() {
+      plot_png_filename("summary", current_run())
+    },
+    content = function(file) {
+      write_plot_png(file, function() summary_plot_for_run(current_run()))
+    }
+  )
+
+  output$extinction_plot_download <- renderUI({
+    if (!current_run()$stage %in% risk_plot_stages) {
+      return(NULL)
+    }
+    downloadButton("download_extinction_plot", "Risk PNG")
   })
 
   output$extinction_plot_panel <- renderUI({
@@ -710,8 +1079,18 @@ server <- function(input, output, session) {
 
   output$extinction_plot <- renderPlot({
     req(current_run()$stage %in% risk_plot_stages)
-    rPVA::plot_ext(current_run()$result)
+    extinction_plot_for_run(current_run())
   })
+
+  output$download_extinction_plot <- downloadHandler(
+    filename = function() {
+      plot_png_filename("risk", current_run())
+    },
+    content = function(file) {
+      req(current_run()$stage %in% risk_plot_stages)
+      write_plot_png(file, function() extinction_plot_for_run(current_run()))
+    }
+  )
 
   output$comparison_table <- renderTable({
     rPVA::compare_teaching_runs(run_history(), include_deltas = TRUE)

@@ -85,6 +85,7 @@ teaching_stage_catalog <- function() {
 build_teaching_spec <- function(stage, controls = list(), base = "toy") {
   stage_info <- resolve_teaching_stage(stage, require_implemented = TRUE)
   controls <- normalize_teaching_controls(stage, controls)
+  teaching_controls <- controls
 
   if (!identical(base, "toy")) {
     stop("Only `base = \"toy\"` is currently supported for Practical 1 teaching specs.", call. = FALSE)
@@ -92,10 +93,18 @@ build_teaching_spec <- function(stage, controls = list(), base = "toy") {
 
   spec <- read_spec(system.file("extdata", "toy", "toy_demo.yaml", package = "rPVA"))
   spec <- utils::modifyList(spec, teaching_stage_defaults(stage))
+  spec <- apply_teaching_vital_adjustments(spec, controls)
+  controls <- controls[setdiff(names(controls), teaching_vital_adjustment_controls())]
   spec <- utils::modifyList(spec, controls)
   spec$name <- paste0("teaching_", stage_info$stage)
 
   spec <- validate_full_pva_spec(spec)
+  for (control in teaching_vital_adjustment_controls()) {
+    if (!is.null(teaching_controls[[control]])) {
+      spec[[control]] <- teaching_controls[[control]]
+    }
+  }
+  attr(spec, "teaching_controls") <- teaching_controls
   class(spec) <- c("pva_spec", setdiff(class(spec), "pva_spec"))
   spec
 }
@@ -117,10 +126,12 @@ run_teaching_pva <- function(stage,
                              controls = list(),
                              keep_traj = TRUE,
                              seed = 42,
-                             verbose = FALSE) {
+  verbose = FALSE) {
   stage_info <- resolve_teaching_stage(stage, require_implemented = TRUE)
   spec <- build_teaching_spec(stage, controls = controls)
-  result <- run_pva_core(spec, keep_traj = keep_traj, seed = seed, verbose = verbose)
+  engine_spec <- spec
+  engine_spec[teaching_vital_adjustment_controls()] <- NULL
+  result <- run_pva_core(engine_spec, keep_traj = keep_traj, seed = seed, verbose = verbose)
   summary <- summarize_pva_result(result, scenario = stage_info$label)
   diagnostics <- diagnose_pva_result(result, scenario = stage_info$label)
   settings <- teaching_settings_record(stage, controls, spec)
@@ -261,6 +272,8 @@ teaching_settings_record <- function(stage, controls, spec) {
     "name",
     "years",
     "reps",
+    "mortality_pct",
+    "fecundity_pct",
     "K",
     "K_sd",
     "demographic_stochasticity",
@@ -273,6 +286,14 @@ teaching_settings_record <- function(stage, controls, spec) {
     "n0"
   )
   spec_values <- spec[intersect(spec_fields, names(spec))]
+  spec_values <- utils::modifyList(
+    list(
+      mortality_pct = attr(spec, "teaching_controls")$mortality_pct,
+      fecundity_pct = attr(spec, "teaching_controls")$fecundity_pct
+    ),
+    spec_values
+  )
+  spec_values <- spec_values[!vapply(spec_values, is.null, logical(1))]
   spec_rows <- settings_rows(stage_info, paste0("spec_", names(spec_values)), spec_values)
 
   out <- rbind(control_rows, spec_rows)
@@ -325,12 +346,13 @@ teaching_stage_defaults <- function(stage) {
       reps = 100
     ),
     environmental_stochasticity = list(
-      K = 30,
+      K = 15,
       K_sd = 5,
       demographic_stochasticity = TRUE,
-      env_sd = 0.30,
+      env_sd = 0.35,
       genetics = FALSE,
-      reps = 100
+      reps = 100,
+      years = 50
     ),
     genetic_stochasticity = list(
       K = 30,
@@ -409,10 +431,10 @@ normalize_control_list <- function(controls) {
 
 teaching_control_specs <- function(stage) {
   common <- data.frame(
-    control = c("years", "reps"),
-    type = c("integer", "integer"),
-    min = c(5, 1),
-    max = c(100, 500),
+    control = c("years", "reps", "mortality_pct", "fecundity_pct"),
+    type = c("integer", "integer", "preset", "preset"),
+    min = c(5, 1, NA, NA),
+    max = c(1000, 1000, NA, NA),
     stringsAsFactors = FALSE
   )
 
@@ -475,6 +497,22 @@ teaching_control_specs <- function(stage) {
 }
 
 validate_teaching_control <- function(name, value, rule) {
+  if (identical(rule$type[[1]], "preset")) {
+    value <- as.numeric(value)
+    if (length(value) != 1 || is.na(value)) {
+      stop("Control `", name, "` must be a single numeric value.", call. = FALSE)
+    }
+    allowed <- teaching_vital_adjustment_values()
+    if (!value %in% allowed) {
+      stop(
+        "Control `", name, "` must use an allowed preset: ",
+        paste(allowed, collapse = ", "),
+        ".",
+        call. = FALSE
+      )
+    }
+    return(value)
+  }
   if (!is.numeric(value) || length(value) != 1 || is.na(value)) {
     stop("Control `", name, "` must be a single numeric value.", call. = FALSE)
   }
@@ -494,6 +532,38 @@ validate_teaching_control <- function(name, value, rule) {
     )
   }
   value
+}
+
+teaching_vital_adjustment_controls <- function() {
+  c("mortality_pct", "fecundity_pct")
+}
+
+teaching_vital_adjustment_values <- function() {
+  c(-20, -10, -5, 0, 5, 10, 20)
+}
+
+apply_teaching_vital_adjustments <- function(spec, controls) {
+  mortality_pct <- controls$mortality_pct
+  fecundity_pct <- controls$fecundity_pct
+
+  if (!is.null(mortality_pct) && !identical(as.numeric(mortality_pct), 0)) {
+    mortality_multiplier <- 1 + as.numeric(mortality_pct) / 100
+    spec$surv <- adjust_survival_probability(spec$surv, mortality_multiplier)
+    if (!is.null(spec$stasis)) {
+      spec$stasis <- adjust_survival_probability(spec$stasis, mortality_multiplier)
+    }
+  }
+
+  if (!is.null(fecundity_pct) && !identical(as.numeric(fecundity_pct), 0)) {
+    fecundity_multiplier <- 1 + as.numeric(fecundity_pct) / 100
+    spec$fecund <- spec$fecund * fecundity_multiplier
+  }
+
+  spec
+}
+
+adjust_survival_probability <- function(value, mortality_multiplier) {
+  pmax(0, pmin(1, 1 - (1 - value) * mortality_multiplier))
 }
 
 settings_rows <- function(stage_info, settings, values) {

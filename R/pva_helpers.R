@@ -98,7 +98,7 @@ diagnose_pva_result <- function(out,
     add_row(
       "high_extinction_probability",
       "warning",
-      sprintf("Extinction probability is %.3f; discuss this as a material risk, not a certainty.", summary$PE)
+      sprintf("Extinction probability is %.3f; discuss this as a material risk.", summary$PE)
     )
   }
 
@@ -115,7 +115,7 @@ diagnose_pva_result <- function(out,
     add_row(
       "wide_final_abundance_interval",
       "note",
-      "The final abundance interval is wide; emphasize uncertainty as well as the median."
+      "The final abundance interval is wide; emphasise uncertainty as well as the median."
     )
   }
 

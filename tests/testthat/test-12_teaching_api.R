@@ -52,7 +52,9 @@ test_that("build_teaching_spec applies safe stage-specific defaults", {
   expect_true(demographic$demographic_stochasticity)
   expect_equal(demographic$reps, 100L)
 
-  expect_equal(environmental$env_sd, 0.30)
+  expect_equal(environmental$K, 15)
+  expect_equal(environmental$env_sd, 0.35)
+  expect_equal(environmental$years, 50L)
   expect_equal(environmental$K_sd, 5)
 
   expect_true(genetics$genetics)
@@ -87,6 +89,48 @@ test_that("build_teaching_spec accepts bounded controls and rejects unsafe ones"
   expect_error(build_teaching_spec("catastrophe", list(cat_freq = 0.8)), "outside")
   expect_error(build_teaching_spec("demographic_stochasticity", list(reps = 2.5)), "integer")
   expect_error(build_teaching_spec("deterministic_baseline", base = "woodhen"), "Only `base = \"toy\"`")
+})
+
+test_that("advanced teaching controls apply bounded vital-rate adjustments", {
+  base <- build_teaching_spec("environmental_stochasticity")
+  adjusted <- build_teaching_spec(
+    "environmental_stochasticity",
+    controls = list(mortality_pct = 10, fecundity_pct = -20, years = 1000, reps = 1000)
+  )
+
+  expected_surv <- 1 - (1 - base$surv) * 1.10
+  expect_equal(adjusted$surv, expected_surv)
+  expect_equal(adjusted$fecund, base$fecund * 0.80)
+  expect_equal(adjusted$mortality_pct, 10)
+  expect_equal(adjusted$fecundity_pct, -20)
+  expect_equal(adjusted$years, 1000L)
+  expect_equal(adjusted$reps, 1000L)
+
+  improved <- build_teaching_spec("environmental_stochasticity", controls = list(mortality_pct = -5, fecundity_pct = 5))
+  expect_equal(improved$surv, 1 - (1 - base$surv) * 0.95)
+  expect_equal(improved$fecund, base$fecund * 1.05)
+
+  adjusted_run <- run_teaching_pva(
+    "environmental_stochasticity",
+    controls = list(mortality_pct = 10, fecundity_pct = -20, years = 50, reps = 10),
+    keep_traj = FALSE,
+    seed = 42
+  )
+  expect_s3_class(adjusted_run, "teaching_pva_run")
+  expect_equal(adjusted_run$spec$mortality_pct, 10)
+  expect_equal(adjusted_run$spec$fecundity_pct, -20)
+
+  expect_error(build_teaching_spec("environmental_stochasticity", controls = list(mortality_pct = 15)), "allowed preset")
+  expect_error(build_teaching_spec("environmental_stochasticity", controls = list(fecundity_pct = 15)), "allowed preset")
+  expect_error(build_teaching_spec("environmental_stochasticity", controls = list(years = 1001)), "outside")
+  expect_error(build_teaching_spec("environmental_stochasticity", controls = list(reps = 1001)), "outside")
+})
+
+test_that("environmental stochasticity default exposes extinction-time teaching signal", {
+  run <- run_teaching_pva("environmental_stochasticity", keep_traj = FALSE, seed = 42)
+
+  expect_gte(run$summary$PE, 0.20)
+  expect_lte(run$summary$PE, 0.40)
 })
 
 test_that("run_teaching_pva returns a labelled Shiny-ready bundle", {

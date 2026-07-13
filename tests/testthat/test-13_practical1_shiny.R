@@ -40,6 +40,17 @@ test_that("default app teaching run is valid and Shiny-ready", {
   expect_s3_class(run$diagnostics, "data.frame")
 })
 
+test_that("server initializes baseline state outside reactive reads", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
+
+  expect_true(grepl("baseline <- run_stage(default_stage)", app_text, fixed = TRUE))
+  expect_true(grepl("baseline_run <- reactiveVal(baseline)", app_text, fixed = TRUE))
+  expect_true(grepl("current_run <- reactiveVal(baseline)", app_text, fixed = TRUE))
+  expect_true(grepl("run_history <- reactiveVal(list(baseline))", app_text, fixed = TRUE))
+  expect_false(grepl("reactiveVal(baseline_run())", app_text, fixed = TRUE))
+})
+
 test_that("app file avoids unsupported implementation markers", {
   app_dir <- rPVA:::practical1_shiny_app_dir()
   app_text <- readLines(file.path(app_dir, "app.R"), warn = FALSE)
@@ -70,9 +81,9 @@ test_that("stage runs collect only visible controls", {
   app_dir <- rPVA:::practical1_shiny_app_dir()
   app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
 
-  expect_match(app_text, "visible_stage_controls <- function\\(stage\\)")
-  expect_true(grepl("stage_control_values <- function(stage, input)", app_text, fixed = TRUE))
-  expect_true(grepl("allowed <- visible_stage_controls(stage)", app_text, fixed = TRUE))
+  expect_match(app_text, "visible_stage_controls <- function\\(stage, advanced = FALSE\\)")
+  expect_true(grepl("stage_control_values <- function(stage, input, advanced = FALSE)", app_text, fixed = TRUE))
+  expect_true(grepl("allowed <- visible_stage_controls(stage, advanced = advanced)", app_text, fixed = TRUE))
   expect_false(grepl("strsplit\\(implemented\\$controls", app_text))
 })
 
@@ -105,8 +116,12 @@ test_that("Practical 1 opens with a tutorial landing screen", {
   app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
 
   expect_true(grepl('class = "landing-hero"', app_text, fixed = TRUE))
-  expect_true(grepl("Practical 1 PVA mission", app_text, fixed = TRUE))
+  expect_true(grepl("Practical 1: Learning PVA", app_text, fixed = TRUE))
+  expect_true(grepl("PVA Basics", app_text, fixed = TRUE))
+  expect_false(grepl("Woodhen Practical 1", app_text, fixed = TRUE))
+  expect_false(grepl("PVA mission", app_text, fixed = TRUE))
   expect_true(grepl("PVA is a way to test how a population might change", app_text, fixed = TRUE))
+  expect_true(grepl('class = "landing-task-text"', app_text, fixed = TRUE))
   expect_true(grepl("What you will do", app_text, fixed = TRUE))
   expect_true(grepl("Evidence to save", app_text, fixed = TRUE))
   expect_true(grepl("Start baseline creates or restores baseline as run 1", app_text, fixed = TRUE))
@@ -283,9 +298,12 @@ test_that("Concept Lab exposes a guided mission rail", {
 
   expect_true(grepl("mission_rail_ui <- function(current_stage, completed_stages = character())", app_text, fixed = TRUE))
   expect_true(grepl('uiOutput("mission_rail")', app_text, fixed = TRUE))
+  expect_true(grepl('actionButton("previous_mission"', app_text, fixed = TRUE))
   expect_true(grepl('actionButton("next_mission"', app_text, fixed = TRUE))
   expect_true(grepl("output$mission_rail <- renderUI", app_text, fixed = TRUE))
+  expect_true(grepl("observeEvent(input$previous_mission", app_text, fixed = TRUE))
   expect_true(grepl("observeEvent(input$next_mission", app_text, fixed = TRUE))
+  expect_true(grepl("previous_mission_stage <- function(stage)", app_text, fixed = TRUE))
   expect_match(style_text, "\\.mission-rail")
   expect_match(style_text, "\\.mission-step\\.is-current")
   expect_match(style_text, "\\.mission-step\\.is-complete")
@@ -314,17 +332,18 @@ test_that("landing screen uses local accessible bitmap assets", {
   app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
   asset_dir <- file.path(app_dir, "www", "img")
   expected_assets <- c(
-    "landing-woodhen-population.png",
+    "landing-pva-learning-futures.png",
     "landing-trajectory-evidence.png",
     "landing-conservation-decision.png"
   )
 
   expect_true(dir.exists(asset_dir))
   expect_true(all(file.exists(file.path(asset_dir, expected_assets))))
-  expect_true(grepl("img/landing-woodhen-population.png", app_text, fixed = TRUE))
+  expect_true(grepl("img/landing-pva-learning-futures.png", app_text, fixed = TRUE))
   expect_true(grepl("img/landing-trajectory-evidence.png", app_text, fixed = TRUE))
   expect_true(grepl("img/landing-conservation-decision.png", app_text, fixed = TRUE))
-  expect_match(app_text, 'alt = "[^"]+woodhen[^"]+"')
+  expect_false(grepl("img/landing-woodhen-population.png", app_text, fixed = TRUE))
+  expect_false(grepl("woodhen-like bird", app_text, fixed = TRUE))
   expect_true(grepl("tags$img(src = image, alt = alt)", app_text, fixed = TRUE))
   expect_true(grepl("population trajectory lines", app_text, fixed = TRUE))
   expect_true(grepl("conservation decision scene", app_text, fixed = TRUE))
@@ -337,8 +356,88 @@ test_that("landing screen has responsive tutorial styling", {
   expect_match(style_text, "\\.landing-hero\\s*\\{[^}]*display:\\s*grid")
   expect_match(style_text, "\\.landing-card-grid\\s*\\{[^}]*grid-template-columns:")
   expect_match(style_text, "\\.landing-visual\\s*\\{[^}]*aspect-ratio:")
+  expect_match(style_text, "\\.landing-task-text")
   expect_match(style_text, "@media \\(max-width: 780px\\)")
   expect_match(style_text, "\\.landing-hero,\\s*\\.landing-card-grid")
+})
+
+test_that("Concept Lab settings table uses teaching labels and selected-mission changes", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
+  style_text <- paste(readLines(file.path(app_dir, "www", "styles.css"), warn = FALSE), collapse = "\n")
+
+  expect_true(grepl("teaching_parameter_catalog <- function()", app_text, fixed = TRUE))
+  expect_true(grepl("settings_for_display <- function(selected_spec, baseline_spec)", app_text, fixed = TRUE))
+  expect_true(grepl("Baseline value", app_text, fixed = TRUE))
+  expect_true(grepl("Selected mission value", app_text, fixed = TRUE))
+  expect_true(grepl("What changed", app_text, fixed = TRUE))
+  expect_true(grepl("Habitat ceiling", app_text, fixed = TRUE))
+  expect_true(grepl("Bad-year variation", app_text, fixed = TRUE))
+  expect_true(grepl("Starting population", app_text, fixed = TRUE))
+  expect_true(grepl("selected_stage_spec <- reactive", app_text, fixed = TRUE))
+  expect_true(grepl("settings_for_display(selected_stage_spec(), baseline_run()$spec)", app_text, fixed = TRUE))
+  expect_false(grepl("Setting = out$setting", app_text, fixed = TRUE))
+  expect_false(grepl("Value = out$value", app_text, fixed = TRUE))
+  expect_match(style_text, "\\.settings-table td:nth-child\\(4\\)")
+})
+
+test_that("Concept Lab exposes optional advanced risk controls", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
+
+  expect_true(grepl('checkboxInput("show_advanced_controls"', app_text, fixed = TRUE))
+  expect_true(grepl("Show advanced risk controls", app_text, fixed = TRUE))
+  expect_true(grepl("advanced_stage_controls <- function(stage)", app_text, fixed = TRUE))
+  expect_true(grepl("advanced_year_choices <- c(10, 25, 50, 100, 1000)", app_text, fixed = TRUE))
+  expect_true(grepl("advanced_reps_choices <- c(10, 100, 500, 1000)", app_text, fixed = TRUE))
+  expect_true(grepl("advanced_pct_choices <- c(-20, -10, -5, 0, 5, 10, 20)", app_text, fixed = TRUE))
+  expect_true(grepl('"advanced_years"', app_text, fixed = TRUE))
+  expect_true(grepl('"advanced_reps"', app_text, fixed = TRUE))
+  expect_true(grepl("advanced_years = \"years\"", app_text, fixed = TRUE))
+  expect_true(grepl("advanced_reps = \"reps\"", app_text, fixed = TRUE))
+  expect_true(grepl("Projection years", app_text, fixed = TRUE))
+  expect_true(grepl("Simulation futures", app_text, fixed = TRUE))
+  expect_true(grepl("Mortality change", app_text, fixed = TRUE))
+  expect_true(grepl("Fecundity change", app_text, fixed = TRUE))
+  expect_true(grepl("mortality_pct", app_text, fixed = TRUE))
+  expect_true(grepl("fecundity_pct", app_text, fixed = TRUE))
+  expect_true(grepl("5% lower", app_text, fixed = TRUE))
+  expect_true(grepl("20% higher", app_text, fixed = TRUE))
+  expect_match(app_text, "stage_control_values\\([^)]*advanced = isTRUE\\(input\\$show_advanced_controls\\)")
+})
+
+test_that("Concept Lab can save plot PNGs with automatic filenames", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
+  style_text <- paste(readLines(file.path(app_dir, "www", "styles.css"), warn = FALSE), collapse = "\n")
+
+  expect_true(grepl('downloadButton("download_trajectory_plot"', app_text, fixed = TRUE))
+  expect_true(grepl('downloadButton("download_summary_plot"', app_text, fixed = TRUE))
+  expect_true(grepl('downloadButton("download_extinction_plot"', app_text, fixed = TRUE))
+  expect_true(grepl("output$download_trajectory_plot <- downloadHandler", app_text, fixed = TRUE))
+  expect_true(grepl("output$download_summary_plot <- downloadHandler", app_text, fixed = TRUE))
+  expect_true(grepl("output$download_extinction_plot <- downloadHandler", app_text, fixed = TRUE))
+  expect_true(grepl("plot_png_filename <- function(kind, run)", app_text, fixed = TRUE))
+  expect_true(grepl("write_plot_png <- function(file, plot)", app_text, fixed = TRUE))
+  expect_true(grepl("practical1-trajectory-", app_text, fixed = TRUE))
+  expect_true(grepl("practical1-summary-", app_text, fixed = TRUE))
+  expect_true(grepl("practical1-risk-", app_text, fixed = TRUE))
+  expect_match(style_text, "\\.plot-download-grid")
+})
+
+test_that("Practical 1 student-facing prose uses British spelling and direct diagnostics", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
+  content_text <- paste(unlist(lapply(
+    list.files(file.path(app_dir, "content"), pattern = "\\.md$", full.names = TRUE),
+    readLines,
+    warn = FALSE
+  )), collapse = "\n")
+
+  expect_false(grepl("not a certainty", app_text, fixed = TRUE))
+  expect_false(grepl("emphasize", app_text, ignore.case = TRUE))
+  expect_false(grepl("favorable|analyze|visualize|customize|modeling", app_text, ignore.case = TRUE))
+  expect_false(grepl("favorable|analyze|visualize|customize|modeling", content_text, ignore.case = TRUE))
 })
 
 test_that("comparison table is styled for horizontal scanning", {

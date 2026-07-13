@@ -3,11 +3,12 @@
 This is the browser scaffold for the Practical 1 PVA concept lab. It uses the
 public teaching API in `R/teaching_api.R` and base Shiny only.
 
-The classroom surface opens with a local-first landing/tutorial screen:
-students get a plain-language PVA introduction, a short mission preview, and a
-clear evidence prompt before touching model controls. Each landing card has an
-optional Markdown-backed deep-dive so students can read more without turning
-the landing screen into a manual page:
+The classroom surface opens with a local-first `PVA Basics` landing/tutorial
+screen: students get a plain-language PVA introduction, a short mission
+preview, a non-species visual cue about possible futures, and a clear evidence
+prompt before touching model controls. Each landing card has an optional
+Markdown-backed deep-dive so students can read more while the landing screen
+stays compact:
 
 - `content/pva-deep-dive.md` for `What is PVA?`
 - `content/mission-deep-dive.md` for `What you will do`
@@ -26,11 +27,23 @@ creates or restores baseline as run 1, Concept Lab asks students to change one
 visible control at a time, and Compare asks for a clean
 baseline/risk/intervention or vortex evidence comparison.
 
+The Concept Lab settings record is student-facing. It shows plain-English
+parameter labels, the baseline value, the currently selected mission value, and
+what changed before the student runs the mission. Optional advanced risk
+controls expose preset projection years, simulation futures, and bounded
+mortality/fecundity percentage changes after the default path has been
+understood. The presets are deliberate: they keep the lesson focused on
+interpreting model behaviour rather than endless slider tweaking.
+
 Students can save compact session evidence from the Compare screen:
 
 - `practical1-comparison-YYYYMMDD.csv` contains the run comparison table.
 - `practical1-evidence-notes-YYYYMMDD.md` contains settings/provenance and
   interpretation prompts. It is evidence for the student's explanation.
+
+Students can also save plot PNGs from Concept Lab. The app names them by plot
+type, current mission stage, and date so they can be dropped into an evidence
+folder without manual renaming.
 
 The app intentionally excludes Practical 2 Woodhen scenario running,
 authentication, persistent student workspaces, deployment configuration, and

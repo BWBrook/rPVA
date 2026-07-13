@@ -95,6 +95,12 @@ body {
   line-height: 1.45;
 }
 
+.landing-task-text {
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1.45;
+}
+
 .landing-eyebrow {
   color: var(--teal);
   font-size: 12px;
@@ -258,6 +264,13 @@ body {
   font-weight: 600;
 }
 
+.mission-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
 .mission-cue {
   border-left: 4px solid var(--green);
   padding: 10px 12px;
@@ -408,6 +421,13 @@ body {
   margin-top: 12px;
 }
 
+.plot-download-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 12px;
+}
+
 .btn {
   white-space: normal;
 }
@@ -452,11 +472,31 @@ body {
   padding: 10px 12px;
 }
 
+.advanced-controls {
+  border-left: 4px solid var(--teal);
+  background: #f0f7f5;
+  margin: 10px 0 14px;
+  padding: 10px 12px;
+}
+
+.advanced-controls h4 {
+  margin: 0 0 6px;
+  font-size: 15px;
+}
+
+.advanced-controls .muted {
+  margin-bottom: 8px;
+}
+
 .metric-table table,
 .settings-table table,
 .compare-table table {
   width: 100%;
   font-size: 14px;
+}
+
+.settings-table table {
+  font-size: 13px;
 }
 
 .settings-table th,
@@ -465,6 +505,38 @@ body {
 .compare-table td {
   overflow-wrap: anywhere;
   vertical-align: top;
+}
+
+.settings-table table {
+  min-width: 720px;
+  table-layout: fixed;
+}
+
+.settings-table th:nth-child(1),
+.settings-table td:nth-child(1) {
+  width: 18%;
+}
+
+.settings-table th:nth-child(2),
+.settings-table td:nth-child(2),
+.settings-table th:nth-child(3),
+.settings-table td:nth-child(3) {
+  width: 20%;
+}
+
+.settings-table th:nth-child(4),
+.settings-table td:nth-child(4) {
+  width: 15%;
+}
+
+.settings-table th:nth-child(5),
+.settings-table td:nth-child(5) {
+  width: 27%;
+}
+
+.settings-table td:nth-child(4) {
+  color: var(--teal);
+  font-weight: 700;
 }
 
 .metric-table,

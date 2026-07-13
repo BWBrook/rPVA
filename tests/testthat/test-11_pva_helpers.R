@@ -102,6 +102,10 @@ test_that("diagnose_pva_result returns deterministic student-facing codes", {
   )
   expect_equal(diagnostics$severity, c("warning", "warning", "note", "note"))
   expect_true(all(nzchar(diagnostics$message)))
+  expect_true(grepl("discuss this as a material risk", diagnostics$message[[1]], fixed = TRUE))
+  expect_false(grepl("not a certainty", diagnostics$message[[1]], fixed = TRUE))
+  expect_true(grepl("emphasise uncertainty", diagnostics$message[[3]], fixed = TRUE))
+  expect_false(grepl("emphasize", diagnostics$message[[3]], fixed = TRUE))
 })
 
 test_that("diagnose_pva_result prompts care when no extinctions are observed", {
