@@ -100,6 +100,21 @@ condition until the operator and ITS understand it.
 The stable browser route is normally `/app/<APP_ID>`. The root launcher must
 also be tested because it exposes cross-app regressions.
 
+### Last Validated Practical 1 Baseline
+
+Treat this as historical evidence until Gate 4 and Gate 8 re-observe live
+state:
+
+```text
+Image:  git.its.utas.edu.au/utas/kpz308-rpva-practical:dev-20260626-9524304fb748
+Digest: sha256:7aa013152b226d5ba3fcc34d31051fe049dd0f34c2c7e0187de83580523f4340
+Source: 9524304fb74805baad7672f81f219b8455a4aac8
+```
+
+Goal 043 recorded that image as passing dev/prod browser smokes, CSV and
+Markdown exports, and the production capacity rehearsal. Do not infer that it
+is still deployed or that later source commits are represented by it.
+
 ## Select the Operation
 
 Use exactly one operation per run:

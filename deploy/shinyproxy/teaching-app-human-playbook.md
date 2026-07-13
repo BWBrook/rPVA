@@ -122,6 +122,20 @@ https://ecology-r1.its.utas.edu.au/app/kpz308-rpva-practical
 Use the root launcher during acceptance testing as well, because it proves
 that unrelated app tiles remain present.
 
+### Last Validated Practical 1 Baseline
+
+Goal 043 recorded this image as passing dev and prod browser smokes, exports,
+and the production capacity rehearsal:
+
+```text
+Image:  git.its.utas.edu.au/utas/kpz308-rpva-practical:dev-20260626-9524304fb748
+Digest: sha256:7aa013152b226d5ba3fcc34d31051fe049dd0f34c2c7e0187de83580523f4340
+Source: 9524304fb74805baad7672f81f219b8455a4aac8
+```
+
+This is historical rollback/provenance evidence, not proof of current live
+state. Read the actual dev and prod config before every deployment.
+
 ## Safety Rules
 
 - Use a committed, reviewed source tree with no unexpected local changes.
