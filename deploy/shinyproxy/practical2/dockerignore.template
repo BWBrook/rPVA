@@ -1,0 +1,33 @@
+# Review copy: place this at the repository root as `.dockerignore` only in an
+# approved image-build workspace.
+
+.git
+.github
+.Rproj.user
+.Rhistory
+.RData
+.DS_Store
+
+renv/library/
+renv/staging/
+renv/python/
+renv/sandbox/
+
+*.Rproj
+*.tar.gz
+*.zip
+*.rds
+*.Rds
+
+docs/goals/*/evidence/
+docs/teaching/intake-2026-06-02-legacy-assessment-materials/
+docs/teaching/woodhen/*.docx
+docs/teaching/woodhen/*.pdf
+docs/teaching/woodhen/*.html
+
+.pytest_cache/
+.ruff_cache/
+__pycache__/
+node_modules/
+
+deploy/shinyproxy/practical2/*.log

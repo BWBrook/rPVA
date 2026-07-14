@@ -94,7 +94,7 @@ condition until the operator and ITS understand it.
 | App | Stable ID | Image repository | Workspace subtree | Student group | State |
 | --- | --- | --- | --- | --- | --- |
 | KPZ308 Practical 1 | `kpz308-rpva-practical` | `git.its.utas.edu.au/utas/kpz308-rpva-practical` | `data/kpz308-rpva-practical/workspaces` | `KPZ308` | Existing identity; do not rename. |
-| KPZ308 Practical 2 | `kpz308-rpva-practical2` | Must be confirmed | Proposed: `data/kpz308-rpva-practical2/workspaces` | `KPZ308` | Recommended identity; first deployment is blocked pending confirmation. |
+| KPZ308 Practical 2 | `kpz308-rpva-practical2` | `git.its.utas.edu.au/utas/kpz308-rpva-practical2` | `data/kpz308-rpva-practical2/workspaces` | `KPZ308` | Confirmed permanent identity; use Staff-only access outside approved student release windows. |
 | KPZ314 practical | `kpz314-sdm-practical` | Must be confirmed by its project and ITS | Proposed: `data/kpz314-sdm-practical/workspaces` | `KPZ314` | Reserved identity; KPZ314 is in SSO configuration but not yet an app spec. |
 
 The stable browser route is normally `/app/<APP_ID>`. The root launcher must
@@ -617,13 +617,14 @@ For `refresh-existing`, instruct Barry to run `vi application.yml` and change
 only the selected spec's `container-image` line.
 
 For `add-new`, add a new list item under `proxy.specs`. Do not replace an
-existing item. A proposed Practical 2 shape is:
+existing item. This is the confirmed Practical 2 shape; replace the immutable
+tag with the Task 2 accepted tag.
 
 ```yaml
     - id: "kpz308-rpva-practical2"
       display-name: "KPZ308 rPVA Practical 2"
       description: "KPZ308 Practical 2"
-      container-image: "git.its.utas.edu.au/utas/CONFIRMED_REPOSITORY:IMMUTABLE_TAG"
+      container-image: "git.its.utas.edu.au/utas/kpz308-rpva-practical2:dev-YYYYMMDD-SHORTSHA"
       container-network: "shinyproxy-net"
       container-memory-limit: "1g"
       container-cpu-limit: 1.0
@@ -641,10 +642,9 @@ existing item. A proposed Practical 2 shape is:
         - "/srv/sa-container/ecology-teaching-shiny/data/kpz308-rpva-practical2/workspaces/#{proxy.userId}:/srv/rpva-workspaces/current:z"
 ```
 
-`CONFIRMED_REPOSITORY` and `IMMUTABLE_TAG` are schema markers, not literal
-deployment values. Resource limits are validated Practical 1 values, not
-automatic defaults. KPZ314 must use its confirmed environment and `KPZ314`
-student group.
+The immutable tag is a documentation value until replaced with the Task 2
+accepted tag. Resource limits are validated Practical 1 values, not automatic
+defaults. KPZ314 must use its confirmed environment and `KPZ314` student group.
 
 For a new Practical 2 app, create its workspace parent as `sa-container`:
 

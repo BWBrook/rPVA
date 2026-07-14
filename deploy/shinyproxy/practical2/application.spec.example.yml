@@ -1,0 +1,19 @@
+- id: "kpz308-rpva-practical2"
+  display-name: "KPZ308 Practical 2 - Infrastructure Canary"
+  description: "Provisional Woodhen Management Lab for KPZ308 infrastructure validation"
+  container-image: "git.its.utas.edu.au/utas/kpz308-rpva-practical2:dev-20260713-0123456789ab"
+  container-network: "shinyproxy-net"
+  container-memory-limit: "1g"
+  container-cpu-limit: 1.0
+  access-groups:
+    - "UNI-Ecology-Teaching-Shiny-Staff"
+    - "KPZ308"
+  port: 3838
+  target-path: "/"
+  container-env:
+    SHINY_HOST: "0.0.0.0"
+    SHINY_PORT: "3838"
+    RPVA_STUDENT_ID: "#{proxy.userId}"
+    RPVA_STUDENT_WORKSPACE_ROOT: "/srv/rpva-workspaces/current"
+  container-volumes:
+    - "/srv/sa-container/ecology-teaching-shiny/data/kpz308-rpva-practical2/workspaces/#{proxy.userId}:/srv/rpva-workspaces/current:z"

@@ -105,7 +105,7 @@ Do not use uppercase `UTAS` in a Docker image name.
 | App | Stable ShinyProxy ID | Image repository | Host workspace subtree | Student group | Status |
 | --- | --- | --- | --- | --- | --- |
 | KPZ308 Practical 1 | `kpz308-rpva-practical` | `git.its.utas.edu.au/utas/kpz308-rpva-practical` | `data/kpz308-rpva-practical/workspaces` | `KPZ308` | Existing deployed identity; keep it stable. |
-| KPZ308 Practical 2 | `kpz308-rpva-practical2` | Confirm before first deployment | Proposed: `data/kpz308-rpva-practical2/workspaces` | `KPZ308` | Recommended ID; Barry and ITS must confirm it. |
+| KPZ308 Practical 2 | `kpz308-rpva-practical2` | `git.its.utas.edu.au/utas/kpz308-rpva-practical2` | `data/kpz308-rpva-practical2/workspaces` | `KPZ308` | Confirmed permanent identity; use Staff-only access outside approved student release windows. |
 | KPZ314 practical | `kpz314-sdm-practical` | Confirm with the KPZ314 project and ITS | Proposed: `data/kpz314-sdm-practical/workspaces` | `KPZ314` | ID reserved; KPZ314 is registered in SSO but is not yet an app spec here. |
 
 All three may be visible simultaneously. Each needs a separate app ID,
@@ -448,16 +448,16 @@ vi application.yml
 For an existing app, change only its `container-image` value to `IMAGE`. Do
 not alter SAML, another app, or the workspace mapping.
 
-For a new app, add another item under `proxy.specs`. This is the proposed
-KPZ308 Practical 2 shape; `CONFIRMED_REPOSITORY` and `IMMUTABLE_TAG` are
-operator metavariables that must be replaced. Confirm the resource values and
-environment with the app owner rather than copying them blindly.
+For a new app, add another item under `proxy.specs`. This is the confirmed
+KPZ308 Practical 2 shape. Replace the immutable tag with the Task 2 accepted
+tag. Confirm the resource values and environment with the app owner rather
+than copying them blindly.
 
 ```yaml
     - id: "kpz308-rpva-practical2"
       display-name: "KPZ308 rPVA Practical 2"
       description: "KPZ308 Practical 2"
-      container-image: "git.its.utas.edu.au/utas/CONFIRMED_REPOSITORY:IMMUTABLE_TAG"
+      container-image: "git.its.utas.edu.au/utas/kpz308-rpva-practical2:dev-YYYYMMDD-SHORTSHA"
       container-network: "shinyproxy-net"
       container-memory-limit: "1g"
       container-cpu-limit: 1.0
