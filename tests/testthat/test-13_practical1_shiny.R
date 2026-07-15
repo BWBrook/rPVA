@@ -450,3 +450,126 @@ test_that("comparison table is styled for horizontal scanning", {
   expect_match(style_text, "\\.compare-table th,\\s*\\.compare-table td\\s*\\{[^}]*white-space:\\s*nowrap")
   expect_match(style_text, "\\.compare-table th,\\s*\\.compare-table td\\s*\\{[^}]*overflow-wrap:\\s*normal")
 })
+
+load_practical1_session_helpers <- function() {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  env <- new.env(parent = baseenv())
+  sys.source(file.path(app_dir, "session_helpers.R"), envir = env)
+  env
+}
+
+practical1_stub_run <- function(stage, run_id) {
+  list(
+    stage = stage,
+    label = stage,
+    settings = data.frame(
+      stage = stage,
+      label = stage,
+      setting = "control_test",
+      value = as.character(run_id),
+      stringsAsFactors = FALSE
+    ),
+    session_run_id = as.integer(run_id)
+  )
+}
+
+test_that("Practical 1 session helpers define the approved Core and extension order", {
+  helpers <- load_practical1_session_helpers()
+
+  expect_equal(
+    helpers$practical1_stage_groups$core,
+    c(
+      "deterministic_baseline",
+      "carrying_capacity",
+      "demographic_stochasticity",
+      "environmental_stochasticity",
+      "intervention"
+    )
+  )
+  expect_equal(
+    helpers$practical1_stage_groups$extension,
+    c("genetic_stochasticity", "catastrophe", "extinction_vortex")
+  )
+  expect_equal(
+    helpers$practical1_mission_order,
+    c(helpers$practical1_stage_groups$core, helpers$practical1_stage_groups$extension)
+  )
+})
+
+test_that("Practical 1 run identity and completion ignore the display-only baseline", {
+  helpers <- load_practical1_session_helpers()
+  baseline <- practical1_stub_run("deterministic_baseline", 1)
+  risk <- practical1_stub_run("carrying_capacity", 2)
+
+  expect_equal(helpers$session_run_id(baseline), 1L)
+  expect_equal(
+    helpers$session_run_id(helpers$attach_session_run_id(risk, 9L)),
+    9L
+  )
+  expect_equal(
+    helpers$completed_stage_ids(list(baseline, risk), baseline_started = FALSE),
+    "carrying_capacity"
+  )
+  expect_equal(
+    helpers$completed_stage_ids(list(baseline, risk), baseline_started = TRUE),
+    c("deterministic_baseline", "carrying_capacity")
+  )
+  expect_equal(
+    helpers$next_incomplete_core_stage(c("deterministic_baseline", "carrying_capacity")),
+    "demographic_stochasticity"
+  )
+})
+
+test_that("Practical 1 evidence defaults use baseline and latest eligible risk and action", {
+  helpers <- load_practical1_session_helpers()
+  runs <- list(
+    practical1_stub_run("deterministic_baseline", 1),
+    practical1_stub_run("carrying_capacity", 2),
+    practical1_stub_run("environmental_stochasticity", 3),
+    practical1_stub_run("intervention", 4),
+    practical1_stub_run("extinction_vortex", 5)
+  )
+
+  expect_equal(helpers$first_baseline_run_id(runs), 1L)
+  expect_equal(
+    helpers$default_evidence_run_ids(runs, baseline_started = TRUE),
+    c(1L, 3L, 5L)
+  )
+  expect_equal(
+    vapply(helpers$select_session_runs(runs, c(1L, 2L, 4L)), `[[`, character(1), "stage"),
+    c("deterministic_baseline", "carrying_capacity", "intervention")
+  )
+})
+
+test_that("Practical 1 readiness requires exactly baseline risk action and current interpretation", {
+  helpers <- load_practical1_session_helpers()
+  runs <- list(
+    practical1_stub_run("deterministic_baseline", 1),
+    practical1_stub_run("environmental_stochasticity", 2),
+    practical1_stub_run("intervention", 3),
+    practical1_stub_run("catastrophe", 4)
+  )
+  selected <- c(1L, 2L, 3L)
+  signature <- helpers$evidence_selection_signature(selected)
+
+  ready <- helpers$evidence_readiness(
+    runs,
+    selected,
+    interpretation = "Risk rose under shared bad years; intervention improved abundance, with uncertainty remaining.",
+    interpretation_signature = signature,
+    baseline_started = TRUE
+  )
+  stale <- helpers$evidence_readiness(
+    runs,
+    c(1L, 4L, 3L),
+    interpretation = "Risk rose under shared bad years; intervention improved abundance, with uncertainty remaining.",
+    interpretation_signature = signature,
+    baseline_started = TRUE
+  )
+
+  expect_true(ready$ready)
+  expect_true(all(ready$checks))
+  expect_false(stale$ready)
+  expect_false(stale$checks[["interpretation_current"]])
+  expect_true(stale$checks[["interpretation"]])
+})
