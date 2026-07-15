@@ -71,3 +71,33 @@ raw data were not changed.
   the user; it must not be represented as passed.
 - No browser/Playwright visual acceptance was run in this Task 7 session, so
   1366x768, 1440x900, and narrow-screen rendering remain unverified here.
+
+## Required select-focus repair
+
+At follow-up base `6f75b9ea014bab4227cd489ab594cc5e1dd61baa`, the required
+select-control accessibility finding was repaired and committed as:
+
+```text
+a6b9cc35f2bba4848d768250b736df8779e23c2a
+Style Practical 1 select focus
+```
+
+Only these implementation files changed:
+
+- `inst/shiny/practical1/www/styles.css`
+- `tests/testthat/test-13_practical1_shiny.R`
+
+The existing focus rule now explicitly covers `select:focus-visible` and
+`.selectize-input.focus`, with the same `outline: 3px solid #0b6e75` and
+`outline-offset: 2px`. Static regression assertions prove both selectors are
+present. No layout, copy, or browser-acceptance work was added.
+
+Verification for the repair:
+
+- TDD red phase: the new focused assertions failed because both selectors were
+  absent.
+- Focused `test-13_practical1_shiny.R`: passed with no failures.
+- CSS/source scan: both selectors and the shared outline declarations present.
+- `git diff --check`: passed.
+- Only the requested CSS and test files changed; incidental `renv/activate.R`
+  whitespace was restored.
