@@ -614,3 +614,79 @@ test_that("Practical 1 readiness requires exactly baseline risk action and curre
   expect_false(stale$checks[["interpretation_current"]])
   expect_true(stale$checks[["interpretation"]])
 })
+
+test_that("failed Practical 1 runs do not enter history or progress", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  old <- setwd(app_dir)
+  on.exit(setwd(old), add = TRUE)
+  env <- new.env(parent = globalenv())
+  sys.source("app.R", envir = env)
+  execute <- function(stage, controls = list()) {
+    if (identical(stage, "catastrophe")) stop("bounded test failure")
+    env$run_stage(stage, controls)
+  }
+
+  shiny::testServer(env$make_practical1_server(execute), {
+    session$setInputs(run_baseline = 1)
+    selected_stage("catastrophe")
+    before <- length(run_history())
+    session$setInputs(run_stage = 1)
+    expect_equal(length(run_history()), before)
+    expect_false("catastrophe" %in% completed_stage_ids(run_history(), baseline_started()))
+    expect_match(run_error(), "could not complete")
+  })
+})
+
+test_that("Practical 1 reset waits for confirmation and clears session state", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  old <- setwd(app_dir)
+  on.exit(setwd(old), add = TRUE)
+  env <- new.env(parent = globalenv())
+  sys.source("app.R", envir = env)
+
+  shiny::testServer(env$make_practical1_server(), {
+    session$setInputs(run_baseline = 1)
+    selected_stage("carrying_capacity")
+    session$setInputs(run_stage = 1)
+    expect_length(run_history(), 2L)
+
+    session$setInputs(clear_runs = 1)
+    expect_length(run_history(), 2L)
+
+    session$setInputs(confirm_clear_runs = 1)
+    expect_length(run_history(), 0L)
+    expect_false(baseline_started())
+    expect_equal(selected_stage(), "deterministic_baseline")
+    expect_null(run_error())
+    expect_null(last_completed_stage())
+    expect_true(is.na(last_completed_run_id()))
+    expect_equal(current_run()$stage, "deterministic_baseline")
+  })
+})
+
+test_that("Practical 1 declares temporary state and guarded recovery", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
+  js_path <- file.path(app_dir, "www", "practical1.js")
+  expect_true(file.exists(js_path))
+  js_text <- paste(readLines(js_path, warn = FALSE), collapse = "\n")
+
+  notice <- paste(
+    "This session is temporary. Download your comparison CSV and evidence notes",
+    "before closing the app."
+  )
+  count_fixed <- function(pattern, text) {
+    hits <- gregexpr(pattern, text, fixed = TRUE)[[1]]
+    if (identical(hits, -1L)) 0L else length(hits)
+  }
+  expect_equal(count_fixed(notice, app_text), 1L)
+  expect_true(grepl("session_notice_ui()", app_text, fixed = TRUE))
+  expect_equal(count_fixed("session_notice_ui()", app_text), 3L)
+  expect_true(grepl('tags$script(src = "practical1.js")', app_text, fixed = TRUE))
+  expect_true(grepl("showModal(modalDialog(", app_text, fixed = TRUE))
+  expect_true(grepl("observeEvent(input$confirm_clear_runs", app_text, fixed = TRUE))
+  expect_true(grepl('role = "alert"', app_text, fixed = TRUE))
+  expect_true(grepl('$(document).on("shiny:busy"', js_text, fixed = TRUE))
+  expect_true(grepl('$(document).on("shiny:idle"', js_text, fixed = TRUE))
+  expect_true(grepl('$("#run_stage").prop("disabled", true)', js_text, fixed = TRUE))
+})

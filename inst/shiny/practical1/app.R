@@ -665,14 +665,26 @@ plot_help_ui <- function() {
   deep_dive_modal_ui("Read plots", plot_help_path)
 }
 
+session_notice_ui <- function() {
+  div(
+    class = "session-notice",
+    icon("clock"),
+    span("This session is temporary. Download your comparison CSV and evidence notes before closing the app.")
+  )
+}
+
 ui <- navbarPage(
   title = "Practical 1 PVA",
   id = "section",
-  header = tags$head(tags$link(rel = "stylesheet", type = "text/css", href = "styles.css")),
+  header = tags$head(
+    tags$link(rel = "stylesheet", type = "text/css", href = "styles.css"),
+    tags$script(src = "practical1.js")
+  ),
   tabPanel(
     "Start",
     div(
       class = "page-shell",
+      session_notice_ui(),
       div(
         class = "landing-hero",
         div(
@@ -784,6 +796,7 @@ ui <- navbarPage(
             actionButton("run_stage", label = tagList(icon("play"), "Run mission"), class = "btn-primary"),
             actionButton("next_mission", label = tagList(icon("arrow-right"), "Next mission"), class = "btn-default")
           ),
+          uiOutput("run_status"),
           div(class = "prompt", textOutput("stage_prompt"))
         ),
         div(
@@ -848,6 +861,7 @@ ui <- navbarPage(
     "Compare",
     div(
       class = "page-shell",
+      session_notice_ui(),
       div(
         class = "compare-grid",
         div(
@@ -896,6 +910,7 @@ ui <- navbarPage(
     "Transfer",
     div(
       class = "page-shell",
+      session_notice_ui(),
       div(
         class = "panel-block",
         h2("Transfer to the Woodhen practical"),
@@ -929,6 +944,9 @@ make_practical1_server <- function(execute_stage = run_stage) {
   next_run_id <- reactiveVal(1L)
   baseline_started <- reactiveVal(FALSE)
   selected_stage <- reactiveVal(default_stage)
+  run_error <- reactiveVal(NULL)
+  last_completed_stage <- reactiveVal(NULL)
+  last_completed_run_id <- reactiveVal(NA_integer_)
   selected_stage_spec <- reactive({
     stage <- selected_stage()
     rPVA::build_teaching_spec(
@@ -994,15 +1012,34 @@ make_practical1_server <- function(execute_stage = run_stage) {
 
   observeEvent(input$run_stage, {
     stage <- selected_stage()
-    withProgress(message = "Running mission", value = 0.5, {
-      run <- attach_session_run_id(
-        execute_stage(stage, stage_control_values(stage, input, advanced = isTRUE(input$show_advanced_controls))),
-        next_run_id()
-      )
-      current_run(run)
-      run_history(c(run_history(), list(run)))
-      next_run_id(next_run_id() + 1L)
-    })
+    if (identical(stage, default_stage)) {
+      updateNavbarPage(session, "section", selected = "Start")
+      run_error("Use Start baseline to create baseline run 1.")
+      return()
+    }
+
+    run_error(NULL)
+    result <- tryCatch(
+      withProgress(message = "Running mission", value = 0.5, {
+        execute_stage(
+          stage,
+          stage_control_values(stage, input, advanced = isTRUE(input$show_advanced_controls))
+        )
+      }),
+      error = function(error) error
+    )
+
+    if (inherits(result, "error")) {
+      run_error("This mission could not complete. Check the controls and try again.")
+      return()
+    }
+
+    run <- attach_session_run_id(result, next_run_id())
+    next_run_id(next_run_id() + 1L)
+    current_run(run)
+    run_history(c(run_history(), list(run)))
+    last_completed_stage(stage)
+    last_completed_run_id(session_run_id(run))
   })
 
   observeEvent(input$next_mission, {
@@ -1014,12 +1051,57 @@ make_practical1_server <- function(execute_stage = run_stage) {
   })
 
   observeEvent(input$clear_runs, {
-    baseline_run(reference_baseline)
-    current_run(reference_baseline)
+    showModal(modalDialog(
+      title = "Reset this session?",
+      p("Run history, evidence selection, interpretation, and in-session progress will be cleared."),
+      footer = tagList(
+        modalButton("Keep my work"),
+        actionButton("confirm_clear_runs", "Reset session", class = "btn-danger")
+      ),
+      easyClose = TRUE
+    ))
+  })
+
+  observeEvent(input$confirm_clear_runs, {
+    removeModal()
+    reference <- run_stage(default_stage)
+    baseline_run(reference)
+    current_run(reference)
     run_history(list())
     next_run_id(1L)
     baseline_started(FALSE)
     selected_stage(default_stage)
+    run_error(NULL)
+    last_completed_stage(NULL)
+    last_completed_run_id(NA_integer_)
+    updateTextAreaInput(session, "interpretation_note", value = "")
+    updateNavbarPage(session, "section", selected = "Start")
+  })
+
+  output$run_status <- renderUI({
+    error <- run_error()
+    if (!is.null(error)) {
+      return(div(class = "run-error", role = "alert", error))
+    }
+
+    stage <- last_completed_stage()
+    if (is.null(stage)) {
+      return(NULL)
+    }
+
+    next_core <- next_incomplete_core_stage(completed_stage_ids(run_history(), baseline_started()))
+    next_core_message <- if (is.na(next_core)) {
+      "Core route complete. Continue to Compare, or explore another mission."
+    } else {
+      paste("Next Core action:", stage_missions[[next_core]])
+    }
+    div(
+      class = "mission-complete",
+      `data-run-id` = last_completed_run_id(),
+      strong("Mission complete: "),
+      stage_missions[[stage]],
+      p(class = "muted", next_core_message)
+    )
   })
 
   output$stage_text <- renderUI({
