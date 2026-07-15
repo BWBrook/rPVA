@@ -787,6 +787,15 @@ session_notice_ui <- function() {
   )
 }
 
+export_identity_signature <- function(selected_ids, interpretation) {
+  interpretation <- if (length(interpretation) && !is.na(interpretation[[1]])) {
+    trimws(as.character(interpretation[[1]]))
+  } else {
+    ""
+  }
+  paste(evidence_selection_signature(selected_ids), interpretation, sep = "|")
+}
+
 ui <- navbarPage(
   title = "Practical 1 PVA",
   id = "section",
@@ -811,7 +820,7 @@ ui <- navbarPage(
           div(
             class = "mission-cue landing-start-cue",
             span(class = "mission-label", "Mission 1: Baseline compass"),
-            p("Start baseline creates or restores baseline as run 1."),
+            p("First click creates baseline run 1; later clicks return to run 1 without changing your session."),
             p(class = "muted", "Keep run 1 as your reference before changing controls.")
           )
         ),
@@ -1067,6 +1076,7 @@ make_practical1_server <- function(execute_stage = run_stage) {
   last_completed_stage <- reactiveVal(NULL)
   last_completed_run_id <- reactiveVal(NA_integer_)
   download_requested <- reactiveValues(comparison = FALSE, notes = FALSE)
+  download_recorded_signatures <- reactiveValues(comparison = "", notes = "")
   selected_stage_spec <- reactive({
     stage <- selected_stage()
     rPVA::build_teaching_spec(
@@ -1094,6 +1104,10 @@ make_practical1_server <- function(execute_stage = run_stage) {
 
   selected_evidence_runs <- reactive({
     select_session_runs(run_history(), selected_evidence_ids())
+  })
+
+  current_export_signature <- reactive({
+    export_identity_signature(selected_evidence_ids(), input$interpretation_note)
   })
 
   evidence_readiness_state <- reactive({
@@ -1131,12 +1145,27 @@ make_practical1_server <- function(execute_stage = run_stage) {
     }
   }, ignoreInit = TRUE)
 
+  observeEvent(list(selected_evidence_ids(), input$interpretation_note), {
+    download_requested$comparison <- FALSE
+    download_requested$notes <- FALSE
+    download_recorded_signatures$comparison <- ""
+    download_recorded_signatures$notes <- ""
+  }, ignoreInit = TRUE)
+
   observeEvent(input$confirm_interpretation, {
     req(nzchar(trimws(input$interpretation_note)))
     interpretation_signature(evidence_selection_signature(selected_evidence_ids()))
   })
 
   observeEvent(input$run_baseline, {
+    if (isTRUE(baseline_started())) {
+      current_run(baseline_run())
+      selected_stage(default_stage)
+      run_error(NULL)
+      updateNavbarPage(session, "section", selected = "Concept Lab")
+      return()
+    }
+
     result <- tryCatch(
       withProgress(message = "Running baseline", value = 0.5, {
         execute_stage(default_stage)
@@ -1270,6 +1299,8 @@ make_practical1_server <- function(execute_stage = run_stage) {
     interpretation_signature("")
     download_requested$comparison <- FALSE
     download_requested$notes <- FALSE
+    download_recorded_signatures$comparison <- ""
+    download_recorded_signatures$notes <- ""
     selected_stage(default_stage)
     run_error(NULL)
     last_completed_stage(NULL)
@@ -1483,7 +1514,10 @@ make_practical1_server <- function(execute_stage = run_stage) {
       paste0("practical1-comparison-", format(Sys.Date(), "%Y%m%d"), ".csv")
     },
     content = function(file) {
-      utils::write.csv(evidence_export()$comparison, file, row.names = FALSE)
+      export <- evidence_export()
+      signature <- current_export_signature()
+      utils::write.csv(export$comparison, file, row.names = FALSE)
+      download_recorded_signatures$comparison <- signature
       download_requested$comparison <- TRUE
     }
   )
@@ -1493,14 +1527,20 @@ make_practical1_server <- function(execute_stage = run_stage) {
       paste0("practical1-evidence-notes-", format(Sys.Date(), "%Y%m%d"), ".md")
     },
     content = function(file) {
-      writeLines(evidence_export()$notes, file, useBytes = TRUE)
+      export <- evidence_export()
+      signature <- current_export_signature()
+      writeLines(export$notes, file, useBytes = TRUE)
+      download_recorded_signatures$notes <- signature
       download_requested$notes <- TRUE
     }
   )
 
   output$transfer_checklist <- renderUI({
-    comparison_requested <- isTRUE(download_requested$comparison)
-    notes_requested <- isTRUE(download_requested$notes)
+    signature <- current_export_signature()
+    comparison_requested <- isTRUE(download_requested$comparison) &&
+      identical(download_recorded_signatures$comparison, signature)
+    notes_requested <- isTRUE(download_requested$notes) &&
+      identical(download_recorded_signatures$notes, signature)
     complete <- comparison_requested && notes_requested
     comparison_status <- if (comparison_requested) {
       "Comparison CSV: Download requested"

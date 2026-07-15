@@ -109,7 +109,7 @@ test_that("app exposes mission-mode classroom guidance", {
   app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
 
   expect_true(grepl("Mission 1: Baseline compass", app_text, fixed = TRUE))
-  expect_true(grepl("creates or restores baseline as run 1", app_text, fixed = TRUE))
+  expect_true(grepl("First click creates baseline run 1; later clicks return to run 1 without changing your session.", app_text, fixed = TRUE))
   expect_true(grepl("changing one visible control at a time", app_text, fixed = TRUE))
   expect_true(grepl("Choose a clean comparison: baseline run 1, one risk mechanism, and one intervention or vortex run.", app_text, fixed = TRUE))
   expect_true(grepl("Repeated clicks are less useful than a targeted one-factor change.", app_text, fixed = TRUE))
@@ -129,7 +129,7 @@ test_that("Practical 1 opens with a tutorial landing screen", {
   expect_true(grepl('class = "landing-task-text"', app_text, fixed = TRUE))
   expect_true(grepl("What you will do", app_text, fixed = TRUE))
   expect_true(grepl("Evidence to save", app_text, fixed = TRUE))
-  expect_true(grepl("Start baseline creates or restores baseline as run 1", app_text, fixed = TRUE))
+  expect_true(grepl("First click creates baseline run 1; later clicks return to run 1 without changing your session.", app_text, fixed = TRUE))
   expect_true(grepl('actionButton("run_baseline"', app_text, fixed = TRUE))
   expect_false(grepl("run `Deterministic baseline` again", app_text, fixed = TRUE))
 })
@@ -807,6 +807,8 @@ test_that("confirmed Practical 1 reset clears all in-memory student state", {
     session$setInputs(interpretation_note = "Risk changed; intervention improved abundance; uncertainty remained.")
     download_requested$comparison <- TRUE
     download_requested$notes <- TRUE
+    download_recorded_signatures$comparison <- "1:2:3|stale comparison"
+    download_recorded_signatures$notes <- "1:2:3|stale notes"
 
     session$setInputs(confirm_clear_runs = 1)
 
@@ -818,6 +820,8 @@ test_that("confirmed Practical 1 reset clears all in-memory student state", {
     expect_identical(interpretation_signature(), "")
     expect_false(download_requested$comparison)
     expect_false(download_requested$notes)
+    expect_identical(download_recorded_signatures$comparison, "")
+    expect_identical(download_recorded_signatures$notes, "")
     expect_true(is.na(last_completed_run_id()))
   })
 })
@@ -886,7 +890,7 @@ test_that("failed Practical 1 baseline runs do not mutate session state", {
   })
 })
 
-test_that("successful Practical 1 baseline reruns clear stale recovery state", {
+test_that("repeated Practical 1 baseline clicks preserve the existing session", {
   app_dir <- rPVA:::practical1_shiny_app_dir()
   old <- setwd(app_dir)
   on.exit(setwd(old), add = TRUE)
@@ -904,12 +908,143 @@ test_that("successful Practical 1 baseline reruns clear stale recovery state", {
 
     session$setInputs(run_baseline = 2)
     expect_null(run_error())
-    expect_null(last_completed_stage())
-    expect_true(is.na(last_completed_run_id()))
-    expect_length(run_history(), 1L)
-    expect_equal(next_run_id(), 2L)
+    expect_equal(last_completed_stage(), "carrying_capacity")
+    expect_equal(last_completed_run_id(), 2L)
+    expect_length(run_history(), 2L)
+    expect_equal(next_run_id(), 3L)
     expect_true(baseline_started())
     expect_equal(selected_stage(), "deterministic_baseline")
+    expect_equal(session_run_id(current_run()), 1L)
+  })
+})
+
+test_that("Practical 1 repeated Start baseline is non-destructive after evidence downloads", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  old <- setwd(app_dir)
+  on.exit(setwd(old), add = TRUE)
+  env <- new.env(parent = globalenv())
+  sys.source("app.R", envir = env)
+
+  shiny::testServer(env$make_practical1_server(), {
+    session$setInputs(run_baseline = 1)
+    selected_stage("environmental_stochasticity")
+    session$setInputs(env_sd = 0.15, K = 15, run_stage = 1)
+    selected_stage("intervention")
+    session$setInputs(K = 70, K_sd = 5, run_stage = 2)
+    interpretation <- "Risk increased; intervention improved abundance; uncertainty remained."
+    session$setInputs(interpretation_note = interpretation)
+    session$setInputs(confirm_interpretation = 1)
+
+    output$download_comparison
+    output$download_evidence_notes
+    comparison_generator <- session$.__enclos_env__$private$file_generators$get(
+      session$ns("download_comparison")
+    )
+    notes_generator <- session$.__enclos_env__$private$file_generators$get(
+      session$ns("download_evidence_notes")
+    )
+    comparison_generator$content(tempfile(fileext = ".csv"))
+    notes_generator$content(tempfile(fileext = ".md"))
+
+    history_before <- run_history()
+    history_ids_before <- vapply(history_before, session_run_id, integer(1))
+    selected_ids_before <- selected_evidence_ids()
+    signature_before <- interpretation_signature()
+    current_baseline <- baseline_run()
+
+    session$setInputs(run_baseline = 2)
+
+    expect_identical(vapply(run_history(), session_run_id, integer(1)), history_ids_before)
+    expect_identical(run_history(), history_before)
+    expect_identical(selected_evidence_ids(), selected_ids_before)
+    expect_identical(input$interpretation_note, interpretation)
+    expect_identical(interpretation_signature(), signature_before)
+    expect_true(download_requested$comparison)
+    expect_true(download_requested$notes)
+    expect_identical(current_run(), current_baseline)
+    expect_equal(session_run_id(current_run()), 1L)
+    expect_equal(next_run_id(), 4L)
+
+    selected_stage("catastrophe")
+    session$setInputs(run_stage = 3)
+    selected_stage("extinction_vortex")
+    session$setInputs(K = 25, cat_freq = 0.05, run_stage = 4)
+
+    expect_equal(
+      vapply(run_history(), session_run_id, integer(1)),
+      1:5
+    )
+    expect_equal(next_run_id(), 6L)
+  })
+})
+
+test_that("Practical 1 download requests stay bound to the current export identity", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  old <- setwd(app_dir)
+  on.exit(setwd(old), add = TRUE)
+  env <- new.env(parent = globalenv())
+  sys.source("app.R", envir = env)
+
+  shiny::testServer(env$make_practical1_server(), {
+    session$setInputs(run_baseline = 1)
+    selected_stage("environmental_stochasticity")
+    session$setInputs(env_sd = 0.15, K = 15, run_stage = 1)
+    selected_stage("intervention")
+    session$setInputs(K = 70, K_sd = 5, run_stage = 2)
+    selected_stage("catastrophe")
+    session$setInputs(cat_freq = 0.10, cat_surv = 0.50, run_stage = 3)
+    session$setInputs(selected_risk_run_id = "2")
+
+    interpretation <- "Risk increased; intervention improved abundance; uncertainty remained."
+    session$setInputs(interpretation_note = interpretation)
+    session$setInputs(confirm_interpretation = 1)
+    expect_equal(selected_evidence_ids(), c(1L, 2L, 3L))
+    expect_true(evidence_readiness_state()$ready)
+
+    output$download_comparison
+    output$download_evidence_notes
+    comparison_generator <- session$.__enclos_env__$private$file_generators$get(
+      session$ns("download_comparison")
+    )
+    notes_generator <- session$.__enclos_env__$private$file_generators$get(
+      session$ns("download_evidence_notes")
+    )
+    comparison_generator$content(tempfile(fileext = ".csv"))
+    notes_generator$content(tempfile(fileext = ".md"))
+
+    expected_signature <- paste("1:2:3", trimws(interpretation), sep = "|")
+    expect_true(download_requested$comparison)
+    expect_true(download_requested$notes)
+    expect_identical(download_recorded_signatures$comparison, expected_signature)
+    expect_identical(download_recorded_signatures$notes, expected_signature)
+
+    session$setInputs(selected_risk_run_id = "4")
+    expect_equal(selected_evidence_ids(), c(1L, 4L, 3L))
+    expect_false(download_requested$comparison)
+    expect_false(download_requested$notes)
+    expect_identical(download_recorded_signatures$comparison, "")
+    expect_identical(download_recorded_signatures$notes, "")
+    transfer <- paste(as.character(output$transfer_checklist), collapse = "\n")
+    expect_match(transfer, "Not requested yet", all = TRUE)
+    expect_false(grepl("Both evidence requests are complete", transfer, fixed = TRUE))
+
+    session$setInputs(confirm_interpretation = 2)
+    expect_true(evidence_readiness_state()$checks[["interpretation_current"]])
+    expect_false(download_requested$comparison)
+    expect_false(download_requested$notes)
+
+    comparison_generator$content(tempfile(fileext = ".csv"))
+    expect_true(download_requested$comparison)
+    expect_false(download_requested$notes)
+    notes_generator$content(tempfile(fileext = ".md"))
+    expect_true(download_requested$comparison)
+    expect_true(download_requested$notes)
+
+    session$setInputs(interpretation_note = paste0("  ", interpretation, " revised  "))
+    expect_false(download_requested$comparison)
+    expect_false(download_requested$notes)
+    expect_identical(download_recorded_signatures$comparison, "")
+    expect_identical(download_recorded_signatures$notes, "")
   })
 })
 
