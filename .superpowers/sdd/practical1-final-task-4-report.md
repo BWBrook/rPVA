@@ -79,8 +79,10 @@ completion-cue state before resetting the session to baseline run 1.
 
 Added behavioral coverage for failed baseline non-mutation, successful
 baseline rerun cleanup, rendered completion-cue mission/next-Core text and
-stable `data-run-id`, plus reset run ID/baseline assertions and the
-interpretation-clear contract.
+stable `data-run-id`, plus behavioral assertions for reset `next_run_id`,
+`baseline_run`, `current_run`, and other server states. Reset's
+`updateTextAreaInput` interpretation clearing is checked through the
+source/static contract, not behaviorally in `testServer`.
 
 The repair RED run used:
 
