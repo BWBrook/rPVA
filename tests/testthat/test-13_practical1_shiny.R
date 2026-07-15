@@ -1259,6 +1259,31 @@ test_that("Practical 1 browser acceptance covers Core extension exports and view
     "selected evidence has exactly one allowed risk stage",
     "selected evidence has exactly one allowed intervention or vortex stage",
     "visited contextual and mission labels match expected set",
+    "validateEvidenceDirectory",
+    "evidenceDirectoryPrefix",
+    "path.dirname(resolved) !== tmpRoot",
+    "lstatSync",
+    "isSymbolicLink",
+    "if (require.main === module)",
+    "module.exports",
+    "final-comparison.csv",
+    "final-evidence-notes.md",
+    "final selected evidence is rendered as runs 1, 8, and 9",
+    "Selected evidence: 3 runs from 9 successful session runs",
+    "deterministic_baseline",
+    "catastrophe",
+    "extinction_vortex",
+    "extension selection invalidates the old CSV request",
+    "Transfer completes only after both fresh final downloads",
+    "rendered run numbers are positive",
+    "rendered run numbers are unique",
+    "rendered run numbers are strictly increasing",
+    "no page horizontal overflow at",
+    "Concept Lab 1366x768",
+    "Concept Lab 1440x900",
+    "Concept Lab 390x844",
+    "Compare 390x844",
+    "Compare controls and downloads are visible at 390x844",
     "#stage_text .mission-label",
     "assertCompareTableScrollRegion",
     "compare table is horizontally scrollable when needed at",
@@ -1268,4 +1293,57 @@ test_that("Practical 1 browser acceptance covers Core extension exports and view
     "width: 390, height: 844"
   )
   expect_true(all(vapply(required_text, grepl, logical(1), x = script, fixed = TRUE)))
+})
+
+test_that("Practical 1 browser cleanup validator rejects unsafe paths at runtime", {
+  node <- Sys.which("node")
+  skip_if(node == "")
+
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  script_path <- file.path(normalizePath(file.path(app_dir, "..", "..", ".."), mustWork = TRUE),
+                           "scripts", "practical1_browser_acceptance.js")
+  probe_path <- tempfile(fileext = ".js")
+  probe <- c(
+    "const fs = require('node:fs');",
+    "const os = require('node:os');",
+    "const path = require('node:path');",
+    "const { validateEvidenceDirectory } = require(process.env.PRACTICAL1_SCRIPT);",
+    "const tmp = path.resolve(os.tmpdir());",
+    "const valid = path.join(tmp, `rpva-practical1-probe-${process.pid}`);",
+    "const target = path.join(tmp, `rpva-practical1-probe-target-${process.pid}`);",
+    "const link = path.join(tmp, `rpva-practical1-probe-link-${process.pid}`);",
+    "fs.mkdirSync(valid, { recursive: true });",
+    "fs.mkdirSync(target, { recursive: true });",
+    "fs.symlinkSync(target, link, 'dir');",
+    "const invalid = [",
+    "  '', path.parse(tmp).root, process.cwd(), os.homedir(),",
+    "  path.dirname(process.cwd()), tmp, path.resolve(tmp, '..'),",
+    "  path.join(tmp, 'nested', 'rpva-practical1-nested'),",
+    "  path.join(tmp, 'not-an-rpva-evidence-directory'), link",
+    "];",
+    "const rejected = invalid.map((candidate) => {",
+    "  try { validateEvidenceDirectory(candidate); return false; }",
+    "  catch (error) { return true; }",
+    "});",
+    "const validAccepted = validateEvidenceDirectory(valid) === valid;",
+    "fs.rmSync(valid, { recursive: true, force: true });",
+    "fs.rmSync(target, { recursive: true, force: true });",
+    "fs.unlinkSync(link);",
+    "console.log(JSON.stringify({ validAccepted, rejected }));"
+  )
+  writeLines(probe, probe_path)
+  old_script <- Sys.getenv("PRACTICAL1_SCRIPT", unset = NA_character_)
+  Sys.setenv(PRACTICAL1_SCRIPT = script_path)
+  on.exit({
+    if (is.na(old_script)) Sys.unsetenv("PRACTICAL1_SCRIPT") else Sys.setenv(PRACTICAL1_SCRIPT = old_script)
+    unlink(probe_path, force = TRUE)
+  }, add = TRUE)
+
+  output <- system2(node, probe_path, stdout = TRUE, stderr = TRUE)
+  status <- attr(output, "status")
+  if (is.null(status)) status <- 0L
+  expect_equal(status, 0L, info = paste(output, collapse = "\n"))
+  probe_result <- paste(output, collapse = "\n")
+  expect_match(probe_result, '"validAccepted":true', fixed = TRUE)
+  expect_match(probe_result, '"rejected":[true,true,true,true,true,true,true,true,true,true]', fixed = TRUE)
 })

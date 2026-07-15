@@ -1,28 +1,57 @@
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
-const { chromium } = require("@playwright/test");
 
 const baseURL = process.env.PRACTICAL1_URL || "http://127.0.0.1:3921";
+const evidenceDirectoryPrefix = "rpva-practical1-";
 
-function prepareEvidenceDirectory(directory) {
+function validateEvidenceDirectory(directory) {
   if (typeof directory !== "string" || directory.trim() === "") {
     throw new Error("PRACTICAL1_EVIDENCE_DIR must be a non-empty path");
   }
+
   const resolved = path.resolve(directory);
   const root = path.parse(resolved).root;
-  if (resolved === root || resolved === path.resolve(process.cwd())) {
+  const tmpRoot = path.resolve(os.tmpdir());
+  const cwd = path.resolve(process.cwd());
+  const home = path.resolve(os.homedir());
+  const forbidden = new Set([
+    root,
+    cwd,
+    home,
+    path.dirname(cwd),
+    tmpRoot,
+    path.resolve(tmpRoot, "..")
+  ]);
+
+  if (forbidden.has(resolved)) {
     throw new Error(`Refusing to remove unsafe evidence directory: ${resolved}`);
   }
+  if (path.dirname(resolved) !== tmpRoot || !path.basename(resolved).startsWith(evidenceDirectoryPrefix)) {
+    throw new Error(`Evidence directory must be a direct ${evidenceDirectoryPrefix}* child of ${tmpRoot}: ${resolved}`);
+  }
+
+  if (fs.existsSync(resolved)) {
+    const stat = fs.lstatSync(resolved);
+    if (stat.isSymbolicLink()) {
+      throw new Error(`Refusing to remove symlink evidence directory: ${resolved}`);
+    }
+    if (!stat.isDirectory()) {
+      throw new Error(`Evidence directory path is not a directory: ${resolved}`);
+    }
+  }
+
+  return resolved;
+}
+
+function prepareEvidenceDirectory(directory) {
+  const resolved = validateEvidenceDirectory(directory);
   fs.rmSync(resolved, { recursive: true, force: true });
   fs.mkdirSync(resolved, { recursive: true });
   return resolved;
 }
 
-const evidenceDir = prepareEvidenceDirectory(
-  process.env.PRACTICAL1_EVIDENCE_DIR === undefined
-    ? "/tmp/rpva-practical1-final-polish"
-    : process.env.PRACTICAL1_EVIDENCE_DIR
-);
+let evidenceDir = null;
 
 const result = {
   baseURL,
@@ -93,6 +122,7 @@ function record(name, passed, detail = "") {
 }
 
 function writeResult() {
+  if (!evidenceDir) return;
   result.finishedAt = new Date().toISOString();
   result.passed = !result.failure && result.checks.every((check) => check.passed);
   fs.writeFileSync(
@@ -171,7 +201,7 @@ function markVisited(label) {
   visitedRouteLabels.add(label);
 }
 
-function assertExportConsistency(csvRows, notesText) {
+function assertExportConsistency(csvRows, notesText, options = {}) {
   const csvHeaders = csvRows[0] || [];
   const csvData = csvRows.slice(1);
   const comparisonTable = parseMarkdownTable(notesText, "## Comparison table");
@@ -187,12 +217,19 @@ function assertExportConsistency(csvRows, notesText) {
   const csvLabels = columnValues(csvData, csvHeaders, "label");
   const markdownLabels = columnValues(comparisonData, comparisonHeaders, "label");
 
-  const selectedCount = notesText.match(/^Selected evidence: (\d+) runs from /m);
+  const selectedCount = notesText.match(/^Selected evidence: (\d+) runs from (\d+) successful session runs$/m);
   record(
     "Markdown selected evidence count matches CSV",
     Boolean(selectedCount) && Number(selectedCount[1]) === csvData.length,
     `markdown=${selectedCount ? selectedCount[1] : "missing"}; csv=${csvData.length}`
   );
+  if (options.sessionRunCount !== undefined) {
+    record(
+      "Markdown selected evidence count matches live history",
+      Boolean(selectedCount) && Number(selectedCount[2]) === options.sessionRunCount,
+      `markdown=${selectedCount ? selectedCount[2] : "missing"}; live=${options.sessionRunCount}`
+    );
+  }
   record(
     "CSV and Markdown selected run counts match",
     csvData.length === comparisonData.length,
@@ -213,6 +250,21 @@ function assertExportConsistency(csvRows, notesText) {
     sameSequence(csvLabels, markdownLabels),
     JSON.stringify({ csv: csvLabels, markdown: markdownLabels })
   );
+
+  if (options.expectedRunIds) {
+    record(
+      "export selected run IDs match the final rendered selection",
+      sameSequence(csvRunIds, options.expectedRunIds.map(String)),
+      JSON.stringify({ expected: options.expectedRunIds, csv: csvRunIds })
+    );
+  }
+  if (options.expectedStages) {
+    record(
+      "export selected stages match the final rendered selection",
+      sameSequence(csvStages, options.expectedStages),
+      JSON.stringify({ expected: options.expectedStages, csv: csvStages })
+    );
+  }
 
   const sharedFields = csvHeaders.filter((field) => comparisonHeaders.includes(field));
   const sharedFieldsMatch =
@@ -274,8 +326,8 @@ function recordArtifact(filePath, kind) {
   record(`non-empty ${kind} artifact`, stat.isFile() && stat.size > 0, JSON.stringify(artifact));
 }
 
-async function saveDownload(download, kind) {
-  const filePath = artifactPath(download.suggestedFilename());
+async function saveDownload(download, kind, filename = download.suggestedFilename()) {
+  const filePath = artifactPath(filename);
   await download.saveAs(filePath);
   recordArtifact(filePath, kind);
   return filePath;
@@ -310,6 +362,57 @@ async function assertNoOverlap(page, selectors, viewportLabel) {
     ));
   }, selectors);
   record(`no overlap at ${viewportLabel}`, overlaps.length === 0, JSON.stringify(overlaps));
+}
+
+async function assertNoHorizontalOverflow(page, viewportLabel) {
+  const overflow = await page.evaluate(() => ({
+    viewportWidth: document.documentElement.clientWidth,
+    documentWidth: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
+    bodyWidth: document.body.getBoundingClientRect().width
+  }));
+  record(
+    `no page horizontal overflow at ${viewportLabel}`,
+    overflow.documentWidth <= overflow.viewportWidth + 1,
+    JSON.stringify(overflow)
+  );
+}
+
+async function renderedRunNumbers(page) {
+  return page.locator(".session-run-row .run-number").evaluateAll((elements) => elements.map((element) => {
+    const match = element.textContent.trim().match(/^Run\s+(\d+)$/);
+    return match ? Number(match[1]) : NaN;
+  }));
+}
+
+function assertRenderedRunNumbers(numbers, expectedCount) {
+  record(
+    "rendered run numbers are positive",
+    numbers.length === expectedCount && numbers.every((number) => Number.isInteger(number) && number > 0),
+    JSON.stringify(numbers)
+  );
+  record(
+    "rendered run numbers are unique",
+    new Set(numbers).size === numbers.length,
+    JSON.stringify(numbers)
+  );
+  record(
+    "rendered run numbers are strictly increasing",
+    numbers.every((number, index) => index === 0 || number > numbers[index - 1]),
+    JSON.stringify(numbers)
+  );
+  const expected = Array.from({ length: expectedCount }, (_value, index) => index + 1);
+  record(
+    `rendered run numbers are exactly 1..${expectedCount}`,
+    sameSequence(numbers, expected),
+    JSON.stringify({ expected, actual: numbers })
+  );
+}
+
+async function renderedSelectedRunNumbers(page) {
+  return page.locator(".run-card .run-card-kicker").evaluateAll((elements) => elements.map((element) => {
+    const match = element.textContent.trim().match(/^Run\s+(\d+)$/);
+    return match ? Number(match[1]) : NaN;
+  }));
 }
 
 async function assertCompareTableScrollRegion(page, viewportLabel) {
@@ -390,6 +493,12 @@ function activePane(page) {
 }
 
 async function main() {
+  const { chromium } = require("@playwright/test");
+  evidenceDir = prepareEvidenceDirectory(
+    process.env.PRACTICAL1_EVIDENCE_DIR === undefined
+      ? path.join(os.tmpdir(), "rpva-practical1-final-polish")
+      : process.env.PRACTICAL1_EVIDENCE_DIR
+  );
   browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({
     acceptDownloads: true,
@@ -469,6 +578,30 @@ async function main() {
     }
   }
 
+  await page.locator(".mission-rail").waitFor();
+  await page.getByRole("button", { name: "Run mission" }).waitFor();
+  record("Concept Lab mission rail is usable at 1366x768", await page.locator(".mission-rail").isVisible());
+  record("Concept Lab Run mission is usable at 1366x768", await page.getByRole("button", { name: "Run mission" }).isEnabled());
+  await page.screenshot({ path: artifactPath("concept-lab-1366x768.png"), fullPage: true });
+  recordArtifact(artifactPath("concept-lab-1366x768.png"), "screenshot");
+  await assertNoOverlap(page, [
+    ".lab-grid > .panel-block:first-child",
+    ".lab-grid > .output-region",
+    ".plot-region"
+  ], "Concept Lab 1366x768");
+  await assertNoHorizontalOverflow(page, "Concept Lab 1366x768");
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.screenshot({ path: artifactPath("concept-lab-1440x900.png"), fullPage: true });
+  recordArtifact(artifactPath("concept-lab-1440x900.png"), "screenshot");
+  await assertNoOverlap(page, [
+    ".lab-grid > .panel-block:first-child",
+    ".lab-grid > .output-region",
+    ".plot-region"
+  ], "Concept Lab 1440x900");
+  await assertNoHorizontalOverflow(page, "Concept Lab 1440x900");
+  await page.setViewportSize({ width: 1366, height: 768 });
+
   await tabLink(page, "Compare").click();
   await page.locator(".session-run-row").nth(4).waitFor();
   record("Core route keeps five successful session runs", await page.locator(".session-run-row").count() === 5);
@@ -483,11 +616,11 @@ async function main() {
 
   const csvPromise = page.waitForEvent("download");
   await page.getByRole("link", { name: "Comparison CSV" }).click();
-  const csvPath = await saveDownload(await csvPromise, "CSV");
+  const csvPath = await saveDownload(await csvPromise, "initial CSV", "initial-comparison.csv");
 
   const notesPromise = page.waitForEvent("download");
   await page.getByRole("link", { name: "Evidence notes" }).click();
-  const notesPath = await saveDownload(await notesPromise, "Markdown");
+  const notesPath = await saveDownload(await notesPromise, "initial Markdown", "initial-evidence-notes.md");
 
   const csvRows = parseCsv(fs.readFileSync(csvPath, "utf8"));
   record("selected CSV has header plus three rows", csvRows.length === 4, `rows=${csvRows.length - 1}`);
@@ -505,13 +638,14 @@ async function main() {
   record("notes retain interpretation", notesText.includes(interpretation));
   const selectedStages = rows.map((row) => row[headers.indexOf("stage")]);
   record("notes and CSV name the same stages", selectedStages.every((stage) => notesText.includes(stage)));
-  assertExportConsistency(csvRows, notesText);
+  assertExportConsistency(csvRows, notesText, { sessionRunCount: 5 });
   markVisited("Comparison CSV");
   markVisited("Evidence notes");
   await page.screenshot({ path: artifactPath("minimum-success-1366x768.png"), fullPage: true });
   recordArtifact(artifactPath("minimum-success-1366x768.png"), "screenshot");
   await assertNoOverlap(page, [".compare-history-panel", ".compare-evidence-panel"], "1366x768");
   await assertCompareTableScrollRegion(page, "1366x768");
+  await assertNoHorizontalOverflow(page, "Compare 1366x768");
 
   await tabLink(page, "Transfer").click();
   await activePane(page).getByText("This session is temporary.", { exact: false }).waitFor();
@@ -521,6 +655,37 @@ async function main() {
   await page.screenshot({ path: artifactPath("transfer-1366x768.png"), fullPage: true });
   recordArtifact(artifactPath("transfer-1366x768.png"), "screenshot");
 
+  await page.setViewportSize({ width: 390, height: 844 });
+  await tabLink(page, "Concept Lab").click();
+  await missionLink(page, "Core 5: Rescue attempt").click();
+  await page.locator("#stage_text .mission-label").filter({ hasText: "Core 5: Rescue attempt" }).waitFor();
+  await page.locator("#K").evaluate((element) => {
+    element.value = "70";
+    element.dispatchEvent(new Event("input", { bubbles: true }));
+    element.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await page.waitForTimeout(500);
+  record("Concept Lab mission rail is usable at 390x844", await page.locator(".mission-rail").isVisible());
+  record("Concept Lab Run mission is visible and enabled at 390x844", await page.getByRole("button", { name: "Run mission" }).isVisible() && await page.getByRole("button", { name: "Run mission" }).isEnabled());
+  await page.screenshot({ path: artifactPath("concept-lab-390x844.png"), fullPage: true });
+  recordArtifact(artifactPath("concept-lab-390x844.png"), "screenshot");
+  await assertNoOverlap(page, [
+    ".lab-grid > .panel-block:first-child",
+    ".lab-grid > .output-region",
+    ".plot-region"
+  ], "Concept Lab 390x844");
+  await assertNoHorizontalOverflow(page, "Concept Lab 390x844");
+
+  await tabLink(page, "Compare").click();
+  await page.getByRole("link", { name: "Comparison CSV" }).waitFor();
+  await page.getByRole("link", { name: "Evidence notes" }).waitFor();
+  record("Compare controls and downloads are visible at 390x844", await page.getByLabel("One-sentence interpretation").isVisible() && await page.getByRole("link", { name: "Comparison CSV" }).isVisible() && await page.getByRole("link", { name: "Evidence notes" }).isVisible());
+  await page.screenshot({ path: artifactPath("compare-390x844.png"), fullPage: true });
+  recordArtifact(artifactPath("compare-390x844.png"), "screenshot");
+  await assertNoOverlap(page, [".compare-history-panel", ".compare-evidence-panel"], "Compare 390x844");
+  await assertNoHorizontalOverflow(page, "Compare 390x844");
+
+  await page.setViewportSize({ width: 1366, height: 768 });
   await tabLink(page, "Concept Lab").click();
   await missionLink(page, "Explore: Small-population pressure").click();
   await page.getByLabel("Show advanced risk controls").check();
@@ -537,9 +702,32 @@ async function main() {
   await tabLink(page, "Compare").click();
   await page.locator(".session-run-row").nth(8).waitFor();
   record("extension route keeps duplicate attempts", await page.locator(".session-run-row").count() === 9);
+  const finalRenderedRunNumbers = await renderedRunNumbers(page);
+  assertRenderedRunNumbers(finalRenderedRunNumbers, 9);
   await page.locator('input[name="selected_risk_run_id"]').last().check();
+  await page.locator('input[name="selected_action_run_id"]').last().check();
   await page.getByText("Review required", { exact: false }).waitFor();
+  await tabLink(page, "Transfer").click();
+  await activePane(page).getByText("This session is temporary.", { exact: false }).waitFor();
+  await page.getByText("Comparison CSV: Not requested yet", { exact: false }).waitFor();
+  await page.getByText("Evidence notes: Not requested yet", { exact: false }).waitFor();
+  record("extension selection invalidates the old CSV request", true);
+  record("extension selection invalidates the old notes request", true);
+  record("Transfer remains incomplete until final downloads", await page.getByText("Both evidence requests are complete", { exact: false }).count() === 0);
+
+  await tabLink(page, "Compare").click();
+  const extensionInterpretation = "Extension runs showed that rare bad years and the extinction vortex changed risk and action evidence; uncertainty remains.";
+  await page.getByLabel("One-sentence interpretation").fill(extensionInterpretation);
   await page.getByRole("button", { name: "Use this interpretation" }).click();
+  await page.locator(".review-required").waitFor({ state: "hidden" });
+  await page.getByRole("link", { name: "Comparison CSV" }).waitFor();
+  await page.getByRole("link", { name: "Evidence notes" }).waitFor();
+  const finalSelectedRunNumbers = await renderedSelectedRunNumbers(page);
+  record(
+    "final selected evidence is rendered as runs 1, 8, and 9",
+    sameSequence(finalSelectedRunNumbers, [1, 8, 9]),
+    JSON.stringify(finalSelectedRunNumbers)
+  );
   await page.screenshot({ path: artifactPath("extension-1366x768.png"), fullPage: true });
   recordArtifact(artifactPath("extension-1366x768.png"), "screenshot");
 
@@ -548,12 +736,48 @@ async function main() {
   recordArtifact(artifactPath("compare-1440x900.png"), "screenshot");
   await assertNoOverlap(page, [".compare-history-panel", ".compare-evidence-panel"], "1440x900");
   await assertCompareTableScrollRegion(page, "1440x900");
+  await assertNoHorizontalOverflow(page, "Compare 1440x900");
+
+  const finalCsvPromise = page.waitForEvent("download");
+  await page.getByRole("link", { name: "Comparison CSV" }).click();
+  const finalCsvPath = await saveDownload(await finalCsvPromise, "final CSV", "final-comparison.csv");
+  await tabLink(page, "Transfer").click();
+  await activePane(page).getByText("Comparison CSV: Download requested", { exact: false }).waitFor();
+  record("Transfer remains incomplete after only the fresh final CSV", await page.getByText("Evidence notes: Not requested yet", { exact: false }).count() > 0 && await page.getByText("Both evidence requests are complete", { exact: false }).count() === 0);
+
+  await tabLink(page, "Compare").click();
+  const finalNotesPromise = page.waitForEvent("download");
+  await page.getByRole("link", { name: "Evidence notes" }).click();
+  const finalNotesPath = await saveDownload(await finalNotesPromise, "final Markdown", "final-evidence-notes.md");
+  const finalCsvRows = parseCsv(fs.readFileSync(finalCsvPath, "utf8"));
+  const finalNotesText = fs.readFileSync(finalNotesPath, "utf8");
+  const finalExpectedStages = ["deterministic_baseline", "catastrophe", "extinction_vortex"];
+  const finalEvidenceSummary = "Selected evidence: 3 runs from 9 successful session runs";
+  record(
+    "final notes assert the exact live-history summary",
+    finalRenderedRunNumbers.length === 9 && finalNotesText.includes(finalEvidenceSummary),
+    finalEvidenceSummary
+  );
+  record("final notes retain extension-specific interpretation", finalNotesText.includes(extensionInterpretation));
+  assertExportConsistency(finalCsvRows, finalNotesText, {
+    expectedRunIds: [1, 8, 9],
+    expectedStages: finalExpectedStages,
+    sessionRunCount: 9
+  });
+  markVisited("Comparison CSV");
+  markVisited("Evidence notes");
+
+  await tabLink(page, "Transfer").click();
+  await activePane(page).getByText("Comparison CSV: Download requested", { exact: false }).waitFor();
+  await activePane(page).getByText("Evidence notes: Download requested", { exact: false }).waitFor();
+  record("Transfer completes only after both fresh final downloads", await page.getByText("Both evidence requests are complete", { exact: false }).count() > 0);
 
   await page.setViewportSize({ width: 390, height: 844 });
   await tabLink(page, "Start").click();
   await page.screenshot({ path: artifactPath("start-390x844.png"), fullPage: true });
   recordArtifact(artifactPath("start-390x844.png"), "screenshot");
   await assertNoOverlap(page, [".landing-copy", ".landing-hero-visual", ".landing-card-grid"], "390x844");
+  await assertNoHorizontalOverflow(page, "Start 390x844");
 
   await tabLink(page, "Compare").click();
   await page.getByRole("button", { name: "Reset comparison" }).click();
@@ -577,13 +801,20 @@ async function main() {
   record("no page errors", result.pageErrors.length === 0, JSON.stringify(result.pageErrors));
 }
 
-main()
-  .catch((error) => {
-    result.failure = error.stack || error.message;
-    process.exitCode = 1;
-  })
-  .finally(async () => {
-    if (browser) await browser.close();
-    writeResult();
-    if (result.failure) process.exitCode = 1;
-  });
+if (require.main === module) {
+  main()
+    .catch((error) => {
+      result.failure = error.stack || error.message;
+      process.exitCode = 1;
+    })
+    .finally(async () => {
+      if (browser) await browser.close();
+      writeResult();
+      if (result.failure) process.exitCode = 1;
+    });
+}
+
+module.exports = {
+  validateEvidenceDirectory,
+  prepareEvidenceDirectory
+};
