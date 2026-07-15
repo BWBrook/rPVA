@@ -1030,6 +1030,14 @@ test_that("Practical 1 final polish retains help and responsive state selectors"
   expect_match(style_text, "grid-template-columns: minmax\\(0,")
 })
 
+test_that("Practical 1 select controls retain visible keyboard focus styling", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  style_text <- paste(readLines(file.path(app_dir, "www", "styles.css"), warn = FALSE), collapse = "\n")
+
+  expect_match(style_text, "select:focus-visible")
+  expect_match(style_text, "\\.selectize-input\\.focus")
+})
+
 test_that("Practical 1 Week 1 documents use the same route and session language", {
   docs <- c(
     file.path(repo_root(), "docs", "teaching", "shiny", "practical-1-mission-tutorial.md"),
