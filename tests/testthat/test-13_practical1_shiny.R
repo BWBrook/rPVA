@@ -704,9 +704,6 @@ test_that("Practical 1 preserves duplicate evidence attempts and stale selection
     )
     expect_length(selected_evidence_runs(), 3L)
 
-    selected_export <- evidence_export()
-    expect_equal(selected_export$comparison$run_id, c(1L, 2L, 4L))
-    expect_equal(sort(unique(selected_export$settings$run_id)), c(1L, 2L, 4L))
     cards <- paste(as.character(output$run_cards), collapse = "\n")
     expect_true(all(vapply(c("Run 1", "Run 2", "Run 4"), grepl, logical(1), cards, fixed = TRUE)))
     expect_false(grepl("Run 3", cards, fixed = TRUE))
@@ -715,6 +712,10 @@ test_that("Practical 1 preserves duplicate evidence attempts and stale selection
     session$setInputs(interpretation_note = interpretation)
     expect_identical(input$interpretation_note, interpretation)
     expect_true(evidence_readiness_state()$ready)
+
+    selected_export <- evidence_export()
+    expect_equal(selected_export$comparison$run_id, c(1L, 2L, 4L))
+    expect_equal(sort(unique(selected_export$settings$run_id)), c(1L, 2L, 4L))
 
     session$setInputs(selected_risk_run_id = "3")
     expect_equal(selected_evidence_ids(), c(1L, 3L, 4L))
@@ -725,6 +726,98 @@ test_that("Practical 1 preserves duplicate evidence attempts and stale selection
     session$setInputs(confirm_interpretation = 1)
     expect_true(evidence_readiness_state()$checks[["interpretation_current"]])
     expect_true(evidence_readiness_state()$ready)
+  })
+})
+
+test_that("Practical 1 gates selected evidence downloads and records each request", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
+
+  expect_true(grepl("session_run_count = length(run_history())", app_text, fixed = TRUE))
+  expect_true(grepl("selected_evidence_runs()", app_text, fixed = TRUE))
+  expect_true(grepl("download_requested <- reactiveValues(comparison = FALSE, notes = FALSE)", app_text, fixed = TRUE))
+  expect_true(grepl('uiOutput("evidence_downloads")', app_text, fixed = TRUE))
+  expect_true(grepl('`aria-disabled` = "true"', app_text, fixed = TRUE))
+  expect_true(grepl('uiOutput("transfer_checklist")', app_text, fixed = TRUE))
+  expect_true(grepl("Comparison CSV: Download requested", app_text, fixed = TRUE))
+  expect_true(grepl("Evidence notes: Download requested", app_text, fixed = TRUE))
+  expect_true(grepl("Download requested", app_text, fixed = TRUE))
+  expect_false(grepl("Evidence saved", app_text, fixed = TRUE))
+
+  old <- setwd(app_dir)
+  on.exit(setwd(old), add = TRUE)
+  env <- new.env(parent = globalenv())
+  sys.source("app.R", envir = env)
+
+  shiny::testServer(env$make_practical1_server(), {
+    session$setInputs(run_baseline = 1)
+    selected_stage("environmental_stochasticity")
+    session$setInputs(env_sd = 0.15, K = 15, run_stage = 1)
+    selected_stage("environmental_stochasticity")
+    session$setInputs(env_sd = 0.25, K = 20, run_stage = 2)
+    selected_stage("intervention")
+    session$setInputs(K = 70, K_sd = 5, run_stage = 3)
+    session$setInputs(
+      interpretation_note = "Risk increased under shared bad years; intervention improved abundance; uncertainty remained."
+    )
+
+    expect_gt(length(run_history()), 3L)
+    expect_equal(nrow(evidence_export()$comparison), 3L)
+    expect_true(any(grepl(
+      "Selected evidence: 3 runs from 4 successful session runs",
+      evidence_export()$notes,
+      fixed = TRUE
+    )))
+    expect_false(download_requested$comparison)
+    expect_false(download_requested$notes)
+
+    output$download_comparison
+    output$download_evidence_notes
+    comparison_generator <- session$.__enclos_env__$private$file_generators$get(
+      session$ns("download_comparison")
+    )
+    notes_generator <- session$.__enclos_env__$private$file_generators$get(
+      session$ns("download_evidence_notes")
+    )
+    comparison_file <- tempfile(fileext = ".csv")
+    notes_file <- tempfile(fileext = ".md")
+    comparison_generator$content(comparison_file)
+    notes_generator$content(notes_file)
+    expect_true(file.exists(comparison_file))
+    expect_true(file.exists(notes_file))
+    expect_true(download_requested$comparison)
+    expect_true(download_requested$notes)
+  })
+})
+
+test_that("confirmed Practical 1 reset clears all in-memory student state", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  old <- setwd(app_dir)
+  on.exit(setwd(old), add = TRUE)
+  env <- new.env(parent = globalenv())
+  sys.source("app.R", envir = env)
+
+  shiny::testServer(env$make_practical1_server(), {
+    session$setInputs(run_baseline = 1)
+    selected_stage("environmental_stochasticity")
+    session$setInputs(env_sd = 0.15, K = 15, run_stage = 1)
+    selected_stage("intervention")
+    session$setInputs(run_stage = 2)
+    session$setInputs(interpretation_note = "Risk changed; intervention improved abundance; uncertainty remained.")
+    download_requested$comparison <- TRUE
+    download_requested$notes <- TRUE
+
+    session$setInputs(confirm_clear_runs = 1)
+
+    expect_length(run_history(), 0L)
+    expect_false(baseline_started())
+    expect_equal(next_run_id(), 1L)
+    expect_true(is.na(selected_risk_run_id()))
+    expect_true(is.na(selected_action_run_id()))
+    expect_identical(interpretation_signature(), "")
+    expect_false(download_requested$comparison)
+    expect_false(download_requested$notes)
+    expect_true(is.na(last_completed_run_id()))
   })
 })
 

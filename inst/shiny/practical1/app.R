@@ -1009,11 +1009,7 @@ ui <- navbarPage(
           ),
           h4("Save evidence"),
           p(class = "muted", "Download a compact comparison table and notes for your own report. These files are evidence for your interpretation."),
-          div(
-            class = "export-actions",
-            downloadButton("download_comparison", "Comparison CSV"),
-            downloadButton("download_evidence_notes", "Evidence notes")
-          ),
+          uiOutput("evidence_downloads"),
           div(class = "prompt", "What changed between runs, and which output supports your explanation?"),
           h3("Comparison habits"),
           tags$ul(
@@ -1032,6 +1028,7 @@ ui <- navbarPage(
       session_notice_ui(),
       div(
         class = "panel-block",
+        uiOutput("transfer_checklist"),
         h2("Transfer to the Woodhen practical"),
         p("You have explored deterministic growth, carrying capacity, stochasticity, catastrophes, genetics, intervention, and combined small-population risk."),
         tags$ol(
@@ -1069,6 +1066,7 @@ make_practical1_server <- function(execute_stage = run_stage) {
   run_error <- reactiveVal(NULL)
   last_completed_stage <- reactiveVal(NULL)
   last_completed_run_id <- reactiveVal(NA_integer_)
+  download_requested <- reactiveValues(comparison = FALSE, notes = FALSE)
   selected_stage_spec <- reactive({
     stage <- selected_stage()
     rPVA::build_teaching_spec(
@@ -1077,6 +1075,7 @@ make_practical1_server <- function(execute_stage = run_stage) {
     )
   })
   evidence_export <- reactive({
+    req(evidence_readiness_state()$ready)
     rPVA:::build_teaching_evidence_export(
       selected_evidence_runs(),
       interpretation = input$interpretation_note,
@@ -1269,6 +1268,8 @@ make_practical1_server <- function(execute_stage = run_stage) {
     selected_risk_run_id(NA_integer_)
     selected_action_run_id(NA_integer_)
     interpretation_signature("")
+    download_requested$comparison <- FALSE
+    download_requested$notes <- FALSE
     selected_stage(default_stage)
     run_error(NULL)
     last_completed_stage(NULL)
@@ -1433,6 +1434,38 @@ make_practical1_server <- function(execute_stage = run_stage) {
     evidence_readiness_ui(evidence_readiness_state())
   })
 
+  output$evidence_downloads <- renderUI({
+    if (!isTRUE(evidence_readiness_state()$ready)) {
+      return(
+        div(
+          class = "export-actions evidence-downloads",
+          tags$button(
+            id = "download_comparison",
+            type = "button",
+            class = "btn btn-default",
+            disabled = "disabled",
+            `aria-disabled` = "true",
+            "Comparison CSV"
+          ),
+          tags$button(
+            id = "download_evidence_notes",
+            type = "button",
+            class = "btn btn-default",
+            disabled = "disabled",
+            `aria-disabled` = "true",
+            "Evidence notes"
+          )
+        )
+      )
+    }
+
+    div(
+      class = "export-actions evidence-downloads",
+      downloadButton("download_comparison", "Comparison CSV"),
+      downloadButton("download_evidence_notes", "Evidence notes")
+    )
+  })
+
   output$comparison_table <- renderTable({
     runs <- selected_evidence_runs()
     if (!length(runs)) {
@@ -1451,6 +1484,7 @@ make_practical1_server <- function(execute_stage = run_stage) {
     },
     content = function(file) {
       utils::write.csv(evidence_export()$comparison, file, row.names = FALSE)
+      download_requested$comparison <- TRUE
     }
   )
 
@@ -1460,8 +1494,48 @@ make_practical1_server <- function(execute_stage = run_stage) {
     },
     content = function(file) {
       writeLines(evidence_export()$notes, file, useBytes = TRUE)
+      download_requested$notes <- TRUE
     }
   )
+
+  output$transfer_checklist <- renderUI({
+    comparison_requested <- isTRUE(download_requested$comparison)
+    notes_requested <- isTRUE(download_requested$notes)
+    complete <- comparison_requested && notes_requested
+    comparison_status <- if (comparison_requested) {
+      "Comparison CSV: Download requested"
+    } else {
+      "Comparison CSV: Not requested yet"
+    }
+    notes_status <- if (notes_requested) {
+      "Evidence notes: Download requested"
+    } else {
+      "Evidence notes: Not requested yet"
+    }
+
+    div(
+      class = "transfer-checklist",
+      h3("Transfer checklist"),
+      tags$ul(
+        tags$li(
+          class = if (comparison_requested) "is-ready" else "is-missing",
+          comparison_status
+        ),
+        tags$li(
+          class = if (notes_requested) "is-ready" else "is-missing",
+          notes_status
+        )
+      ),
+      p(
+        class = "muted",
+        if (complete) {
+          "Both evidence requests are complete. You can continue to Practical 2."
+        } else {
+          "Request both evidence downloads before closing this temporary session."
+        }
+      )
+    )
+  })
   }
 }
 
