@@ -641,7 +641,7 @@ evidence_readiness_ui <- function(state) {
   )
 
   div(
-    class = "evidence-readiness",
+    class = "readiness-checklist evidence-readiness",
     h4("Evidence readiness"),
     tags$ul(
       lapply(names(state$checks), function(name) {
@@ -1030,13 +1030,13 @@ ui <- navbarPage(
         class = "panel-block",
         uiOutput("transfer_checklist"),
         h2("Transfer to the Woodhen practical"),
-        p("You have explored deterministic growth, carrying capacity, stochasticity, catastrophes, genetics, intervention, and combined small-population risk."),
+        p("Use the evidence habits from Practical 1 as a short bridge to later work."),
         tags$ol(
           tags$li("Which output shows extinction risk?"),
           tags$li("Which output shows abundance?"),
           tags$li("Which output shows uncertainty?")
         ),
-        p("In Practical 2 you will use the same evidence habits with the Woodhen case study: compare scenarios, explain uncertainty, and make a recommendation from the model results."),
+        p("Practical 2 will revisit these habits in a later context; this session ends with your selected evidence and caveated interpretation."),
         h3("Future concepts"),
         tags$ul(
           class = "future-list",

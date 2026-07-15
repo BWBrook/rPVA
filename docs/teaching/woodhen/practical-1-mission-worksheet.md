@@ -1,126 +1,103 @@
 # Practical 1 Mission Worksheet
 
-## How To Use This Sheet
+## How to use this sheet
 
-Work in the Practical 1 Shiny app. Your job is to test one ecological idea at a
-time, compare what changed, and write enough evidence that your future self can
-explain the result.
+The three-hour class uses approximately one hour for PVA teaching and GUI
+introduction, followed by approximately two hours of guided, self-paced app
+work. Keep notes short: record what changed, which output moved, what evidence
+supports the observation, and what caveat remains.
 
-Keep notes short. A good answer says:
+## Your route through Practical 1
 
-- what you changed;
-- which output moved;
-- what evidence supports your explanation;
-- what caveat remains.
+Start with the five **Core** model missions: Baseline compass, Island ceiling,
+Individual chance, Shared bad years, and Rescue attempt. Then go to **Compare**
+and build a three-run evidence set containing baseline, one risk mechanism, and
+one intervention or vortex run.
 
-The app exports are evidence for your explanation. Your notes still need to
-explain the ecology.
+When the Core route is complete, **Explore Further** remains available for
+genetic pressure, catastrophes, the extinction vortex, advanced controls,
+alternative comparisons, and optional plot downloads.
 
-## Mission Log
+This browser session is temporary. Before closing the tab, request both your
+comparison CSV and your evidence-notes Markdown file. Refreshing, closing the
+tab, or allowing the session to expire clears the in-app run history,
+selection, progress, and interpretation.
 
-| Mission | What I changed | Output that moved most | Evidence I used | Caveat or uncertainty |
+## Core mission log
+
+| Core mission | What I changed | Output that moved most | Evidence I used | Caveat or uncertainty |
 | --- | --- | --- | --- | --- |
 | 1. Baseline compass |  |  |  |  |
 | 2. Island ceiling |  |  |  |  |
 | 3. Individual chance |  |  |  |  |
 | 4. Shared bad years |  |  |  |  |
-| 5. Small-population pressure |  |  |  |  |
-| 6. Rare bad years |  |  |  |  |
-| 7a. Rescue attempt |  |  |  |  |
-| 7b. Vortex comparison |  |  |  |  |
+| 5. Rescue attempt |  |  |  |  |
 
-## Mission Prompts
+## Core prompts
 
-### 1. Baseline Compass
+### 1. Baseline compass
 
-Click `Start baseline`, then inspect the baseline/current run.
+Click `Start baseline`, keep it as run 1, and identify the abundance, risk, and
+uncertainty outputs. What is missing from a fixed projection?
 
-- Which output would you use for final abundance?
-- What is missing from this fixed projection?
+### 2. Island ceiling
 
-### 2. Island Ceiling
+Run carrying capacity and compare it with baseline. Did extinction risk, median
+final abundance, or uncertainty move most? What does the ceiling represent?
 
-Run carrying capacity and compare it with the baseline.
+### 3. Individual chance
 
-- Did extinction risk, median final abundance, or uncertainty move most?
-- What does carrying capacity mean biologically?
+Run demographic stochasticity. Did the median change, or did the spread among
+possible futures become more important? Why might individual chance matter more
+for a small population?
 
-### 3. Individual Chance
+### 4. Shared bad years
 
-Run demographic stochasticity.
+Run environmental stochasticity. Which output best shows shared good and bad
+years? What would be misleading about reporting only an average trajectory?
 
-- Did the median change, or did the spread among possible futures become more
-  important?
-- Why does individual chance matter more in small populations?
+### 5. Rescue attempt
 
-### 4. Shared Bad Years
+Run the intervention. Did it shift risk, abundance, uncertainty, or more than
+one? What caveat should stay with the result?
 
-Run environmental stochasticity.
+## Explore Further notes
 
-- Which output best shows that good and bad years affect many individuals at
-  once?
-- What would be misleading about reporting only an average trajectory?
+If time allows, note one optional comparison from genetic pressure, catastrophes,
+the extinction vortex, advanced controls, alternative selected comparisons, or
+an optional plot download. These activities remain available after the Core
+route and do not change the three-run minimum evidence target.
 
-### 5. Small-Population Pressure
+Optional observation: ______________________________________________________
 
-Run genetic stochasticity.
+## Evidence notes and download checklist
 
-- What evidence links small population size, uncertainty, and extinction risk?
-- Why is "zero observed extinction" not the same as "safe"?
+In Compare, select exactly baseline plus one risk mechanism plus one
+intervention or vortex run. Write an interpretation before requesting both
+downloads:
 
-### 6. Rare Bad Years
+Interpretation: ____________________________________________________________
 
-Run catastrophe. Change only one visible control if you change anything.
-
-- Did the result mainly change risk, abundance, uncertainty, or more than one?
-- Which output would you show a manager first, and why?
-
-### 7a. Rescue Attempt
-
-Run simple intervention.
-
-- Which three runs make the clearest comparison?
-- Did the intervention shift risk, abundance, uncertainty, or more than one?
-
-### 7b. Vortex Comparison
-
-Run extinction-vortex comparison.
-
-- What changes when small population pressure, restricted habitat, and bad years
-  act together?
-- Which output gives the strongest evidence for your final explanation?
-
-## Evidence Export Checklist
-
-Before the wrap-up, go to Compare and save:
-
-- comparison CSV;
-- evidence-notes Markdown file.
-
-If downloads are unavailable, copy the visible comparison table into your notes
-and tell the demonstrator.
-
-Record what you saved:
+Caveat: ____________________________________________________________________
 
 | Evidence item | Filename or fallback location |
 | --- | --- |
-| Comparison CSV or copied comparison table |  |
-| Evidence-notes Markdown or fallback note |  |
+| Comparison CSV |  |
+| Evidence notes Markdown file |  |
 
-## Transfer Questions
+Before closing the temporary session, confirm both the comparison CSV and the
+evidence notes were requested. Refreshing, closing the tab, or session expiry
+clears in-app history, selection, progress, and interpretation.
 
-Answer these in two or three sentences each.
+## Transfer reflection
 
 1. Which output shows extinction risk?
 2. Which output shows abundance?
 3. Which output shows uncertainty?
-4. What is one example where two outputs told different stories?
-5. What habit from this practical will you use in the Woodhen management
-   practical?
+4. Give one example where two outputs told different stories.
+5. What caveat would you carry into later practical work?
 
-## Final One-Sentence Takeaway
-
-Complete this sentence:
+## One-sentence takeaway
 
 > A PVA result is useful for conservation decisions when I compare
 > ________________, interpret ________________, and report ________________.

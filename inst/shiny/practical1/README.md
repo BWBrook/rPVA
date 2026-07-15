@@ -3,48 +3,59 @@
 This is the browser scaffold for the Practical 1 PVA concept lab. It uses the
 public teaching API in `R/teaching_api.R` and base Shiny only.
 
-The classroom surface opens with a local-first `PVA Basics` landing/tutorial
-screen: students get a plain-language PVA introduction, a short mission
-preview, a non-species visual cue about possible futures, and a clear evidence
-prompt before touching model controls. Each landing card has an optional
-Markdown-backed deep-dive so students can read more while the landing screen
-stays compact:
+## Classroom route
 
-- `content/pva-deep-dive.md` for `What is PVA?`
-- `content/mission-deep-dive.md` for `What you will do`
-- `content/evidence-deep-dive.md` for `Your evidence pack`
+The three-hour class uses approximately one hour for PVA teaching and GUI
+introduction, followed by approximately two hours of guided, self-paced app
+work while the instructor and demonstrators circulate.
 
-The Concept Lab uses the same Markdown pattern for in-context help:
+Students start on `PVA Basics`, explicitly create baseline run 1 with
+`Start baseline`, and then use the grouped mission rail in Concept Lab.
 
-- `content/parameter-help.md` for `Control help`
-- `content/output-reading-help.md` for `Read outputs`
-- `content/diagnostics-help.md` for `Read diagnostics`
-- `content/plot-reading-help.md` for `Read plots`
+The five **Core** missions are:
 
-These files can be edited without changing Shiny code. If key concepts are
-rewritten, update the focused Shiny test at the same time. `Start baseline`
-creates or restores baseline as run 1, Concept Lab asks students to change one
-visible control at a time, and Compare asks for a clean
-baseline/risk/intervention or vortex evidence comparison.
+1. Baseline compass;
+2. Island ceiling;
+3. Individual chance;
+4. Shared bad years; and
+5. Rescue attempt.
+
+**Compare** is the Core completion destination. It keeps the full successful
+session history visible while selecting exactly three evidence runs: baseline,
+one eligible risk mechanism, and one intervention or vortex run.
+
+After the Core route, **Explore Further** remains available for genetic
+pressure, catastrophes, the extinction vortex, advanced controls, alternative
+comparisons, and optional plot downloads. Contextual help, diagnostics, plots,
+and every existing deep-dive action remain available.
+
+## Evidence and temporary sessions
+
+The browser session is temporary. Before closing the app, request both the
+comparison CSV and the evidence notes Markdown file (the evidence-notes file).
+Refreshing, closing the
+tab, or allowing the session to expire clears in-app run history, selection,
+progress, and interpretation.
+
+The app reports `Download requested` when a download handler receives a
+request; it does not claim where the browser saved the file.
 
 The Concept Lab settings record is student-facing. It shows plain-English
-parameter labels, the baseline value, the currently selected mission value, and
-what changed before the student runs the mission. Optional advanced risk
+parameter labels, the baseline value, the currently selected mission value,
+and what changed before the student runs the mission. Optional advanced risk
 controls expose preset projection years, simulation futures, and bounded
-mortality/fecundity percentage changes after the default path has been
-understood. The presets are deliberate: they keep the lesson focused on
-interpreting model behaviour rather than endless slider tweaking.
+mortality/fecundity percentage changes after the default path is understood.
 
-Students can save compact session evidence from the Compare screen:
+Markdown-backed help lives in `content/`:
 
-- `practical1-comparison-YYYYMMDD.csv` contains the run comparison table.
-- `practical1-evidence-notes-YYYYMMDD.md` contains settings/provenance and
-  interpretation prompts. It is evidence for the student's explanation.
+- `pva-deep-dive.md` for `What is PVA?`;
+- `mission-deep-dive.md` for `What you will do`;
+- `evidence-deep-dive.md` for `Your evidence pack`;
+- `parameter-help.md` for `Control help`;
+- `output-reading-help.md` for `Read outputs`;
+- `diagnostics-help.md` for `Read diagnostics`; and
+- `plot-reading-help.md` for `Read plots`.
 
-Students can also save plot PNGs from Concept Lab. The app names them by plot
-type, current mission stage, and date so they can be dropped into an evidence
-folder without manual renaming.
-
-The app intentionally excludes Practical 2 Woodhen scenario running,
-authentication, persistent student workspaces, deployment configuration, and
-arbitrary YAML editing. Those belong in later, separate goals.
+The app intentionally excludes persistent student workspaces, authentication,
+deployment configuration, and arbitrary YAML editing. Those belong to later,
+separate goals.

@@ -1,70 +1,67 @@
 # Practical 1 PVA Mission Launch
 
-Welcome to the Practical 1 PVA concept lab. Your job today is to test one
-ecological idea at a time, compare what changed, and save evidence that helps
-you explain the result.
+Welcome to the Practical 1 PVA concept lab. Test one ecological idea at a
+time, compare what changed, and save evidence for your explanation. The app
+exports are evidence; your reasoning is the scientific work.
 
-The app exports are evidence for your explanation. Your reasoning is the
-scientific work.
+## Before you start
 
-## Open These Materials
+Open the approved Practical 1 app link, this launch page, and
+`practical-1-mission-worksheet.md`. Create a local folder named
+`practical-1-evidence` so the two downloads are easy to find.
 
-Use:
+## Your route through Practical 1
 
-- the approved Practical 1 app link supplied in Moodle or by your demonstrator;
-- `practical-1-mission-worksheet.md`;
-- a local folder on your computer for saved evidence files.
+Start with the five **Core** model missions: Baseline compass, Island ceiling,
+Individual chance, Shared bad years, and Rescue attempt. Then go to **Compare**
+and build a three-run evidence set containing baseline, one risk mechanism, and
+one intervention or vortex run.
 
-If your demonstrator gives you a different route or asks the class to switch to
-fallback material, follow that instruction and keep working on the same
-ecological questions.
+When the Core route is complete, **Explore Further** remains available for
+genetic pressure, catastrophes, the extinction vortex, advanced controls,
+alternative comparisons, and optional plot downloads.
 
-## Before You Start
+This browser session is temporary. Before closing the tab, request both your
+comparison CSV and your evidence-notes Markdown file. Refreshing, closing the
+tab, or allowing the session to expire clears the in-app run history,
+selection, progress, and interpretation.
 
-Create a folder called `practical-1-evidence` somewhere easy to find. Save app
-downloads and any fallback notes there.
+## Class workflow
 
-Keep your worksheet open while you use the app. Short notes are enough. For
-each mission, record:
+The three-hour class begins with approximately one hour of PVA teaching and
+GUI introduction, followed by approximately two hours of guided, self-paced
+app work while the instructor and demonstrators circulate. Work through the
+Core missions in order:
 
-- what you changed;
-- which output moved;
-- what evidence supports your observation;
-- what caveat remains.
+1. On Start, click `Start baseline` and keep it as run 1.
+2. Run Island ceiling, Individual chance, Shared bad years, and Rescue attempt,
+   changing one visible control at a time.
+3. In Compare, select exactly baseline plus one risk mechanism plus one
+   intervention or vortex run.
+4. Write an interpretation that names the changed assumption, moved output, and
+   caveat.
+5. Request both the comparison CSV and evidence notes before closing.
 
-## Mission Path
+## Explore Further
 
-1. Open the approved Practical 1 app link.
-2. On Start, click `Start baseline`.
-3. Keep the baseline as run 1 for later comparison.
-4. Work through the missions in the worksheet.
-5. Change one visible control at a time when a mission asks you to change a
-   setting.
-6. Use Compare to inspect extinction risk, median final abundance, and
-   uncertainty across runs.
-7. Save both evidence files from Compare:
-   - `practical1-comparison-YYYYMMDD.csv`;
-   - `practical1-evidence-notes-YYYYMMDD.md`.
-8. Record the filenames or fallback evidence location in your worksheet.
-9. Finish with the Transfer questions.
+If time allows, explore genetic pressure, catastrophes, the extinction vortex,
+advanced controls, alternative comparisons, and optional plot downloads. Keep
+these activities optional: Compare remains the Core completion destination.
 
-## If Something Does Not Work
+## If something does not work
 
-If the app link fails to open, the app is very slow, or downloads are missing
-after one retry, tell your demonstrator.
+Retry once, then tell your demonstrator if the app does not open, is visibly
+slow, or a download is unavailable. If the class switches to fallback capture,
+copy the visible comparison table into your worksheet and record the fallback
+location. The same three-run evidence target and caveat still apply.
 
-If the class switches to fallback evidence capture, copy the visible comparison
-table or demonstrator-provided reference output into your notes and record
-where you saved it. Fallback keeps the same goal: compare extinction risk,
-abundance, uncertainty, and caveats.
-
-## Before You Leave
+## Before you leave
 
 Check that you have:
 
-- at least three compared runs, including baseline run 1;
-- one worksheet row explaining an assumption change and output response;
-- one caveat about uncertainty or model limits;
-- the comparison CSV or fallback comparison evidence;
-- the evidence-notes Markdown file or fallback note;
-- answers to the Transfer questions.
+- exactly three selected comparison runs: baseline, one risk mechanism, and one
+  intervention or vortex run;
+- a short interpretation and one caveat;
+- the comparison CSV and evidence notes Markdown file, or clearly labelled
+  fallback evidence; and
+- your worksheet notes.

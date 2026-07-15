@@ -289,9 +289,10 @@ test_that("Concept Lab exposes Markdown-backed contextual help", {
     expect_false(grepl("Woodhen|thylacine|\\bITS\\b|Gitea|Docker|Moodle|ShinyProxy", text, ignore.case = TRUE))
   }
 
-  expect_true(grepl("7a. Rescue attempt", worksheet_text, fixed = TRUE))
-  expect_true(grepl("7b. Vortex comparison", worksheet_text, fixed = TRUE))
-  expect_false(grepl("7. Rescue or vortex", worksheet_text, fixed = TRUE))
+  expect_true(grepl("5. Rescue attempt", worksheet_text, fixed = TRUE))
+  expect_true(grepl("## Explore Further notes", worksheet_text, fixed = TRUE))
+  expect_false(grepl("7a. Rescue attempt", worksheet_text, fixed = TRUE))
+  expect_false(grepl("7b. Vortex comparison", worksheet_text, fixed = TRUE))
   expect_match(style_text, "\\.contextual-help-button")
   expect_match(style_text, "\\.concept-help-strip")
 })
@@ -987,4 +988,88 @@ test_that("Practical 1 declares temporary state and guarded recovery", {
   expect_true(grepl('$(document).on("shiny:busy"', js_text, fixed = TRUE))
   expect_true(grepl('$(document).on("shiny:idle"', js_text, fixed = TRUE))
   expect_true(grepl('$("#run_stage").prop("disabled", true)', js_text, fixed = TRUE))
+})
+
+test_that("Practical 1 final polish retains help and responsive state selectors", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
+  style_text <- paste(readLines(file.path(app_dir, "www", "styles.css"), warn = FALSE), collapse = "\n")
+  action_ids <- c(
+    "open_pva_deep_dive",
+    "open_mission_deep_dive",
+    "open_evidence_deep_dive",
+    "show_intro",
+    "open_parameter_help",
+    "open_output_help",
+    "open_diagnostic_help",
+    "open_plot_help",
+    "show_advanced_controls",
+    "download_trajectory_plot",
+    "download_summary_plot",
+    "download_extinction_plot"
+  )
+  selectors <- c(
+    ".session-notice",
+    ".mission-group",
+    ".mission-group-title",
+    ".mission-step-status",
+    ".mission-complete",
+    ".session-history",
+    ".evidence-selection",
+    ".readiness-checklist",
+    ".is-ready",
+    ".is-missing",
+    ".evidence-downloads",
+    ".transfer-checklist",
+    ":focus-visible"
+  )
+
+  expect_true(all(vapply(action_ids, grepl, logical(1), x = app_text, fixed = TRUE)))
+  expect_true(all(vapply(selectors, grepl, logical(1), x = style_text, fixed = TRUE)))
+  expect_match(style_text, "@media \\(max-width: 780px\\)")
+  expect_match(style_text, "grid-template-columns: minmax\\(0,")
+})
+
+test_that("Practical 1 Week 1 documents use the same route and session language", {
+  docs <- c(
+    file.path(repo_root(), "docs", "teaching", "shiny", "practical-1-mission-tutorial.md"),
+    file.path(repo_root(), "docs", "teaching", "woodhen", "practical-1-student-launch-page.md"),
+    file.path(repo_root(), "docs", "teaching", "woodhen", "practical-1-mission-worksheet.md"),
+    file.path(repo_root(), "docs", "teaching", "woodhen", "practical-1-day-of-class-pack.md"),
+    file.path(repo_root(), "docs", "teaching", "woodhen", "practical-1-instructor-beat-sheet.md"),
+    file.path(repo_root(), "docs", "teaching", "woodhen", "practical-1-moodle-ready-bundle", "moodle-section-text.md")
+  )
+  texts <- lapply(docs, function(path) paste(readLines(path, warn = FALSE), collapse = "\n"))
+  route_block <- paste(
+    "Start with the five **Core** model missions: Baseline compass, Island ceiling,",
+    "Individual chance, Shared bad years, and Rescue attempt. Then go to **Compare**",
+    "and build a three-run evidence set containing baseline, one risk mechanism, and",
+    "one intervention or vortex run.",
+    "",
+    "When the Core route is complete, **Explore Further** remains available for",
+    "genetic pressure, catastrophes, the extinction vortex, advanced controls,",
+    "alternative comparisons, and optional plot downloads.",
+    "",
+    "This browser session is temporary. Before closing the tab, request both your",
+    "comparison CSV and your evidence-notes Markdown file. Refreshing, closing the",
+    "tab, or allowing the session to expire clears the in-app run history,",
+    "selection, progress, and interpretation.",
+    sep = "\n"
+  )
+
+  expect_true(all(vapply(texts, grepl, logical(1), pattern = "Core", fixed = TRUE)))
+  expect_true(all(vapply(texts, grepl, logical(1), pattern = "Explore Further", fixed = TRUE)))
+  expect_true(all(vapply(texts, grepl, logical(1), pattern = "temporary", fixed = TRUE)))
+  expect_true(all(vapply(texts, grepl, logical(1), pattern = "comparison CSV", fixed = TRUE)))
+  expect_true(all(vapply(texts, grepl, logical(1), pattern = "evidence notes", fixed = TRUE)))
+  expect_true(all(vapply(texts, grepl, logical(1), pattern = route_block, fixed = TRUE)))
+
+  timing <- paste(
+    "The three-hour class uses approximately one hour for PVA teaching and a guided",
+    "GUI introduction, followed by approximately two hours of self-paced Practical",
+    "1 work while the instructor and demonstrators circulate.",
+    sep = "\n"
+  )
+  expect_true(grepl(timing, texts[[4]], fixed = TRUE))
+  expect_true(grepl(timing, texts[[5]], fixed = TRUE))
 })
