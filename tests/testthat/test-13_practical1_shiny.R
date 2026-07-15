@@ -637,6 +637,78 @@ test_that("failed Practical 1 runs do not enter history or progress", {
   })
 })
 
+test_that("failed Practical 1 baseline runs do not mutate session state", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  old <- setwd(app_dir)
+  on.exit(setwd(old), add = TRUE)
+  env <- new.env(parent = globalenv())
+  sys.source("app.R", envir = env)
+  execute <- function(stage, controls = list()) {
+    if (identical(stage, "deterministic_baseline")) stop("bounded baseline failure")
+    env$run_stage(stage, controls)
+  }
+
+  shiny::testServer(env$make_practical1_server(execute), {
+    before_baseline <- baseline_run()
+    before_current <- current_run()
+    expect_no_error(session$setInputs(run_baseline = 1))
+    expect_identical(baseline_run(), before_baseline)
+    expect_identical(current_run(), before_current)
+    expect_length(run_history(), 0L)
+    expect_equal(next_run_id(), 1L)
+    expect_false(baseline_started())
+    expect_null(last_completed_stage())
+    expect_true(is.na(last_completed_run_id()))
+    expect_match(run_error(), "could not complete")
+  })
+})
+
+test_that("successful Practical 1 baseline reruns clear stale recovery state", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  old <- setwd(app_dir)
+  on.exit(setwd(old), add = TRUE)
+  env <- new.env(parent = globalenv())
+  sys.source("app.R", envir = env)
+
+  shiny::testServer(env$make_practical1_server(), {
+    session$setInputs(run_baseline = 1)
+    selected_stage("carrying_capacity")
+    session$setInputs(run_stage = 1)
+    selected_stage("deterministic_baseline")
+    session$setInputs(run_stage = 1)
+    expect_match(run_error(), "Use Start baseline")
+    expect_equal(last_completed_stage(), "carrying_capacity")
+
+    session$setInputs(run_baseline = 2)
+    expect_null(run_error())
+    expect_null(last_completed_stage())
+    expect_true(is.na(last_completed_run_id()))
+    expect_length(run_history(), 1L)
+    expect_equal(next_run_id(), 2L)
+    expect_true(baseline_started())
+    expect_equal(selected_stage(), "deterministic_baseline")
+  })
+})
+
+test_that("successful Practical 1 runs render a stable completion cue", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  old <- setwd(app_dir)
+  on.exit(setwd(old), add = TRUE)
+  env <- new.env(parent = globalenv())
+  sys.source("app.R", envir = env)
+
+  shiny::testServer(env$make_practical1_server(), {
+    session$setInputs(run_baseline = 1)
+    selected_stage("carrying_capacity")
+    session$setInputs(run_stage = 1)
+    cue <- paste(as.character(output$run_status), collapse = "\n")
+    expect_match(cue, "Mission complete:", fixed = TRUE)
+    expect_match(cue, "Core 2: Island ceiling", fixed = TRUE)
+    expect_match(cue, "Next Core action: Core 3: Individual chance", fixed = TRUE)
+    expect_match(cue, 'data-run-id="2"', fixed = TRUE)
+  })
+})
+
 test_that("Practical 1 reset waits for confirmation and clears session state", {
   app_dir <- rPVA:::practical1_shiny_app_dir()
   old <- setwd(app_dir)
@@ -649,6 +721,7 @@ test_that("Practical 1 reset waits for confirmation and clears session state", {
     selected_stage("carrying_capacity")
     session$setInputs(run_stage = 1)
     expect_length(run_history(), 2L)
+    session$setInputs(interpretation_note = "temporary interpretation")
 
     session$setInputs(clear_runs = 1)
     expect_length(run_history(), 2L)
@@ -661,6 +734,8 @@ test_that("Practical 1 reset waits for confirmation and clears session state", {
     expect_null(last_completed_stage())
     expect_true(is.na(last_completed_run_id()))
     expect_equal(current_run()$stage, "deterministic_baseline")
+    expect_equal(baseline_run()$stage, "deterministic_baseline")
+    expect_equal(next_run_id(), 1L)
   })
 })
 
@@ -685,6 +760,7 @@ test_that("Practical 1 declares temporary state and guarded recovery", {
   expect_true(grepl('tags$script(src = "practical1.js")', app_text, fixed = TRUE))
   expect_true(grepl("showModal(modalDialog(", app_text, fixed = TRUE))
   expect_true(grepl("observeEvent(input$confirm_clear_runs", app_text, fixed = TRUE))
+  expect_true(grepl('updateTextAreaInput(session, "interpretation_note", value = "")', app_text, fixed = TRUE))
   expect_true(grepl('role = "alert"', app_text, fixed = TRUE))
   expect_true(grepl('$(document).on("shiny:busy"', js_text, fixed = TRUE))
   expect_true(grepl('$(document).on("shiny:idle"', js_text, fixed = TRUE))

@@ -959,13 +959,28 @@ make_practical1_server <- function(execute_stage = run_stage) {
   })
 
   observeEvent(input$run_baseline, {
-    baseline <- attach_session_run_id(execute_stage(default_stage), 1L)
+    result <- tryCatch(
+      withProgress(message = "Running baseline", value = 0.5, {
+        execute_stage(default_stage)
+      }),
+      error = function(error) error
+    )
+
+    if (inherits(result, "error")) {
+      run_error("This baseline could not complete. Check the controls and try again.")
+      return()
+    }
+
+    baseline <- attach_session_run_id(result, 1L)
     baseline_run(baseline)
     current_run(baseline)
     run_history(list(baseline))
     next_run_id(2L)
     baseline_started(TRUE)
     selected_stage(default_stage)
+    run_error(NULL)
+    last_completed_stage(NULL)
+    last_completed_run_id(NA_integer_)
     updateNavbarPage(session, "section", selected = "Concept Lab")
   })
 
