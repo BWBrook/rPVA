@@ -1,0 +1,35 @@
+# Practical 1 Final Polish Progress
+
+Plan: docs/superpowers/plans/2026-07-15-practical1-final-polish.md
+Start commit: df3dc71
+Execution mode: subagent-driven in the existing checkout
+
+Task 1: complete (commits df3dc71..c7bd637, review approved)
+Task 2: complete (commits c7bd637..c4cb7cd, review approved)
+Task 3: complete (commits c4cb7cd..9e1a2c4, repaired and review approved)
+Task 4: complete (commits 9e1a2c4..9b95a7f, repaired and review approved)
+Task 5: complete (commits 9b95a7f..309e95b, durable duplicate-attempt coverage and review approved)
+Task 6: complete (commits 309e95b..e6b7a943, full suite passed and review approved)
+Task 7: complete (commits e6b7a943..57a3120, select focus repaired and review approved)
+Task 8: complete (commits 57a3120..4d57dfd, 53/53 browser checks and review approved)
+Task 9: complete (commits 4d57dfd..de888e4 plus release record, full clean gates and final max-level audit approved)
+Task 10: pending
+Task 11: pending (scheduled dev deployment, Saturday 2026-07-18)
+Task 12: pending (scheduled production deployment, Sunday 2026-07-19)
+
+Minor findings carried to final review:
+- Task 1 report called its focused GREEN command exact even though the controller deliberately substituted pkgload::load_all() for source("bootstrap.R") after the bootstrap restore path timed out on the known pak state. No implementation defect; preserve as test-evidence context.
+- Task 2 validation branches for duplicate or missing run IDs and undersized session counts are implemented and smoke-checked, but do not yet have explicit regression tests; settings tests also assert the ID set rather than the full ID-to-run mapping.
+- Task 3 rail navigation, previous/next behavior, post-baseline run IDs, and reset state were independently smoke-probed but are not yet all represented by focused behavioral regression tests.
+- Task 3 RED output and the claimed two GREEN runs are described in the execution report but were not archived; independent review reproduced one clean GREEN run.
+- Task 4 reset interpretation clearing is covered by a source/static contract rather than a dynamic testServer assertion; the execution report now states this limitation accurately.
+- Task 6 post-readiness renderUI replacement and reset-cleared interpretation/Transfer HTML were independently probed successfully but are not direct focused regression assertions; browser acceptance remains the stronger DOM-level gate.
+- Task 7 static contracts establish selector/copy presence but do not prove rendered grid assignments, focus visibility, or status semantics; Task 8 browser acceptance is the required rendered gate.
+
+Task 9 disposition of carried findings:
+- The final clean-process gate used `source("bootstrap.R")` for bootstrap, both focused suites, and the full test directory; all passed. This supersedes the earlier Task 1 evidence caveat.
+- Final state tests and browser assertions cover monotonic rendered run IDs, repeated Start behavior, reset, evidence identity, selection/interpretation invalidation, and independent CSV/Markdown completion.
+- The fresh browser gate covers mission navigation, contextual actions, visible keyboard focus, responsive layout, panel geometry, table scrolling, and complete minimum/extension routes.
+- Cleanup validation is exercised through structured runtime probes, including relative, parent, root, symlink, dangling-symlink, nested, and valid uncreated temporary paths.
+- Final CSV and Markdown are checked against rendered selected IDs, exact stages, labels, complete comparison values, and exact ordered settings/provenance.
+- Final adversarial audit reported no Critical, Important, or Minor findings. The only residual uncertainty is deployment-image equivalence, assigned to Task 10.
