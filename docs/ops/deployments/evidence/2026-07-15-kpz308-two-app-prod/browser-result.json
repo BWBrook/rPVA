@@ -1,0 +1,30 @@
+{
+  "startedAt": "2026-07-15T02:24:32.936Z",
+  "rootUrl": "https://ecology-r1.its.utas.edu.au/",
+  "practical1": {
+    "pageUrl": "https://ecology-r1.its.utas.edu.au/app/kpz308-rpva-practical",
+    "frameUrl": "https://ecology-r1.its.utas.edu.au/app_proxy/ea795d8f-4ef7-421d-85f9-09c2c248332f/",
+    "envSd": "0.35",
+    "carryingCapacity": "15",
+    "comparisonRows": 2,
+    "comparisonCsv": "/tmp/rpva-prod-two-app/practical1-comparison.csv",
+    "evidenceMd": "/tmp/rpva-prod-two-app/practical1-evidence.md",
+    "interpretation": "Shared bad years widened uncertainty and reduced abundance relative to the baseline; the result remains conditional on the teaching model assumptions."
+  },
+  "practical2": {
+    "pageUrl": "https://ecology-r1.its.utas.edu.au/app/kpz308-rpva-practical2",
+    "frameUrl": "https://ecology-r1.its.utas.edu.au/app_proxy/3defa096-c39e-4daa-a5fe-deb1fe953288/",
+    "coreRows": 5,
+    "sensitivityRows": 4,
+    "coreCsv": "/tmp/rpva-prod-two-app/practical2-core-comparison.csv",
+    "sensitivityCsv": "/tmp/rpva-prod-two-app/practical2-sensitivity-comparison.csv",
+    "evidenceMd": "/tmp/rpva-prod-two-app/practical2-evidence.md",
+    "interpretation": "The management and bounded-sensitivity results provide a reproducible basis for comparing Woodhen options, subject to model scope and implementation constraints."
+  },
+  "console": [],
+  "pageErrors": [],
+  "status": "released",
+  "completedAt": "2026-07-15T02:25:36.545Z",
+  "concurrentPages": 2,
+  "releasedAt": "2026-07-15T02:28:09.590Z"
+}

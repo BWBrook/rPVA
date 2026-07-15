@@ -1,0 +1,74 @@
+KPZ308 TWO-APP CANARY CLOSEOUT
+Date: 2026-07-15
+Environment: ecology-r1.its.utas.edu.au
+
+--- empirical student access gate ---
+tester_role=one current KPZ308 student
+identity_retained=false
+requested_checks=both canary tiles visible; Practical 1 opens; Practical 2 opens and displays Woodhen Management Lab
+result=passed
+evidence_source=course coordinator confirmed receipt of the student's successful response to the requested checklist
+
+--- closeout backup ---
+application.yml.before-practical2-staff-only-20260715-124929
+mode=0640 owner=sa-container:sa-container size=2599
+selinux=unconfined_u:object_r:var_t:s0
+
+--- exact closeout diff ---
+@@ -66,7 +66,6 @@
+       access-groups:
+         - "UNI-Ecology-Teaching-Shiny-Staff"
+-        - "KPZ308"
+
+Only the Practical 2 KPZ308 line was removed.
+
+--- final access and image state ---
+Practical 1:
+  id=kpz308-rpva-practical
+  image=git.its.utas.edu.au/utas/kpz308-rpva-practical:dev-20260713-02b09aeed4f0
+  access=UNI-Ecology-Teaching-Shiny-Staff,KPZ308
+  workspace=data/kpz308-rpva-practical/workspaces/#{proxy.userId}
+
+Practical 2:
+  id=kpz308-rpva-practical2
+  image=git.its.utas.edu.au/utas/kpz308-rpva-practical2:dev-20260714-8aada69b0ac3
+  access=UNI-Ecology-Teaching-Shiny-Staff
+  workspace=data/kpz308-rpva-practical2/workspaces/#{proxy.userId}
+
+final_access_and_image_validation=passed
+
+--- closeout restart ---
+docker compose down=passed
+docker compose up -d=passed
+actuator_health=UP
+health_attempt=3
+OpenSAML=initialized
+AuthenticationManager=configured
+Undertow_8080=started
+Undertow_9090=started
+ShinyProxy=3.2.4 started
+PROD_CLOSEOUT_RESTART=passed
+
+Compose again printed the known rootless IPv4-forwarding warning. Both Staff
+app routes subsequently opened successfully.
+
+--- final Staff browser smoke ---
+started_utc=2026-07-15T02:53:17.887Z
+completed_utc=2026-07-15T02:53:24.578Z
+launcher_tiles=2
+Practical_1=Start baseline control visible
+Practical_2=Woodhen Management Lab heading visible
+concurrent_app_pages=2
+console=[]
+pageErrors=[]
+status=passed
+
+The screenshots contain a faint transient ShinyProxy launching overlay over
+otherwise rendered app content. DOM controls and headings were visible and the
+automated assertions passed.
+
+--- final state ---
+KPZ308 students retain Practical 1.
+Practical 2 remains deployed, persistent, and available to Staff for content
+refinement. Restore KPZ308 access only after final teaching-content signoff and
+repeat the normal release gates.

@@ -1,0 +1,36 @@
+Validation performed against the copied repository artifacts.
+
+CSV structure:
+  exports/practical1-comparison.csv rows=2 cols=16 missing=0
+  exports/practical2-core-comparison.csv rows=5 cols=11 missing=0
+  exports/practical2-sensitivity-comparison.csv rows=4 cols=11 missing=0
+
+Markdown interpretation retention:
+  exports/practical1-evidence.md:45 contains the submitted P1 interpretation
+  exports/practical2-evidence.md:197 contains the submitted P2 interpretation
+
+Browser result:
+  status=released
+  concurrentPages=2
+  practical1.comparisonRows=2
+  practical2.coreRows=5
+  practical2.sensitivityRows=4
+  console=[]
+  pageErrors=[]
+
+Image dimensions and nonblank pixel means:
+  00-launcher-two-apps.png 1440x900 mean=65338.6
+  01-practical1-start.png 1440x900 mean=62833.1
+  02-practical1-compare.png 1440x900 mean=63258.2
+  03-practical2-overview.png 1440x900 mean=62736.2
+  04-practical2-management.png 1440x900 mean=61108.9
+  05-practical2-sensitivity.png 1440x900 mean=61574.3
+  06-practical2-evidence.png 1440x900 mean=62706.2
+  07-practical2-mobile.png 390x844 mean=60523.7
+
+Visual inspection:
+  Launcher displayed both app identities.
+  P1 comparison showed baseline and environmental-stochasticity runs.
+  P2 management showed five scenario rows and result cards.
+  P2 sensitivity showed four result cards and completed interpretation fields.
+  P2 mobile evidence controls reflowed without overlap.

@@ -343,6 +343,13 @@ Record `IMAGE`, `DIGEST`, and `REVIEWED_REF` in the deployment record. Stop if
 push or digest capture fails. Do not ask ITS to deploy a partially published
 image.
 
+Treat `.Id` as local to the engine that reported it. Docker Engine 29's
+containerd image store and a Buildx `--load` build can report different local
+identifiers for the same registry publication. Across WSL, dev, and prod,
+reconcile the readable immutable tag, OCI source-revision label, and
+`RepoDigests` registry manifest digest. Record each engine's `.Id`, but do not
+require those local values to be equal.
+
 You may log out after recording the manifest:
 
 ```bash
@@ -761,6 +768,7 @@ consume the teaching session.
 | Docker warns `IPv4 forwarding is disabled` | Record it and test the actual workload. The validated R workload succeeded, but investigate if the app needs networking and its browser/runtime check fails. |
 | Health request returns 404 | Use port 9090 and `/actuator/health`. Port 8080 is the user-facing proxy route. |
 | App URL redirects to `/login` | Expected without an authenticated SAML browser session. Complete acceptance in a normal browser. |
+| Reopening an app briefly returns `410 Gone` | ShinyProxy may still be releasing the inactive proxy from the previous browser page. Wait for the release event (about 60 seconds in the observed case), return to the root launcher, and open the app again. Escalate only if a fresh launcher request also fails. |
 | ShinyProxy health is up but the app fails | Inspect `docker ps`, ShinyProxy activation logs, the app container health/logs, workspace permissions, image tag, and browser workflow. Health alone does not test the app. |
 | New app is missing from the launcher | Recheck indentation under `proxy.specs`, its `access-groups`, SSO group membership, and ShinyProxy startup logs. Do not remove another spec while repairing it. |
 

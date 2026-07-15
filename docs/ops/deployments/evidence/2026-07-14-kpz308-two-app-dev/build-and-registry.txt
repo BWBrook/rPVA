@@ -1,0 +1,42 @@
+KPZ308 PRACTICAL 2 IMMUTABLE IMAGE PUBLICATION
+Date: 2026-07-14
+
+--- source identity ---
+source_commit=8aada69b0ac35ee1994e86e5199b38047fdd3efe
+source_sync=passed
+source_status=clean
+image=git.its.utas.edu.au/utas/kpz308-rpva-practical2:dev-20260714-8aada69b0ac3
+
+--- build evidence ---
+docker_desktop=29.6.1 x86_64
+buildkit=0.31.1 default docker driver
+target_platform=linux/amd64
+dockerfile=deploy/shinyproxy/practical2/Dockerfile
+RPVA_REF=8aada69b0ac35ee1994e86e5199b38047fdd3efe
+build_exit=0
+build_elapsed_seconds=541.7
+locked_R_packages_installed=87
+rPVA_version=0.0.1.000
+local_image_id=sha256:7acc8ed81f245ff15329238b3ae03e746c992c32770ff176267ac08a7ebdca55
+image_inspect_arch=amd64
+image_inspect_revision=8aada69b0ac35ee1994e86e5199b38047fdd3efe
+
+--- local smoke ---
+http_success_attempt=2
+container_status=running
+container_health=healthy
+woodhen_rows=2
+woodhen_labels=No intervention|Pig control
+listen_address=0.0.0.0:3838
+temporary_container_removed=true
+
+--- registry evidence ---
+push=passed
+registry_digest=sha256:e7d997f0ce52b22c30747a3b83cbf771e4124e5065010a9212479a53ffc96721
+registry_manifest=version 2
+fresh_pull=passed
+repo_digest=sha256:e7d997f0ce52b22c30747a3b83cbf771e4124e5065010a9212479a53ffc96721
+pulled_revision=8aada69b0ac35ee1994e86e5199b38047fdd3efe
+
+The standalone Shiny log contained the known SHINY_PORT warning. HTTP health,
+the API smoke, and the configured listen address all passed.

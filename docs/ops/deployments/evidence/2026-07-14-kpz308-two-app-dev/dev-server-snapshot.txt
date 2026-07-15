@@ -1,0 +1,77 @@
+Source: exact dev-host output captured while both accepted Playwright app pages
+were open. Staff usernames are replaced with <staff-user>.
+
+The image-identity lines below are the literal output of:
+
+  docker image inspect "$P1_IMAGE" "$P2_IMAGE" --format \
+    'image={{index .RepoTags 0}} id={{.Id}} revision={{index .Config.Labels "org.opencontainers.image.revision"}} repoDigests={{json .RepoDigests}}'
+
+The dev-host `.Id` is preserved exactly as returned by that engine. It is not
+substituted for, or used to contradict, the WSL build-host local ID recorded in
+Task 2.
+
+--- container engine identity ---
+Client: Docker Engine - Community 29.6.1, API 1.55, linux/amd64
+Server: Docker Engine - Community 29.6.1, API 1.55, linux/amd64
+containerd: 2.2.5
+runc: 1.3.6
+rootlesskit: 3.0.1
+rootless network driver: slirp4netns
+name=ecology-r-dev1.its.utas.edu.au server=29.6.1 driver=overlayfs rootless=["name=seccomp,profile=builtin","name=rootless","name=cgroupns"]
+docker executable: /usr/bin/docker
+packages: docker-ce-29.6.1-1.el9.x86_64, docker-ce-cli-29.6.1-1.el9.x86_64
+podman and podman-docker: not installed
+
+--- exact image identities ---
+image=git.its.utas.edu.au/utas/kpz308-rpva-practical:dev-20260713-02b09aeed4f0 id=sha256:3b69050e1091fa3e521e345328341b982d6b7d4739d441d740300de0c75e2f9b revision=02b09aeed4f033ac8a68e3e3c1927f878b3242c9 repoDigests=["git.its.utas.edu.au/utas/kpz308-rpva-practical@sha256:3b69050e1091fa3e521e345328341b982d6b7d4739d441d740300de0c75e2f9b"]
+image=git.its.utas.edu.au/utas/kpz308-rpva-practical2:dev-20260714-8aada69b0ac3 id=sha256:e7d997f0ce52b22c30747a3b83cbf771e4124e5065010a9212479a53ffc96721 revision=8aada69b0ac35ee1994e86e5199b38047fdd3efe repoDigests=["git.its.utas.edu.au/utas/kpz308-rpva-practical2@sha256:e7d997f0ce52b22c30747a3b83cbf771e4124e5065010a9212479a53ffc96721"]
+
+WSL build-host Practical 2 local ID from Task 2:
+  sha256:7acc8ed81f245ff15329238b3ae03e746c992c32770ff176267ac08a7ebdca55
+
+Registry manifest digest accepted in Task 2 and observed in dev RepoDigests:
+  sha256:e7d997f0ce52b22c30747a3b83cbf771e4124e5065010a9212479a53ffc96721
+
+--- backup and configuration SELinux metadata ---
+-rw-r-----. 1 sa-container sa-container unconfined_u:object_r:var_t:s0 2797 Jul 14 14:55 application.yml
+-rw-r-----. 1 sa-container sa-container unconfined_u:object_r:var_t:s0 1932 Jul 13 13:34 application.yml.before-kpz308-rpva-practical2-20260714-144335
+
+--- timestamp/health ---
+2026-07-14T05:20:40Z
+{"status":"UP","groups":["liveness","readiness"]}
+
+--- concurrent app containers ---
+NAMES                                                 IMAGE                                                                       STATUS
+sp-container-690bf55c-f5d6-4d19-9318-8ffd3be335fb-0   git.its.utas.edu.au/utas/kpz308-rpva-practical2:dev-20260714-8aada69b0ac3   Up 3 minutes (healthy)
+sp-container-78faefad-c6d6-4fb4-b8e1-64d564b5e3fd-0   git.its.utas.edu.au/utas/kpz308-rpva-practical:dev-20260713-02b09aeed4f0    Up 4 minutes (healthy)
+shinyproxy                                            openanalytics/shinyproxy:3.2.4                                              Up 18 minutes
+
+--- live resource snapshot ---
+CONTAINER ID   NAME                                                  CPU %     MEM USAGE / LIMIT   MEM %     NET I/O           BLOCK I/O   PIDS
+8a6770bb8543   shinyproxy                                            0.12%     410.8MiB / 2GiB     20.06%    14.2MB / 15.1MB   0B / 0B     67
+f1b9babaa331   sp-container-690bf55c-f5d6-4d19-9318-8ffd3be335fb-0   0.04%     171.7MiB / 1GiB     16.77%    38.7kB / 407kB    0B / 0B     8
+1b1bf6434d72   sp-container-78faefad-c6d6-4fb4-b8e1-64d564b5e3fd-0   8.74%     326.6MiB / 1GiB     31.90%    57.6kB / 3.23MB   0B / 0B     6
+
+--- separate workspace roots ---
+drwxr-x---. 3 sa-container sa-container unconfined_u:object_r:var_t:s0 24 Jun 25 16:31 data/kpz308-rpva-practical
+drwxr-x---. 4 sa-container sa-container unconfined_u:object_r:var_t:s0 63 Jun 26 16:01 data/kpz308-rpva-practical/workspaces
+drwxr-xr-x. 2 sa-container sa-container unconfined_u:object_r:var_t:s0  6 Jun 26 16:01 data/kpz308-rpva-practical/workspaces/<staff-user>
+drwxr-x---. 3 sa-container sa-container unconfined_u:object_r:var_t:s0 24 Jul 14 14:43 data/kpz308-rpva-practical2
+drwxr-x---. 3 sa-container sa-container unconfined_u:object_r:var_t:s0 37 Jul 14 15:09 data/kpz308-rpva-practical2/workspaces
+drwxr-xr-x. 2 sa-container sa-container unconfined_u:object_r:var_t:s0  6 Jul 14 15:09 data/kpz308-rpva-practical2/workspaces/<staff-user>
+
+Configured host mappings:
+  /srv/sa-container/ecology-teaching-shiny/data/kpz308-rpva-practical/workspaces/#{proxy.userId}:/srv/rpva-workspaces/current:z
+  /srv/sa-container/ecology-teaching-shiny/data/kpz308-rpva-practical2/workspaces/#{proxy.userId}:/srv/rpva-workspaces/current:z
+
+--- accepted two-app proxy events ---
+2026-07-14T05:16:34.685Z INFO [user=<staff-user> proxyId=78faefad-c6d6-4fb4-b8e1-64d564b5e3fd specId=kpz308-rpva-practical] Starting proxy
+2026-07-14T05:16:35.962Z INFO [user=<staff-user> proxyId=78faefad-c6d6-4fb4-b8e1-64d564b5e3fd specId=kpz308-rpva-practical] Proxy activated
+2026-07-14T05:16:42.187Z INFO [user=<staff-user> proxyId=690bf55c-f5d6-4d19-9318-8ffd3be335fb specId=kpz308-rpva-practical2] Starting proxy
+2026-07-14T05:16:43.655Z INFO [user=<staff-user> proxyId=690bf55c-f5d6-4d19-9318-8ffd3be335fb specId=kpz308-rpva-practical2] Proxy activated
+
+Browser evidence tying this snapshot to the open sessions:
+  Practical 1 frame proxy ID: 78faefad-c6d6-4fb4-b8e1-64d564b5e3fd
+  Practical 2 frame proxy ID: 690bf55c-f5d6-4d19-9318-8ffd3be335fb
+  Browser status at 2026-07-14T05:17:57.050Z: ready-for-server-evidence
+  Browser sessions released at 2026-07-14T05:21:43.163Z

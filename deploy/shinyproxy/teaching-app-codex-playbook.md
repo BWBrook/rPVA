@@ -506,6 +506,12 @@ IMAGE_DIGEST="$(awk '/^Digest:/ {print $2; exit}' "manifest-${IMAGE_TAG}.txt")"
 test -n "${IMAGE_DIGEST}"
 ```
 
+Treat `.Id` as an engine-local provenance field. Docker Engine 29's containerd
+image store and a Buildx `--load` build may report different local identifiers
+for one registry publication. Cross-host acceptance requires equality of the
+immutable tag, OCI source-revision label, and `RepoDigests` manifest digest;
+record each local `.Id` without requiring it to equal another engine's value.
+
 Optionally log out after digest capture. Store only non-secret logs and
 summaries.
 
@@ -1053,6 +1059,7 @@ workspaces during rollback.
 | Docker warns `IPv4 forwarding is disabled` | Record it and test the required workload. Historical R workloads passed; network-dependent app behavior still needs browser/runtime evidence. |
 | Health request returns 404 | Verify port 9090 and `/actuator/health`. Port 8080 is the user route. |
 | Curl to app route redirects to `/login` | Expected without SAML browser state. Use human browser acceptance. |
+| A recently reopened app returns `410 Gone` | Correlate the frame proxy ID with ShinyProxy logs. If the prior proxy is in its inactive-release window, wait for `Proxy released`, return to the root launcher, and request a fresh app. Treat repeated failure after a fresh launch as the real incident. |
 | Proxy health is `UP` but app fails | Inspect selected image, proxy activation logs, app container health/logs, network, workspace permissions/SELinux, and the browser workflow. |
 | New app is absent from launcher | Check YAML indentation under `proxy.specs`, unique ID, access groups, SSO membership, restart logs, and whether the tester belongs to the allowed group. |
 | Image pull is denied on a new repository | Stop and ask ITS/Gitea owners to grant the service account access. Do not transfer credentials into server config. |

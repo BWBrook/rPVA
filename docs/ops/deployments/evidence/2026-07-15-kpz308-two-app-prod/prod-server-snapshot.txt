@@ -1,0 +1,59 @@
+Source: exact production-host output captured while both accepted Playwright
+app pages were open. Staff usernames are replaced with <staff-user-N>.
+
+--- exact production image identities before restart ---
+image=git.its.utas.edu.au/utas/kpz308-rpva-practical:dev-20260713-02b09aeed4f0 id=sha256:3b69050e1091fa3e521e345328341b982d6b7d4739d441d740300de0c75e2f9b revision=02b09aeed4f033ac8a68e3e3c1927f878b3242c9 repoDigests=["git.its.utas.edu.au/utas/kpz308-rpva-practical@sha256:3b69050e1091fa3e521e345328341b982d6b7d4739d441d740300de0c75e2f9b"]
+image=git.its.utas.edu.au/utas/kpz308-rpva-practical2:dev-20260714-8aada69b0ac3 id=sha256:e7d997f0ce52b22c30747a3b83cbf771e4124e5065010a9212479a53ffc96721 revision=8aada69b0ac35ee1994e86e5199b38047fdd3efe repoDigests=["git.its.utas.edu.au/utas/kpz308-rpva-practical2@sha256:e7d997f0ce52b22c30747a3b83cbf771e4124e5065010a9212479a53ffc96721"]
+production_image_verification=passed
+
+--- post-restart health/startup ---
+{"status":"UP","groups":["liveness","readiness"]}
+health_attempt=3
+2026-07-15T02:21:33.826Z INFO Initializing OpenSAML using the Java Services API
+2026-07-15T02:21:35.937Z INFO Global AuthenticationManager configured with openSamlAuthenticationProvider
+2026-07-15T02:21:36.726Z INFO Undertow started on port 8080
+2026-07-15T02:21:36.855Z INFO Undertow started on port 9090
+2026-07-15T02:21:36.873Z INFO Started ShinyProxy 3.2.4 (ContainerProxy 1.2.4)
+PROD_RESTART=passed
+
+--- timestamp/health during concurrent evidence ---
+2026-07-15T02:27:11Z
+{"status":"UP","groups":["liveness","readiness"]}
+
+--- concurrent app containers ---
+NAMES                                                 IMAGE                                                                       STATUS
+sp-container-3defa096-c39e-4daa-a5fe-deb1fe953288-0   git.its.utas.edu.au/utas/kpz308-rpva-practical2:dev-20260714-8aada69b0ac3   Up 2 minutes (healthy)
+sp-container-ea795d8f-4ef7-421d-85f9-09c2c248332f-0   git.its.utas.edu.au/utas/kpz308-rpva-practical:dev-20260713-02b09aeed4f0    Up 2 minutes (healthy)
+shinyproxy                                            openanalytics/shinyproxy:3.2.4                                              Up 5 minutes
+
+--- live resource snapshot ---
+CONTAINER ID   NAME                                                  CPU %     MEM USAGE / LIMIT   MEM %     NET I/O           BLOCK I/O   PIDS
+e2be848653bb   shinyproxy                                            0.27%     672.4MiB / 2GiB     32.83%    3.82MB / 4.6MB    0B / 0B     186
+9626deaaa13e   sp-container-3defa096-c39e-4daa-a5fe-deb1fe953288-0   13.99%    175.4MiB / 1GiB     17.13%    37kB / 406kB      0B / 0B     50
+8f09622f33ab   sp-container-ea795d8f-4ef7-421d-85f9-09c2c248332f-0   3.45%     320.1MiB / 1GiB     31.26%    53.2kB / 3.23MB   0B / 0B     48
+
+--- separate workspace roots ---
+drwxr-xr-x sa-container:sa-container unconfined_u:object_r:var_t:s0 2026-06-26T15:55:46 data/kpz308-rpva-practical/workspaces/<staff-user-1>
+drwxr-xr-x sa-container:sa-container unconfined_u:object_r:var_t:s0 2026-06-26T16:01:54 data/kpz308-rpva-practical/workspaces/<staff-user-2>
+drwxr-xr-x sa-container:sa-container unconfined_u:object_r:var_t:s0 2026-07-03T14:10:00 data/kpz308-rpva-practical/workspaces/<staff-user-3>
+drwxr-x--- sa-container:sa-container unconfined_u:object_r:var_t:s0 2026-07-01T13:07:38 data/kpz308-rpva-practical/workspaces/_capacity_test
+drwxr-xr-x sa-container:sa-container unconfined_u:object_r:var_t:s0 2026-07-15T12:24:42 data/kpz308-rpva-practical2/workspaces/<staff-user-2>
+
+Configured host mappings:
+  /srv/sa-container/ecology-teaching-shiny/data/kpz308-rpva-practical/workspaces/#{proxy.userId}:/srv/rpva-workspaces/current:z
+  /srv/sa-container/ecology-teaching-shiny/data/kpz308-rpva-practical2/workspaces/#{proxy.userId}:/srv/rpva-workspaces/current:z
+
+--- accepted two-app proxy events ---
+2026-07-15T02:24:34.781Z INFO [user=<staff-user-2> proxyId=ea795d8f-4ef7-421d-85f9-09c2c248332f specId=kpz308-rpva-practical] Starting proxy
+2026-07-15T02:24:36.914Z INFO [user=<staff-user-2> proxyId=ea795d8f-4ef7-421d-85f9-09c2c248332f specId=kpz308-rpva-practical] Proxy activated
+2026-07-15T02:24:42.405Z INFO [user=<staff-user-2> proxyId=3defa096-c39e-4daa-a5fe-deb1fe953288 specId=kpz308-rpva-practical2] Starting proxy
+2026-07-15T02:24:43.981Z INFO [user=<staff-user-2> proxyId=3defa096-c39e-4daa-a5fe-deb1fe953288 specId=kpz308-rpva-practical2] Proxy activated
+
+Browser evidence tying this snapshot to the open sessions:
+  Practical 1 frame proxy ID: ea795d8f-4ef7-421d-85f9-09c2c248332f
+  Practical 2 frame proxy ID: 3defa096-c39e-4daa-a5fe-deb1fe953288
+  Browser status at 2026-07-15T02:25:36.545Z: ready-for-server-evidence
+  Browser sessions released at 2026-07-15T02:28:09.590Z
+
+Independent UTAS host monitoring:
+  unavailable; the normal infrastructure contact was on leave

@@ -1,0 +1,6 @@
+"scenario_id","section","label","years","reps","PE","Nmed","Nlo95","Nhi95","changed_parameter","change_label"
+"01_no_mgmt","core_management","No intervention",40,1000,0.666,16,1,31,"none","Historical mountain-top restricted population"
+"02_pig_control","core_management","Pig control",40,1000,0.566,57,2,184,"K","Increase habitat ceiling to 70 breeding pairs plus floaters"
+"03_captive_pig","core_management","Captive breeding plus pig control",40,1000,0.082,119,4,199,"release schedule","Add releases after captive breeding and pig control"
+"04_rodent_eradication","core_management","Rodent eradication",5,1000,0,832,340,1386,"survival and fecundity","Short-term check after rodent eradication"
+"05_future_baseline","core_management","Future baseline",75,1000,0,1510,1109,1957,"future baseline","Longer future baseline after major recovery"

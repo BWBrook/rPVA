@@ -1,0 +1,19 @@
+{
+  "startedAt": "2026-07-15T02:53:17.887Z",
+  "rootUrl": "https://ecology-r1.its.utas.edu.au/",
+  "console": [],
+  "pageErrors": [],
+  "status": "passed",
+  "completedAt": "2026-07-15T02:53:24.578Z",
+  "launcherTiles": 2,
+  "practical1": {
+    "pageUrl": "https://ecology-r1.its.utas.edu.au/app/kpz308-rpva-practical",
+    "frameUrl": "https://ecology-r1.its.utas.edu.au/app_proxy/5ac0548a-f487-43fb-b4b8-ad25ec8491ca/",
+    "control": "Start baseline"
+  },
+  "practical2": {
+    "pageUrl": "https://ecology-r1.its.utas.edu.au/app/kpz308-rpva-practical2",
+    "frameUrl": "https://ecology-r1.its.utas.edu.au/app_proxy/38a02639-c803-444e-8265-a139bdec13bd/",
+    "heading": "Woodhen Management Lab"
+  }
+}

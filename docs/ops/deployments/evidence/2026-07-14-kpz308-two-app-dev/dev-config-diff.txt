@@ -1,0 +1,56 @@
+Source: exact dev-host diff supplied during deployment, normalized to remove
+terminal wrapping. No secret-bearing configuration is included.
+
+Backup:
+  application.yml.before-kpz308-rpva-practical2-20260714-144335
+  mode=0640 owner=sa-container:sa-container size=1932
+  selinux=unconfined_u:object_r:var_t:s0
+
+Updated file:
+  application.yml
+  mode=0640 owner=sa-container:sa-container size=2797
+  selinux=unconfined_u:object_r:var_t:s0
+
+--- application.yml.before-kpz308-rpva-practical2-20260714-144335
++++ application.yml
+@@ -60,3 +60,25 @@
+       container-volumes:
+         - "/srv/sa-container/ecology-teaching-shiny/data/kpz308-rpva-practical/workspaces/#{proxy.userId}:/srv/rpva-workspaces/current:z"
++
++    - id: "kpz308-rpva-practical2"
++      display-name: "KPZ308 Practical 2 - Infrastructure Canary"
++      description: "Provisional Woodhen Management Lab for KPZ308 infrastructure validation"
++      container-image: "git.its.utas.edu.au/utas/kpz308-rpva-practical2:dev-20260714-8aada69b0ac3"
++      container-network: "shinyproxy-net"
++      container-memory-limit: "1g"
++      container-cpu-limit: 1.0
++      access-groups:
++        - "UNI-Ecology-Teaching-Shiny-Admins"
++      port: 3838
++      target-path: "/"
++      container-env:
++        SHINY_HOST: "0.0.0.0"
++        SHINY_PORT: "3838"
++        RPVA_STUDENT_ID: "#{proxy.userId}"
++        RPVA_STUDENT_WORKSPACE_ROOT: "/srv/rpva-workspaces/current"
++      container-volumes:
++        - "/srv/sa-container/ecology-teaching-shiny/data/kpz308-rpva-practical2/workspaces/#{proxy.userId}:/srv/rpva-workspaces/current:z"
+
+Configuration validation:
+  IDs present: 01_hello, kpz308-rpva-practical, kpz308-rpva-practical2
+  docker compose config: passed
+  ShinyProxy restart: passed
+  actuator health: UP on attempt 4
+
+Rollback file:
+  application.yml.before-kpz308-rpva-practical2-20260714-144335
+
+Rollback commands if a gate had failed:
+  docker compose down
+  cp -p application.yml.before-kpz308-rpva-practical2-20260714-144335 application.yml
+  docker compose up -d
+  curl -fsS http://127.0.0.1:9090/actuator/health
+
+Rollback was not triggered because configuration, restart, browser, export,
+container, and workspace gates all passed. The pre-change Practical 1 backup
+remains on the dev host.

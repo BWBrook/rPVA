@@ -1,0 +1,64 @@
+Source: exact production-host diff supplied during deployment, normalized only
+to remove terminal wrapping and a pre-existing whitespace-only final line.
+
+Backup:
+  application.yml.before-two-app-canary-20260715-120812
+  mode=0640 owner=sa-container:sa-container size=1716
+  selinux=unconfined_u:object_r:var_t:s0
+
+Updated file:
+  application.yml
+  mode=0640 owner=sa-container:sa-container size=2599
+  selinux=unconfined_u:object_r:var_t:s0
+
+--- application.yml.before-two-app-canary-20260715-120812
++++ application.yml
+@@ -34,7 +34,7 @@
+     - id: "kpz308-rpva-practical"
+       display-name: "KPZ308 rPVA Practical"
+       description: "KPZ308 rPVA teaching app identity; current surface packages the Practical 1 concept lab"
+-      container-image: "git.its.utas.edu.au/utas/kpz308-rpva-practical:dev-20260626-9524304fb748"
++      container-image: "git.its.utas.edu.au/utas/kpz308-rpva-practical:dev-20260713-02b09aeed4f0"
+       container-network: "shinyproxy-net"
+@@ -54,3 +54,27 @@
+       container-volumes:
+         - "/srv/sa-container/ecology-teaching-shiny/data/kpz308-rpva-practical/workspaces/#{proxy.userId}:/srv/rpva-workspaces/current:z"
++
++    - id: "kpz308-rpva-practical2"
++      display-name: "KPZ308 Practical 2 - Infrastructure Canary"
++      description: "Provisional Woodhen Management Lab for KPZ308 infrastructure validation"
++      container-image: "git.its.utas.edu.au/utas/kpz308-rpva-practical2:dev-20260714-8aada69b0ac3"
++      container-network: "shinyproxy-net"
++      container-memory-limit: "1g"
++      container-cpu-limit: 1.0
++      access-groups:
++        - "UNI-Ecology-Teaching-Shiny-Staff"
++        - "KPZ308"
++      port: 3838
++      target-path: "/"
++      container-env:
++        SHINY_HOST: "0.0.0.0"
++        SHINY_PORT: "3838"
++        RPVA_STUDENT_ID: "#{proxy.userId}"
++        RPVA_STUDENT_WORKSPACE_ROOT: "/srv/rpva-workspaces/current"
++      container-volumes:
++        - "/srv/sa-container/ecology-teaching-shiny/data/kpz308-rpva-practical2/workspaces/#{proxy.userId}:/srv/rpva-workspaces/current:z"
+
+Restart result:
+  docker compose down: passed
+  docker compose up -d: passed
+  actuator health: UP on attempt 3
+  ShinyProxy startup: passed
+
+Rollback file:
+  application.yml.before-two-app-canary-20260715-120812
+
+Rollback commands if a gate had failed:
+  docker compose down
+  cp -p application.yml.before-two-app-canary-20260715-120812 application.yml
+  docker compose up -d
+  curl -fsS http://127.0.0.1:9090/actuator/health
+
+Rollback was not triggered because configuration, startup, browser, export,
+container, and workspace gates all passed. The pre-change P1-only backup
+remains on the production host.

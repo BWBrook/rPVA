@@ -1,0 +1,5 @@
+"scenario_id","section","label","years","reps","PE","Nmed","Nlo95","Nhi95","changed_parameter","change_label"
+"sensitivity_default","sensitivity","Sensitivity baseline",75,1000,0,1510,1109,1957,"none","Reference future sensitivity case"
+"survival_minus_10pct","sensitivity","Survival minus 10 percent",75,1000,0,1484,1091,1968,"surv","Survival rates multiplied by 0.90"
+"K_250","sensitivity","Habitat ceiling K = 250",75,1000,0,745,466,1070,"K","Habitat ceiling set to 250"
+"cat_freq_0.10","sensitivity","Catastrophe frequency = 0.10",75,1000,0,1483,1052,1975,"cat_freq","Annual catastrophe probability set to 0.10"
