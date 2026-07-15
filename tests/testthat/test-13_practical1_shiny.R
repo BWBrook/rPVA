@@ -40,15 +40,20 @@ test_that("default app teaching run is valid and Shiny-ready", {
   expect_s3_class(run$diagnostics, "data.frame")
 })
 
-test_that("server initializes baseline state outside reactive reads", {
+test_that("server declares display-only baseline and explicit session progress state", {
   app_dir <- rPVA:::practical1_shiny_app_dir()
   app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
 
-  expect_true(grepl("baseline <- run_stage(default_stage)", app_text, fixed = TRUE))
-  expect_true(grepl("baseline_run <- reactiveVal(baseline)", app_text, fixed = TRUE))
-  expect_true(grepl("current_run <- reactiveVal(baseline)", app_text, fixed = TRUE))
-  expect_true(grepl("run_history <- reactiveVal(list(baseline))", app_text, fixed = TRUE))
+  expect_true(file.exists(file.path(app_dir, "session_helpers.R")))
+  expect_true(grepl('source("session_helpers.R", local = TRUE)', app_text, fixed = TRUE))
+  expect_true(grepl("baseline_run <- reactiveVal(reference_baseline)", app_text, fixed = TRUE))
+  expect_true(grepl("current_run <- reactiveVal(reference_baseline)", app_text, fixed = TRUE))
+  expect_true(grepl("run_history <- reactiveVal(list())", app_text, fixed = TRUE))
+  expect_true(grepl("next_run_id <- reactiveVal(1L)", app_text, fixed = TRUE))
+  expect_true(grepl("baseline_started <- reactiveVal(FALSE)", app_text, fixed = TRUE))
+  expect_true(grepl("selected_stage <- reactiveVal(default_stage)", app_text, fixed = TRUE))
   expect_false(grepl("reactiveVal(baseline_run())", app_text, fixed = TRUE))
+  expect_false(grepl('selectInput("stage"', app_text, fixed = TRUE))
 })
 
 test_that("app file avoids unsupported implementation markers", {
@@ -74,7 +79,7 @@ test_that("comparison reset realigns the stage selector", {
   app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
 
   expect_true(grepl("observeEvent(input$clear_runs", app_text, fixed = TRUE))
-  expect_true(grepl('updateSelectInput(session, "stage", selected = default_stage)', app_text, fixed = TRUE))
+  expect_true(grepl("selected_stage(default_stage)", app_text, fixed = TRUE))
 })
 
 test_that("stage runs collect only visible controls", {
@@ -297,6 +302,9 @@ test_that("Concept Lab exposes a guided mission rail", {
   style_text <- paste(readLines(file.path(app_dir, "www", "styles.css"), warn = FALSE), collapse = "\n")
 
   expect_true(grepl("mission_rail_ui <- function(current_stage, completed_stages = character())", app_text, fixed = TRUE))
+  expect_true(grepl('span(class = "mission-group-title", "Core")', app_text, fixed = TRUE))
+  expect_true(grepl('span(class = "mission-group-title", "Explore Further")', app_text, fixed = TRUE))
+  expect_true(grepl('actionLink(paste0("mission_", stage)', app_text, fixed = TRUE))
   expect_true(grepl('uiOutput("mission_rail")', app_text, fixed = TRUE))
   expect_true(grepl('actionButton("previous_mission"', app_text, fixed = TRUE))
   expect_true(grepl('actionButton("next_mission"', app_text, fixed = TRUE))
@@ -307,6 +315,24 @@ test_that("Concept Lab exposes a guided mission rail", {
   expect_match(style_text, "\\.mission-rail")
   expect_match(style_text, "\\.mission-step\\.is-current")
   expect_match(style_text, "\\.mission-step\\.is-complete")
+})
+
+test_that("Practical 1 baseline progress begins only after Start baseline", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  old <- setwd(app_dir)
+  on.exit(setwd(old), add = TRUE)
+  env <- new.env(parent = globalenv())
+  sys.source("app.R", envir = env)
+
+  shiny::testServer(env$make_practical1_server(), {
+    expect_false(baseline_started())
+    expect_length(run_history(), 0L)
+    session$setInputs(run_baseline = 1)
+    expect_true(baseline_started())
+    expect_length(run_history(), 1L)
+    expect_equal(run_history()[[1]]$stage, "deterministic_baseline")
+    expect_equal(session_run_id(run_history()[[1]]), 1L)
+  })
 })
 
 test_that("Compare view exposes run cards, baseline deltas, and interpretation capture", {

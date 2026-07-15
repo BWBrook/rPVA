@@ -1,5 +1,7 @@
 library(shiny)
 
+source("session_helpers.R", local = TRUE)
+
 catalog <- rPVA::teaching_stage_catalog()
 implemented <- catalog[catalog$implemented, , drop = FALSE]
 deferred <- catalog[!catalog$implemented, , drop = FALSE]
@@ -26,14 +28,14 @@ stage_prompts <- c(
   extinction_vortex = "Use this as a warning that mechanisms can reinforce each other."
 )
 stage_missions <- c(
-  deterministic_baseline = "Mission 1: Baseline compass",
-  carrying_capacity = "Mission 2: Island ceiling",
-  demographic_stochasticity = "Mission 3: Individual chance",
-  environmental_stochasticity = "Mission 4: Shared bad years",
-  genetic_stochasticity = "Mission 5: Small-population pressure",
-  catastrophe = "Mission 6: Rare bad years",
-  intervention = "Mission 7a: Rescue attempt",
-  extinction_vortex = "Mission 7b: Vortex comparison"
+  deterministic_baseline = "Core 1: Baseline compass",
+  carrying_capacity = "Core 2: Island ceiling",
+  demographic_stochasticity = "Core 3: Individual chance",
+  environmental_stochasticity = "Core 4: Shared bad years",
+  intervention = "Core 5: Rescue attempt",
+  genetic_stochasticity = "Explore: Small-population pressure",
+  catastrophe = "Explore: Rare bad years",
+  extinction_vortex = "Explore: Vortex comparison"
 )
 stage_mission_guidance <- c(
   deterministic_baseline = "Use this stage only as a recovery run after resetting comparison.",
@@ -447,40 +449,55 @@ landing_card_ui <- function(image, alt, eyebrow, title, body, action = NULL, ext
 }
 
 mission_rail_ui <- function(current_stage, completed_stages = character()) {
+  group_ui <- function(title, stages, group_class) {
+    group_title <- if (identical(title, "Core")) {
+      span(class = "mission-group-title", "Core")
+    } else {
+      span(class = "mission-group-title", "Explore Further")
+    }
+    div(
+      class = paste("mission-group", group_class),
+      group_title,
+      lapply(seq_along(stages), function(index) {
+        stage <- stages[[index]]
+        complete <- stage %in% completed_stages
+        step_class <- paste(c(
+          "mission-step",
+          if (identical(stage, current_stage)) "is-current",
+          if (complete) "is-complete"
+        ), collapse = " ")
+        status <- if (complete) "Complete" else if (identical(stage, current_stage)) "Current" else "Available"
+
+        actionLink(paste0("mission_", stage),
+          label = tagList(
+            span(class = "mission-step-index", if (group_class == "is-core") index else "+"),
+            span(class = "mission-step-label", stage_missions[[stage]]),
+            span(class = "mission-step-status", status)
+          ),
+          class = step_class,
+          `aria-current` = if (identical(stage, current_stage)) "step" else NULL
+        )
+      })
+    )
+  }
+
   div(
     class = "mission-rail",
-    lapply(seq_len(nrow(implemented)), function(i) {
-      stage <- implemented$stage[[i]]
-      step_class <- paste(c(
-        "mission-step",
-        if (identical(stage, current_stage)) "is-current",
-        if (stage %in% completed_stages) "is-complete"
-      ), collapse = " ")
-
-      div(
-        class = step_class,
-        span(class = "mission-step-index", i),
-        span(class = "mission-step-label", stage_missions[[stage]])
-      )
-    })
+    group_ui("Core", practical1_stage_groups$core, "is-core"),
+    group_ui("Explore Further", practical1_stage_groups$extension, "is-extension")
   )
 }
 
-next_mission_stage <- function(stage) {
-  current <- match(stage, implemented$stage)
+adjacent_mission_stage <- function(stage, offset) {
+  current <- match(stage, practical1_mission_order)
   if (is.na(current)) {
     return(default_stage)
   }
-  implemented$stage[[min(current + 1, nrow(implemented))]]
+  practical1_mission_order[[max(1L, min(length(practical1_mission_order), current + offset))]]
 }
 
-previous_mission_stage <- function(stage) {
-  current <- match(stage, implemented$stage)
-  if (is.na(current)) {
-    return(default_stage)
-  }
-  implemented$stage[[max(current - 1, 1)]]
-}
+next_mission_stage <- function(stage) adjacent_mission_stage(stage, 1L)
+previous_mission_stage <- function(stage) adjacent_mission_stage(stage, -1L)
 
 slug_text <- function(value) {
   slug <- gsub("[^a-z0-9]+", "-", tolower(value))
@@ -745,7 +762,6 @@ ui <- navbarPage(
           p(class = "mission-path", "Work through the mission path by changing one visible control at a time, then compare."),
           actionButton("show_intro", label = tagList(icon("circle-info"), "Introduction"), class = "btn-default btn-sm"),
           uiOutput("mission_rail"),
-          selectInput("stage", "Teaching stage", choices = stage_choices, selected = default_stage),
           uiOutput("stage_text"),
           uiOutput("stage_controls"),
           checkboxInput("show_advanced_controls", "Show advanced risk controls", value = FALSE),
@@ -753,7 +769,7 @@ ui <- navbarPage(
           div(
             class = "mission-actions",
             actionButton("previous_mission", label = tagList(icon("arrow-left"), "Previous mission"), class = "btn-default"),
-            actionButton("run_stage", label = tagList(icon("play"), "Run stage"), class = "btn-primary"),
+            actionButton("run_stage", label = tagList(icon("play"), "Run mission"), class = "btn-primary"),
             actionButton("next_mission", label = tagList(icon("arrow-right"), "Next mission"), class = "btn-default")
           ),
           div(class = "prompt", textOutput("stage_prompt"))
@@ -890,16 +906,19 @@ ui <- navbarPage(
   )
 )
 
-server <- function(input, output, session) {
-  baseline <- run_stage(default_stage)
-  baseline_run <- reactiveVal(baseline)
-  current_run <- reactiveVal(baseline)
-  run_history <- reactiveVal(list(baseline))
+make_practical1_server <- function(execute_stage = run_stage) {
+  function(input, output, session) {
+  session_run_id <- get("session_run_id", envir = parent.env(environment()))
+  completed_stage_ids <- get("completed_stage_ids", envir = parent.env(environment()))
+  reference_baseline <- run_stage(default_stage)
+  baseline_run <- reactiveVal(reference_baseline)
+  current_run <- reactiveVal(reference_baseline)
+  run_history <- reactiveVal(list())
+  next_run_id <- reactiveVal(1L)
+  baseline_started <- reactiveVal(FALSE)
+  selected_stage <- reactiveVal(default_stage)
   selected_stage_spec <- reactive({
-    stage <- input$stage
-    if (is.null(stage) || !nzchar(stage)) {
-      stage <- default_stage
-    }
+    stage <- selected_stage()
     rPVA::build_teaching_spec(
       stage,
       controls = stage_control_values(stage, input, advanced = isTRUE(input$show_advanced_controls))
@@ -910,12 +929,23 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$run_baseline, {
-    baseline <- run_stage(default_stage)
+    baseline <- attach_session_run_id(execute_stage(default_stage), 1L)
     baseline_run(baseline)
     current_run(baseline)
     run_history(list(baseline))
+    next_run_id(2L)
+    baseline_started(TRUE)
+    selected_stage(default_stage)
     updateNavbarPage(session, "section", selected = "Concept Lab")
-    updateSelectInput(session, "stage", selected = default_stage)
+  })
+
+  lapply(practical1_mission_order, function(stage) {
+    local({
+      stage_id <- stage
+      observeEvent(input[[paste0("mission_", stage_id)]], {
+        selected_stage(stage_id)
+      }, ignoreInit = TRUE)
+    })
   })
 
   observeEvent(input$show_intro, {
@@ -951,33 +981,44 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$run_stage, {
-    stage <- input$stage
+    stage <- selected_stage()
     withProgress(message = "Running mission", value = 0.5, {
-      run <- run_stage(stage, stage_control_values(stage, input, advanced = isTRUE(input$show_advanced_controls)))
+      run <- attach_session_run_id(
+        execute_stage(stage, stage_control_values(stage, input, advanced = isTRUE(input$show_advanced_controls))),
+        next_run_id()
+      )
       current_run(run)
       run_history(c(run_history(), list(run)))
+      next_run_id(next_run_id() + 1L)
     })
   })
 
   observeEvent(input$next_mission, {
-    updateSelectInput(session, "stage", selected = next_mission_stage(input$stage))
+    selected_stage(next_mission_stage(selected_stage()))
   })
 
   observeEvent(input$previous_mission, {
-    updateSelectInput(session, "stage", selected = previous_mission_stage(input$stage))
+    selected_stage(previous_mission_stage(selected_stage()))
   })
 
   observeEvent(input$clear_runs, {
-    baseline <- run_stage(default_stage)
-    baseline_run(baseline)
-    current_run(baseline)
-    run_history(list(baseline))
-    updateSelectInput(session, "stage", selected = default_stage)
+    baseline_run(reference_baseline)
+    current_run(reference_baseline)
+    run_history(list())
+    next_run_id(1L)
+    baseline_started(FALSE)
+    selected_stage(default_stage)
   })
 
   output$stage_text <- renderUI({
-    stage <- input$stage
+    stage <- selected_stage()
     info <- implemented[implemented$stage == stage, , drop = FALSE]
+    next_core <- next_incomplete_core_stage(completed_stage_ids(run_history(), baseline_started()))
+    next_core_text <- if (is.na(next_core)) {
+      "Core route complete. Continue to Compare, or explore another mission."
+    } else {
+      paste("Next Core action:", stage_missions[[next_core]])
+    }
     tagList(
       div(class = "stage-badge", info$label[[1]]),
       div(
@@ -986,36 +1027,31 @@ server <- function(input, output, session) {
         p(strong(stage_questions[[stage]])),
         p(class = "mission-guidance", stage_mission_guidance[[stage]])
       ),
+      p(class = "mission-next-action", next_core_text),
       p(class = "muted", info$concept[[1]])
     )
   })
 
   output$stage_controls <- renderUI({
-    stage_control_ui(input$stage)
+    stage_control_ui(selected_stage())
   })
 
   output$advanced_stage_controls <- renderUI({
     if (!isTRUE(input$show_advanced_controls)) {
       return(NULL)
     }
-    stage <- input$stage
-    if (is.null(stage) || !nzchar(stage)) {
-      stage <- default_stage
-    }
+    stage <- selected_stage()
     advanced_stage_controls(stage)
   })
 
   output$mission_rail <- renderUI({
-    stage <- input$stage
-    if (is.null(stage) || !nzchar(stage)) {
-      stage <- default_stage
-    }
-    completed <- vapply(run_history(), `[[`, character(1), "stage")
+    stage <- selected_stage()
+    completed <- completed_stage_ids(run_history(), baseline_started())
     mission_rail_ui(stage, completed)
   })
 
   output$stage_prompt <- renderText({
-    stage_prompts[[input$stage]]
+    stage_prompts[[selected_stage()]]
   })
 
   output$start_summary <- renderUI({
@@ -1117,6 +1153,8 @@ server <- function(input, output, session) {
       writeLines(evidence_export()$notes, file, useBytes = TRUE)
     }
   )
+  }
 }
 
+server <- make_practical1_server()
 shinyApp(ui, server)
