@@ -3,8 +3,26 @@ const path = require("node:path");
 const { chromium } = require("@playwright/test");
 
 const baseURL = process.env.PRACTICAL1_URL || "http://127.0.0.1:3921";
-const evidenceDir = process.env.PRACTICAL1_EVIDENCE_DIR || "/tmp/rpva-practical1-final-polish";
-fs.mkdirSync(evidenceDir, { recursive: true });
+
+function prepareEvidenceDirectory(directory) {
+  if (typeof directory !== "string" || directory.trim() === "") {
+    throw new Error("PRACTICAL1_EVIDENCE_DIR must be a non-empty path");
+  }
+  const resolved = path.resolve(directory);
+  const root = path.parse(resolved).root;
+  if (resolved === root || resolved === path.resolve(process.cwd())) {
+    throw new Error(`Refusing to remove unsafe evidence directory: ${resolved}`);
+  }
+  fs.rmSync(resolved, { recursive: true, force: true });
+  fs.mkdirSync(resolved, { recursive: true });
+  return resolved;
+}
+
+const evidenceDir = prepareEvidenceDirectory(
+  process.env.PRACTICAL1_EVIDENCE_DIR === undefined
+    ? "/tmp/rpva-practical1-final-polish"
+    : process.env.PRACTICAL1_EVIDENCE_DIR
+);
 
 const result = {
   baseURL,
@@ -31,13 +49,17 @@ const accessibleNames = {
   plotHelp: "Open Practical 1 plot help"
 };
 
-// These display labels are retained here so the contract names the complete Core and extension routes.
-const routeLabels = [
+// These labels are the routes/actions that this acceptance flow must actually visit.
+const expectedRouteLabels = [
+  "Core 1: Baseline compass",
   "Core 2: Island ceiling",
+  "Core 3: Individual chance",
+  "Core 4: Shared bad years",
   "Core 5: Rescue attempt",
   "Explore: Small-population pressure",
   "Explore: Rare bad years",
   "Explore: Vortex comparison",
+  "Introduction",
   "Explore PVA",
   "Explore mission",
   "Explore evidence",
@@ -46,8 +68,19 @@ const routeLabels = [
   "Read diagnostics",
   "Read plots",
   "Comparison CSV",
-  "Evidence notes"
+  "Evidence notes",
+  "Risk PNG"
 ];
+
+const visitedRouteLabels = new Set();
+const allowedRiskStages = new Set([
+  "carrying_capacity",
+  "demographic_stochasticity",
+  "environmental_stochasticity",
+  "genetic_stochasticity",
+  "catastrophe"
+]);
+const allowedActionStages = new Set(["intervention", "extinction_vortex"]);
 
 let browser;
 
@@ -102,6 +135,130 @@ function parseCsv(text) {
   return rows;
 }
 
+function parseMarkdownTable(notesText, heading) {
+  const lines = notesText.split(/\r?\n/);
+  const headingIndex = lines.indexOf(heading);
+  if (headingIndex < 0) {
+    throw new Error(`Missing Markdown table heading: ${heading}`);
+  }
+  const tableLines = [];
+  for (let index = headingIndex + 1; index < lines.length; index += 1) {
+    if (lines[index] === "" || lines[index].startsWith("## ")) break;
+    tableLines.push(lines[index]);
+  }
+  if (tableLines.length < 2) {
+    throw new Error(`Markdown table is empty: ${heading}`);
+  }
+  return tableLines.map((line) => line.split("\t"));
+}
+
+function columnValues(rows, headers, name) {
+  const index = headers.indexOf(name);
+  if (index < 0) throw new Error(`Missing export column: ${name}`);
+  return rows.map((row) => row[index]);
+}
+
+function sameSequence(left, right) {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
+function sameSet(left, right) {
+  const normalise = (values) => [...new Set(values)].sort();
+  return sameSequence(normalise(left), normalise(right));
+}
+
+function markVisited(label) {
+  visitedRouteLabels.add(label);
+}
+
+function assertExportConsistency(csvRows, notesText) {
+  const csvHeaders = csvRows[0] || [];
+  const csvData = csvRows.slice(1);
+  const comparisonTable = parseMarkdownTable(notesText, "## Comparison table");
+  const settingsTable = parseMarkdownTable(notesText, "## Settings and provenance");
+  const comparisonHeaders = comparisonTable[0];
+  const comparisonData = comparisonTable.slice(1);
+  const settingsHeaders = settingsTable[0];
+  const settingsData = settingsTable.slice(1);
+  const csvRunIds = columnValues(csvData, csvHeaders, "run_id");
+  const markdownRunIds = columnValues(comparisonData, comparisonHeaders, "run_id");
+  const csvStages = columnValues(csvData, csvHeaders, "stage");
+  const markdownStages = columnValues(comparisonData, comparisonHeaders, "stage");
+  const csvLabels = columnValues(csvData, csvHeaders, "label");
+  const markdownLabels = columnValues(comparisonData, comparisonHeaders, "label");
+
+  const selectedCount = notesText.match(/^Selected evidence: (\d+) runs from /m);
+  record(
+    "Markdown selected evidence count matches CSV",
+    Boolean(selectedCount) && Number(selectedCount[1]) === csvData.length,
+    `markdown=${selectedCount ? selectedCount[1] : "missing"}; csv=${csvData.length}`
+  );
+  record(
+    "CSV and Markdown selected run counts match",
+    csvData.length === comparisonData.length,
+    `csv=${csvData.length}; markdown=${comparisonData.length}`
+  );
+  record(
+    "CSV and Markdown ordered run IDs match",
+    sameSequence(csvRunIds, markdownRunIds),
+    JSON.stringify({ csv: csvRunIds, markdown: markdownRunIds })
+  );
+  record(
+    "CSV and Markdown selected stages match",
+    sameSequence(csvStages, markdownStages),
+    JSON.stringify({ csv: csvStages, markdown: markdownStages })
+  );
+  record(
+    "CSV and Markdown selected labels match",
+    sameSequence(csvLabels, markdownLabels),
+    JSON.stringify({ csv: csvLabels, markdown: markdownLabels })
+  );
+
+  const sharedFields = csvHeaders.filter((field) => comparisonHeaders.includes(field));
+  const sharedFieldsMatch =
+    sharedFields.length === csvHeaders.length &&
+    comparisonHeaders.length === csvHeaders.length &&
+    csvData.length === comparisonData.length &&
+    sharedFields.every((field) => {
+      const csvIndex = csvHeaders.indexOf(field);
+      const markdownIndex = comparisonHeaders.indexOf(field);
+      return csvData.every((row, rowIndex) => row[csvIndex] === comparisonData[rowIndex][markdownIndex]);
+    });
+  record(
+    "CSV and Markdown shared comparison fields match",
+    sharedFieldsMatch,
+    JSON.stringify({ csvHeaders, markdownHeaders: comparisonHeaders, sharedFields })
+  );
+
+  const settingsRunIds = columnValues(settingsData, settingsHeaders, "run_id");
+  record(
+    "Markdown settings rows refer to exactly the selected run-ID set",
+    sameSet(settingsRunIds, csvRunIds),
+    JSON.stringify({ selected: csvRunIds, settings: [...new Set(settingsRunIds)] })
+  );
+  record(
+    "Markdown settings has at least one row per selected run",
+    csvRunIds.every((runId) => settingsRunIds.includes(runId)),
+    JSON.stringify({ selected: csvRunIds, settings: [...new Set(settingsRunIds)] })
+  );
+
+  record(
+    "selected evidence has exactly one deterministic baseline",
+    csvStages.filter((stage) => stage === "deterministic_baseline").length === 1,
+    JSON.stringify(csvStages)
+  );
+  record(
+    "selected evidence has exactly one allowed risk stage",
+    csvStages.filter((stage) => allowedRiskStages.has(stage)).length === 1,
+    JSON.stringify(csvStages)
+  );
+  record(
+    "selected evidence has exactly one allowed intervention or vortex stage",
+    csvStages.filter((stage) => allowedActionStages.has(stage)).length === 1,
+    JSON.stringify(csvStages)
+  );
+}
+
 function artifactPath(filename) {
   return path.join(evidenceDir, filename);
 }
@@ -125,10 +282,17 @@ async function saveDownload(download, kind) {
 }
 
 async function assertNoOverlap(page, selectors, viewportLabel) {
+  const missingSelectors = await page.evaluate((items) =>
+    items.filter((selector) => !document.querySelector(selector)), selectors
+  );
+  record(
+    `required overlap selectors exist at ${viewportLabel}`,
+    missingSelectors.length === 0,
+    JSON.stringify(missingSelectors)
+  );
   const overlaps = await page.evaluate((items) => {
     const boxes = items.map((selector) => {
       const element = document.querySelector(selector);
-      if (!element) return { selector, missing: true };
       const rect = element.getBoundingClientRect();
       return {
         selector,
@@ -141,7 +305,7 @@ async function assertNoOverlap(page, selectors, viewportLabel) {
       };
     });
     return boxes.filter((box, index) => boxes.slice(index + 1).some((other) =>
-      !box.missing && !other.missing && box.left < other.right && box.right > other.left &&
+      box.left < other.right && box.right > other.left &&
       box.top < other.bottom && box.bottom > other.top
     ));
   }, selectors);
@@ -209,6 +373,7 @@ async function runMission(page, mission) {
     throw new Error(`Mission did not complete: ${mission}; before=${before}; after=${after}`);
   }
   await page.locator(".mission-complete").getByText(mission, { exact: false }).waitFor();
+  markVisited(mission);
 }
 
 async function closeModal(page) {
@@ -254,12 +419,17 @@ async function main() {
   );
   await page.keyboard.press("Enter");
   await page.locator(".modal").waitFor();
+  markVisited("Explore PVA");
   await page.keyboard.press("Escape");
   if (await page.locator(".modal").isVisible()) {
     await closeModal(page);
   }
-  for (const name of [accessibleNames.exploreMission, accessibleNames.exploreEvidence]) {
-    await page.getByRole("button", { name }).click();
+  for (const action of [
+    { name: accessibleNames.exploreMission, label: "Explore mission" },
+    { name: accessibleNames.exploreEvidence, label: "Explore evidence" }
+  ]) {
+    await page.getByRole("button", { name: action.name }).click();
+    markVisited(action.label);
     await closeModal(page);
   }
 
@@ -272,6 +442,7 @@ async function main() {
   await tabLink(page, "Start").click();
   await page.getByRole("button", { name: "Start baseline" }).click();
   await page.locator("#stage_text").getByText("Core 1: Baseline compass", { exact: false }).waitFor();
+  markVisited("Core 1: Baseline compass");
 
   for (const mission of [
     "Core 2: Island ceiling",
@@ -283,13 +454,14 @@ async function main() {
   }
 
   for (const action of [
-    { name: "Introduction", tab: "Concept Lab" },
-    { name: accessibleNames.controlHelp },
-    { name: accessibleNames.outputHelp },
-    { name: accessibleNames.diagnosticHelp },
-    { name: accessibleNames.plotHelp }
+    { name: "Introduction", label: "Introduction", tab: "Concept Lab" },
+    { name: accessibleNames.controlHelp, label: "Control help" },
+    { name: accessibleNames.outputHelp, label: "Read outputs" },
+    { name: accessibleNames.diagnosticHelp, label: "Read diagnostics" },
+    { name: accessibleNames.plotHelp, label: "Read plots" }
   ]) {
     await page.getByRole("button", { name: action.name }).click();
+    markVisited(action.label);
     if (action.tab) {
       await tabLink(page, action.tab).click();
     } else {
@@ -333,6 +505,9 @@ async function main() {
   record("notes retain interpretation", notesText.includes(interpretation));
   const selectedStages = rows.map((row) => row[headers.indexOf("stage")]);
   record("notes and CSV name the same stages", selectedStages.every((stage) => notesText.includes(stage)));
+  assertExportConsistency(csvRows, notesText);
+  markVisited("Comparison CSV");
+  markVisited("Evidence notes");
   await page.screenshot({ path: artifactPath("minimum-success-1366x768.png"), fullPage: true });
   recordArtifact(artifactPath("minimum-success-1366x768.png"), "screenshot");
   await assertNoOverlap(page, [".compare-history-panel", ".compare-evidence-panel"], "1366x768");
@@ -357,6 +532,7 @@ async function main() {
   const plotPromise = page.waitForEvent("download");
   await page.getByRole("link", { name: "Risk PNG" }).click();
   await saveDownload(await plotPromise, "PNG");
+  markVisited("Risk PNG");
 
   await tabLink(page, "Compare").click();
   await page.locator(".session-run-row").nth(8).waitFor();
@@ -389,7 +565,13 @@ async function main() {
   await page.locator(".modal").waitFor({ state: "hidden" });
   record("reset confirmation cancel preserves session history", await page.locator(".session-run-row").count() === 9);
 
-  record("route labels are covered", routeLabels.length === 14);
+  const missingRouteLabels = expectedRouteLabels.filter((label) => !visitedRouteLabels.has(label));
+  const unexpectedRouteLabels = [...visitedRouteLabels].filter((label) => !expectedRouteLabels.includes(label));
+  record(
+    "visited contextual and mission labels match expected set",
+    missingRouteLabels.length === 0 && unexpectedRouteLabels.length === 0,
+    JSON.stringify({ expected: expectedRouteLabels, visited: [...visitedRouteLabels], missing: missingRouteLabels, unexpected: unexpectedRouteLabels })
+  );
   record("no console errors", result.consoleErrors.length === 0, JSON.stringify(result.consoleErrors));
   record("no console warnings", result.consoleWarnings.length === 0, JSON.stringify(result.consoleWarnings));
   record("no page errors", result.pageErrors.length === 0, JSON.stringify(result.pageErrors));
