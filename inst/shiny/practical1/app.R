@@ -547,7 +547,19 @@ run_changed_settings_label <- function(run) {
   paste(labels, collapse = "; ")
 }
 
+comparison_empty_state_ui <- function() {
+  div(
+    class = "compare-empty-state",
+    h4("No comparison runs yet"),
+    p("Start baseline to begin comparing runs.")
+  )
+}
+
 run_cards_ui <- function(runs) {
+  if (!length(runs)) {
+    return(comparison_empty_state_ui())
+  }
+
   comparison <- rPVA::compare_teaching_runs(runs, include_deltas = TRUE)
 
   div(
@@ -1129,7 +1141,11 @@ make_practical1_server <- function(execute_stage = run_stage) {
   )
 
   output$comparison_table <- renderTable({
-    rPVA::compare_teaching_runs(run_history(), include_deltas = TRUE)
+    runs <- run_history()
+    if (!length(runs)) {
+      return(NULL)
+    }
+    rPVA::compare_teaching_runs(runs, include_deltas = TRUE)
   }, striped = TRUE, bordered = TRUE, spacing = "s")
 
   output$run_cards <- renderUI({

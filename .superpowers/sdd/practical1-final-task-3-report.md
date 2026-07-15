@@ -29,7 +29,9 @@ exact message.
   initial history, and monotonic session run IDs.
 - Made Start baseline create session run 1 and mark baseline progress only after
   the action succeeds. Kept retained controls, help, diagnostics, plots,
-  downloads, teaching text, defaults, and seed 42 unchanged.
+  downloads, substantive teaching text, defaults, and seed 42 unchanged; the
+  intentional mission-label updates and `Run mission` label change are excluded
+  from that statement.
 - Updated only the stale Task 3 selector/initial-state tests and added the
   specified `testServer()` baseline contract.
 

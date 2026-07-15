@@ -335,6 +335,21 @@ test_that("Practical 1 baseline progress begins only after Start baseline", {
   })
 })
 
+test_that("Compare outputs are safe before baseline", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  old <- setwd(app_dir)
+  on.exit(setwd(old), add = TRUE)
+  env <- new.env(parent = globalenv())
+  sys.source("app.R", envir = env)
+
+  shiny::testServer(env$make_practical1_server(), {
+    expect_length(run_history(), 0L)
+    expect_no_error(comparison_table <- output$comparison_table)
+    expect_no_error(run_cards <- output$run_cards)
+    expect_match(paste(as.character(run_cards), collapse = "\n"), "No comparison runs yet", fixed = TRUE)
+  })
+})
+
 test_that("Compare view exposes run cards, baseline deltas, and interpretation capture", {
   app_dir <- rPVA:::practical1_shiny_app_dir()
   app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
@@ -343,7 +358,7 @@ test_that("Compare view exposes run cards, baseline deltas, and interpretation c
   expect_true(grepl("run_cards_ui <- function(runs)", app_text, fixed = TRUE))
   expect_true(grepl('uiOutput("run_cards")', app_text, fixed = TRUE))
   expect_true(grepl("output$run_cards <- renderUI", app_text, fixed = TRUE))
-  expect_true(grepl("compare_teaching_runs(run_history(), include_deltas = TRUE)", app_text, fixed = TRUE))
+  expect_true(grepl("compare_teaching_runs(runs, include_deltas = TRUE)", app_text, fixed = TRUE))
   expect_true(grepl('textAreaInput("interpretation_note"', app_text, fixed = TRUE))
   expect_true(grepl("interpretation = input$interpretation_note", app_text, fixed = TRUE))
   expect_true(grepl("Delta PE", app_text, fixed = TRUE))
