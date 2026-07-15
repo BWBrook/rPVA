@@ -188,10 +188,19 @@ compare_teaching_runs <- function(runs, include_deltas = FALSE) {
 build_teaching_evidence_export <- function(runs,
                                            generated_at = Sys.time(),
                                            seed = 42,
-                                           interpretation = NULL) {
+                                           interpretation = NULL,
+                                           session_run_count = length(runs)) {
+  run_ids <- vapply(seq_along(runs), function(i) {
+    id <- runs[[i]]$session_run_id
+    if (is.null(id)) as.integer(i) else as.integer(id)
+  }, integer(1))
+  if (anyNA(run_ids) || anyDuplicated(run_ids)) {
+    stop("Evidence run IDs must be non-missing and unique.", call. = FALSE)
+  }
+
   comparison <- compare_teaching_runs(runs, include_deltas = TRUE)
   comparison <- data.frame(
-    run_id = seq_len(nrow(comparison)),
+    run_id = run_ids,
     comparison,
     row.names = NULL,
     stringsAsFactors = FALSE
@@ -213,7 +222,7 @@ build_teaching_evidence_export <- function(runs,
       }
 
       data.frame(
-        run_id = rep(i, nrow(run_settings)),
+        run_id = rep(run_ids[[i]], nrow(run_settings)),
         stage = run_settings$stage,
         label = run_settings$label,
         setting = run_settings$setting,
@@ -227,7 +236,14 @@ build_teaching_evidence_export <- function(runs,
   list(
     comparison = comparison,
     settings = settings,
-    notes = teaching_evidence_notes(comparison, settings, generated_at, seed, interpretation)
+    notes = teaching_evidence_notes(
+      comparison,
+      settings,
+      generated_at,
+      seed,
+      interpretation,
+      session_run_count
+    )
   )
 }
 
@@ -599,14 +615,27 @@ collapse_setting_value <- function(value) {
   as.character(value)
 }
 
-teaching_evidence_notes <- function(comparison, settings, generated_at, seed, interpretation = NULL) {
+teaching_evidence_notes <- function(comparison,
+                                    settings,
+                                    generated_at,
+                                    seed,
+                                    interpretation = NULL,
+                                    session_run_count = nrow(comparison)) {
   seed_label <- if (is.null(seed)) "not fixed" else as.character(seed)
+  session_run_count <- as.integer(session_run_count)
+  if (length(session_run_count) != 1L || is.na(session_run_count) || session_run_count < nrow(comparison)) {
+    stop("session_run_count must be at least the number of selected evidence runs.", call. = FALSE)
+  }
 
   notes <- c(
     "# Practical 1 PVA Evidence Notes",
     "",
     paste0("Generated: ", format_teaching_export_time(generated_at)),
-    paste0("Runs included: ", nrow(comparison)),
+    paste0(
+      "Selected evidence: ", nrow(comparison),
+      " runs from ", session_run_count,
+      " successful session runs"
+    ),
     paste0("Fixed teaching seed: ", seed_label),
     "",
     "Use this export with the comparison CSV from the same browser session.",

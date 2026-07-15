@@ -227,6 +227,7 @@ test_that("teaching evidence export keeps comparison, settings, and interpretati
   expect_false(any(grepl("UTC UTC", export$notes, fixed = TRUE)))
   expect_true(any(grepl("evidence for your own interpretation", export$notes, fixed = TRUE)))
   expect_true(any(grepl("Fixed teaching seed: 42", export$notes, fixed = TRUE)))
+  expect_true(any(grepl("Selected evidence: 2 runs from 2 successful session runs", export$notes, fixed = TRUE)))
   expect_false(any(grepl("raw trajectory", export$notes, fixed = TRUE)))
   expect_equal(after, before)
   expect_no_local_artifacts()
@@ -267,4 +268,35 @@ test_that("teaching evidence export can include student interpretation notes", {
 
   expect_true(any(grepl("## Student interpretation note", export$notes, fixed = TRUE)))
   expect_true(any(grepl("I changed habitat ceiling", export$notes, fixed = TRUE)))
+})
+
+test_that("teaching evidence notes distinguish selected runs from full session history", {
+  det <- run_teaching_pva("deterministic_baseline", keep_traj = FALSE, seed = 42)
+  risk <- run_teaching_pva(
+    "environmental_stochasticity",
+    controls = list(env_sd = 0.25, K = 35),
+    keep_traj = FALSE,
+    seed = 42
+  )
+  action <- run_teaching_pva("intervention", keep_traj = FALSE, seed = 42)
+  det$session_run_id <- 1L
+  risk$session_run_id <- 6L
+  action$session_run_id <- 8L
+
+  export <- build_teaching_evidence_export(
+    list(det, risk, action),
+    generated_at = as.POSIXct("2026-07-15 00:00:00", tz = "UTC"),
+    interpretation = "Risk increased under bad years; intervention improved abundance, with uncertainty remaining.",
+    session_run_count = 8L
+  )
+
+  expect_equal(nrow(export$comparison), 3L)
+  expect_equal(export$comparison$run_id, c(1L, 6L, 8L))
+  expect_equal(sort(unique(export$settings$run_id)), c(1L, 6L, 8L))
+  expect_true(any(grepl(
+    "Selected evidence: 3 runs from 8 successful session runs",
+    export$notes,
+    fixed = TRUE
+  )))
+  expect_true(any(grepl("## Student interpretation note", export$notes, fixed = TRUE)))
 })
