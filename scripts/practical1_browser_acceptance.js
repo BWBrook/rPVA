@@ -9,6 +9,9 @@ function validateEvidenceDirectory(directory) {
   if (typeof directory !== "string" || directory.trim() === "") {
     throw new Error("PRACTICAL1_EVIDENCE_DIR must be a non-empty path");
   }
+  if (!path.isAbsolute(directory)) {
+    throw new Error(`Evidence directory must be an absolute path: ${directory}`);
+  }
 
   const resolved = path.resolve(directory);
   const root = path.parse(resolved).root;
@@ -31,8 +34,13 @@ function validateEvidenceDirectory(directory) {
     throw new Error(`Evidence directory must be a direct ${evidenceDirectoryPrefix}* child of ${tmpRoot}: ${resolved}`);
   }
 
-  if (fs.existsSync(resolved)) {
-    const stat = fs.lstatSync(resolved);
+  let stat = null;
+  try {
+    stat = fs.lstatSync(resolved);
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+  if (stat) {
     if (stat.isSymbolicLink()) {
       throw new Error(`Refusing to remove symlink evidence directory: ${resolved}`);
     }
@@ -216,6 +224,15 @@ function assertExportConsistency(csvRows, notesText, options = {}) {
   const markdownStages = columnValues(comparisonData, comparisonHeaders, "stage");
   const csvLabels = columnValues(csvData, csvHeaders, "label");
   const markdownLabels = columnValues(comparisonData, comparisonHeaders, "label");
+  const renderedEvidence = options.renderedEvidence || [];
+  const renderedRunIds = renderedEvidence.map((evidence) => String(evidence.runId));
+  const renderedLabels = renderedEvidence.map((evidence) => evidence.label);
+  const renderedStages = renderedEvidence.map((evidence) => evidence.visibleStage);
+  const stageMatchesVisibleCategory = (stage, category) => (
+    (category === "Baseline" && stage === "deterministic_baseline") ||
+    (category === "Risk mechanism" && allowedRiskStages.has(stage)) ||
+    (category === "Intervention or vortex" && allowedActionStages.has(stage))
+  );
 
   const selectedCount = notesText.match(/^Selected evidence: (\d+) runs from (\d+) successful session runs$/m);
   record(
@@ -249,6 +266,48 @@ function assertExportConsistency(csvRows, notesText, options = {}) {
     "CSV and Markdown selected labels match",
     sameSequence(csvLabels, markdownLabels),
     JSON.stringify({ csv: csvLabels, markdown: markdownLabels })
+  );
+  record(
+    "rendered selected evidence exposes complete IDs, stages, labels, and settings",
+    renderedEvidence.length === csvData.length && renderedEvidence.every((evidence) => (
+      Number.isInteger(evidence.runId) &&
+      evidence.visibleStage !== "" &&
+      evidence.label !== "" &&
+      evidence.settings !== "" &&
+      evidence.historyLabel === evidence.label &&
+      evidence.historySettings === evidence.settings
+    )),
+    JSON.stringify(renderedEvidence)
+  );
+  record(
+    "CSV run IDs match rendered selected evidence",
+    sameSequence(csvRunIds, renderedRunIds),
+    JSON.stringify({ csv: csvRunIds, rendered: renderedRunIds })
+  );
+  record(
+    "Markdown run IDs match rendered selected evidence",
+    sameSequence(markdownRunIds, renderedRunIds),
+    JSON.stringify({ markdown: markdownRunIds, rendered: renderedRunIds })
+  );
+  record(
+    "CSV labels match rendered selected evidence",
+    sameSequence(csvLabels, renderedLabels),
+    JSON.stringify({ csv: csvLabels, rendered: renderedLabels })
+  );
+  record(
+    "Markdown labels match rendered selected evidence",
+    sameSequence(markdownLabels, renderedLabels),
+    JSON.stringify({ markdown: markdownLabels, rendered: renderedLabels })
+  );
+  record(
+    "CSV stages match rendered visible stage categories",
+    csvStages.length === renderedStages.length && csvStages.every((stage, index) => stageMatchesVisibleCategory(stage, renderedStages[index])),
+    JSON.stringify({ csv: csvStages, rendered: renderedStages })
+  );
+  record(
+    "Markdown stages match rendered visible stage categories",
+    markdownStages.length === renderedStages.length && markdownStages.every((stage, index) => stageMatchesVisibleCategory(stage, renderedStages[index])),
+    JSON.stringify({ markdown: markdownStages, rendered: renderedStages })
   );
 
   if (options.expectedRunIds) {
@@ -292,6 +351,31 @@ function assertExportConsistency(csvRows, notesText, options = {}) {
     "Markdown settings has at least one row per selected run",
     csvRunIds.every((runId) => settingsRunIds.includes(runId)),
     JSON.stringify({ selected: csvRunIds, settings: [...new Set(settingsRunIds)] })
+  );
+  const settingsByRun = new Map();
+  settingsData.forEach((row) => {
+    const runId = row[settingsHeaders.indexOf("run_id")];
+    if (!settingsByRun.has(runId)) settingsByRun.set(runId, []);
+    settingsByRun.get(runId).push(row);
+  });
+  const renderedSettingsMatch = renderedEvidence.every((evidence) => {
+    const rows = settingsByRun.get(String(evidence.runId)) || [];
+    const rowLabelIndex = settingsHeaders.indexOf("label");
+    const settingIndex = settingsHeaders.indexOf("setting");
+    const valueIndex = settingsHeaders.indexOf("value");
+    const fragments = evidence.settings === "Reference settings"
+      ? []
+      : evidence.settings.split("; ").map((fragment) => fragment.split(" = "));
+    return rows.length > 0 &&
+      rows.every((row) => row[rowLabelIndex] === evidence.label) &&
+      fragments.every(([setting, value]) => rows.some((row) => (
+        row[settingIndex] === `control_${setting}` && row[valueIndex] === value
+      )));
+  });
+  record(
+    "Markdown settings and provenance substantively match rendered cards",
+    renderedSettingsMatch,
+    JSON.stringify({ rendered: renderedEvidence, settings: settingsData })
   );
 
   record(
@@ -377,6 +461,85 @@ async function assertNoHorizontalOverflow(page, viewportLabel) {
   );
 }
 
+async function assertConceptLabLayout(page, viewportLabel) {
+  const layout = await page.evaluate(() => {
+    const panelSelectors = [
+      ".lab-grid > .panel-block:first-child",
+      ".lab-grid > .output-region",
+      ".plot-region"
+    ];
+    const lineEvidence = (element) => {
+      const textNode = [...element.childNodes].find(
+        (node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim() !== ""
+      );
+      if (!textNode) return { lineCount: 0, maxCharactersOnLine: 0 };
+
+      const lines = new Map();
+      let offset = 0;
+      for (const character of [...textNode.textContent]) {
+        const end = offset + character.length;
+        if (/\S/.test(character)) {
+          const range = document.createRange();
+          range.setStart(textNode, offset);
+          range.setEnd(textNode, end);
+          const rect = range.getBoundingClientRect();
+          if (rect.width > 0 && rect.height > 0) {
+            const y = Math.round(rect.y);
+            lines.set(y, (lines.get(y) || 0) + 1);
+          }
+        }
+        offset = end;
+      }
+      const counts = [...lines.values()];
+      return {
+        lineCount: counts.length,
+        maxCharactersOnLine: counts.length ? Math.max(...counts) : 0
+      };
+    };
+
+    const labels = [...document.querySelectorAll(".mission-step-label")].map((element) => {
+      const rect = element.getBoundingClientRect();
+      const status = element.closest(".mission-step").querySelector(".mission-step-status");
+      const statusRect = status.getBoundingClientRect();
+      return {
+        text: element.textContent.trim(),
+        width: rect.width,
+        height: rect.height,
+        right: rect.right,
+        statusLeft: statusRect.left,
+        statusWidth: statusRect.width,
+        lineEvidence: lineEvidence(element)
+      };
+    });
+    const panels = panelSelectors.map((selector) => {
+      const rect = document.querySelector(selector).getBoundingClientRect();
+      return { selector, width: rect.width, height: rect.height };
+    });
+    return { labels, panels };
+  });
+  const minimumLabelWidth = 150;
+  record(
+    `Concept Lab panel geometry is non-zero at ${viewportLabel}`,
+    layout.panels.every((panel) => panel.width > 0 && panel.height > 0),
+    JSON.stringify(layout.panels)
+  );
+  record(
+    `mission labels have usable rendered width at ${viewportLabel}`,
+    layout.labels.length > 0 && layout.labels.every((label) => label.width >= minimumLabelWidth),
+    JSON.stringify({ minimumLabelWidth, labels: layout.labels })
+  );
+  record(
+    `mission labels preserve ordinary words at ${viewportLabel}`,
+    layout.labels.length > 0 && layout.labels.every((label) => label.lineEvidence.maxCharactersOnLine >= 4),
+    JSON.stringify(layout.labels)
+  );
+  record(
+    `mission statuses have usable rendered geometry at ${viewportLabel}`,
+    layout.labels.length > 0 && layout.labels.every((label) => label.statusWidth > 0 && label.right <= label.statusLeft + 1),
+    JSON.stringify(layout.labels)
+  );
+}
+
 async function renderedRunNumbers(page) {
   return page.locator(".session-run-row .run-number").evaluateAll((elements) => elements.map((element) => {
     const match = element.textContent.trim().match(/^Run\s+(\d+)$/);
@@ -412,6 +575,26 @@ async function renderedSelectedRunNumbers(page) {
   return page.locator(".run-card .run-card-kicker").evaluateAll((elements) => elements.map((element) => {
     const match = element.textContent.trim().match(/^Run\s+(\d+)$/);
     return match ? Number(match[1]) : NaN;
+  }));
+}
+
+async function renderedSelectedEvidence(page) {
+  return page.locator(".run-card").evaluateAll((cards) => cards.map((card) => {
+    const kicker = card.querySelector(".run-card-kicker").textContent.trim();
+    const idMatch = kicker.match(/^Run\s+(\d+)$/);
+    const runId = idMatch ? Number(idMatch[1]) : NaN;
+    const historyRow = [...document.querySelectorAll(".session-run-row")].find((row) => {
+      const runMatch = row.querySelector(".run-number")?.textContent.trim().match(/^Run\s+(\d+)$/);
+      return runMatch && Number(runMatch[1]) === runId;
+    });
+    return {
+      runId,
+      label: card.querySelector("h4")?.textContent.trim() || "",
+      settings: card.querySelector("p.muted")?.textContent.trim() || "",
+      visibleStage: historyRow?.querySelector(".run-category")?.textContent.trim() || "",
+      historyLabel: historyRow?.querySelector("strong")?.textContent.trim() || "",
+      historySettings: historyRow?.querySelector(".run-settings")?.textContent.trim() || ""
+    };
   }));
 }
 
@@ -582,6 +765,7 @@ async function main() {
   await page.getByRole("button", { name: "Run mission" }).waitFor();
   record("Concept Lab mission rail is usable at 1366x768", await page.locator(".mission-rail").isVisible());
   record("Concept Lab Run mission is usable at 1366x768", await page.getByRole("button", { name: "Run mission" }).isEnabled());
+  await assertConceptLabLayout(page, "1366x768");
   await page.screenshot({ path: artifactPath("concept-lab-1366x768.png"), fullPage: true });
   recordArtifact(artifactPath("concept-lab-1366x768.png"), "screenshot");
   await assertNoOverlap(page, [
@@ -592,6 +776,13 @@ async function main() {
   await assertNoHorizontalOverflow(page, "Concept Lab 1366x768");
 
   await page.setViewportSize({ width: 1440, height: 900 });
+  record(
+    "Concept Lab mission controls are visible and enabled at 1440x900",
+    await page.locator(".mission-rail").isVisible() &&
+      await page.getByRole("button", { name: "Run mission" }).isVisible() &&
+      await page.getByRole("button", { name: "Run mission" }).isEnabled()
+  );
+  await assertConceptLabLayout(page, "1440x900");
   await page.screenshot({ path: artifactPath("concept-lab-1440x900.png"), fullPage: true });
   recordArtifact(artifactPath("concept-lab-1440x900.png"), "screenshot");
   await assertNoOverlap(page, [
@@ -613,6 +804,7 @@ async function main() {
   await page.getByRole("button", { name: "Use this interpretation" }).click();
   await page.getByRole("link", { name: "Comparison CSV" }).waitFor();
   await page.getByRole("link", { name: "Evidence notes" }).waitFor();
+  const initialRenderedEvidence = await renderedSelectedEvidence(page);
 
   const csvPromise = page.waitForEvent("download");
   await page.getByRole("link", { name: "Comparison CSV" }).click();
@@ -638,7 +830,10 @@ async function main() {
   record("notes retain interpretation", notesText.includes(interpretation));
   const selectedStages = rows.map((row) => row[headers.indexOf("stage")]);
   record("notes and CSV name the same stages", selectedStages.every((stage) => notesText.includes(stage)));
-  assertExportConsistency(csvRows, notesText, { sessionRunCount: 5 });
+  assertExportConsistency(csvRows, notesText, {
+    sessionRunCount: 5,
+    renderedEvidence: initialRenderedEvidence
+  });
   markVisited("Comparison CSV");
   markVisited("Evidence notes");
   await page.screenshot({ path: artifactPath("minimum-success-1366x768.png"), fullPage: true });
@@ -667,6 +862,7 @@ async function main() {
   await page.waitForTimeout(500);
   record("Concept Lab mission rail is usable at 390x844", await page.locator(".mission-rail").isVisible());
   record("Concept Lab Run mission is visible and enabled at 390x844", await page.getByRole("button", { name: "Run mission" }).isVisible() && await page.getByRole("button", { name: "Run mission" }).isEnabled());
+  await assertConceptLabLayout(page, "390x844");
   await page.screenshot({ path: artifactPath("concept-lab-390x844.png"), fullPage: true });
   recordArtifact(artifactPath("concept-lab-390x844.png"), "screenshot");
   await assertNoOverlap(page, [
@@ -722,6 +918,7 @@ async function main() {
   await page.locator(".review-required").waitFor({ state: "hidden" });
   await page.getByRole("link", { name: "Comparison CSV" }).waitFor();
   await page.getByRole("link", { name: "Evidence notes" }).waitFor();
+  const finalRenderedEvidence = await renderedSelectedEvidence(page);
   const finalSelectedRunNumbers = await renderedSelectedRunNumbers(page);
   record(
     "final selected evidence is rendered as runs 1, 8, and 9",
@@ -762,7 +959,8 @@ async function main() {
   assertExportConsistency(finalCsvRows, finalNotesText, {
     expectedRunIds: [1, 8, 9],
     expectedStages: finalExpectedStages,
-    sessionRunCount: 9
+    sessionRunCount: 9,
+    renderedEvidence: finalRenderedEvidence
   });
   markVisited("Comparison CSV");
   markVisited("Evidence notes");

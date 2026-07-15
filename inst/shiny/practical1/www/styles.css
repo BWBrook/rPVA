@@ -344,6 +344,10 @@ body {
   color: var(--muted);
 }
 
+.mission-step > .action-label {
+  display: contents;
+}
+
 .mission-step.is-current {
   border-color: #9fc5c9;
   background: #edf7f8;

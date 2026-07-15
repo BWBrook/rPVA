@@ -314,6 +314,8 @@ test_that("Concept Lab exposes a guided mission rail", {
   expect_true(grepl("observeEvent(input$next_mission", app_text, fixed = TRUE))
   expect_true(grepl("previous_mission_stage <- function(stage)", app_text, fixed = TRUE))
   expect_match(style_text, "\\.mission-rail")
+  expect_match(style_text, "\\.mission-step > \\.action-label")
+  expect_match(style_text, "display:\\s*contents")
   expect_match(style_text, "\\.mission-step\\.is-current")
   expect_match(style_text, "\\.mission-step\\.is-complete")
 })
@@ -1245,6 +1247,9 @@ test_that("Practical 1 browser acceptance covers Core extension exports and view
     "pageErrors",
     "prepareEvidenceDirectory",
     "fs.rmSync",
+    "path.isAbsolute",
+    "Evidence directory must be an absolute path",
+    "error.code !== \"ENOENT\"",
     "path.parse",
     "required overlap selectors exist at",
     "parseMarkdownTable",
@@ -1279,12 +1284,25 @@ test_that("Practical 1 browser acceptance covers Core extension exports and view
     "rendered run numbers are unique",
     "rendered run numbers are strictly increasing",
     "no page horizontal overflow at",
+    "Concept Lab panel geometry is non-zero at",
+    "mission labels have usable rendered width at",
+    "mission labels preserve ordinary words at",
+    "mission statuses have usable rendered geometry at",
     "Concept Lab 1366x768",
     "Concept Lab 1440x900",
     "Concept Lab 390x844",
+    "Concept Lab mission controls are visible and enabled at 1440x900",
     "Compare 390x844",
     "Compare controls and downloads are visible at 390x844",
     "#stage_text .mission-label",
+    "renderedSelectedEvidence",
+    "stageMatchesVisibleCategory",
+    "settingsByRun",
+    "minimumLabelWidth",
+    "CSV run IDs match rendered selected evidence",
+    "Markdown labels match rendered selected evidence",
+    "CSV stages match rendered visible stage categories",
+    "Markdown settings and provenance substantively match rendered cards",
     "assertCompareTableScrollRegion",
     "compare table is horizontally scrollable when needed at",
     "compare table can programmatically reach its far edge at",
@@ -1312,24 +1330,33 @@ test_that("Practical 1 browser cleanup validator rejects unsafe paths at runtime
     "const valid = path.join(tmp, `rpva-practical1-probe-${process.pid}`);",
     "const target = path.join(tmp, `rpva-practical1-probe-target-${process.pid}`);",
     "const link = path.join(tmp, `rpva-practical1-probe-link-${process.pid}`);",
+    "const relative = `rpva-practical1-relative-${process.pid}`;",
+    "const danglingTarget = path.join(tmp, `rpva-practical1-probe-missing-${process.pid}`);",
+    "const dangling = path.join(tmp, `rpva-practical1-probe-dangling-${process.pid}`);",
     "fs.mkdirSync(valid, { recursive: true });",
     "fs.mkdirSync(target, { recursive: true });",
     "fs.symlinkSync(target, link, 'dir');",
+    "fs.symlinkSync(danglingTarget, dangling, 'file');",
     "const invalid = [",
     "  '', path.parse(tmp).root, process.cwd(), os.homedir(),",
     "  path.dirname(process.cwd()), tmp, path.resolve(tmp, '..'),",
     "  path.join(tmp, 'nested', 'rpva-practical1-nested'),",
-    "  path.join(tmp, 'not-an-rpva-evidence-directory'), link",
+    "  path.join(tmp, 'not-an-rpva-evidence-directory'), link, dangling",
     "];",
     "const rejected = invalid.map((candidate) => {",
     "  try { validateEvidenceDirectory(candidate); return false; }",
     "  catch (error) { return true; }",
     "});",
     "const validAccepted = validateEvidenceDirectory(valid) === valid;",
+    "let relativeRejected = false;",
+    "try { validateEvidenceDirectory(relative); } catch (error) { relativeRejected = true; }",
+    "let danglingSymlinkRejected = false;",
+    "try { validateEvidenceDirectory(dangling); } catch (error) { danglingSymlinkRejected = true; }",
     "fs.rmSync(valid, { recursive: true, force: true });",
     "fs.rmSync(target, { recursive: true, force: true });",
     "fs.unlinkSync(link);",
-    "console.log(JSON.stringify({ validAccepted, rejected }));"
+    "fs.unlinkSync(dangling);",
+    "console.log(JSON.stringify({ validAccepted, rejected, relativeRejected, danglingSymlinkRejected }));"
   )
   writeLines(probe, probe_path)
   old_script <- Sys.getenv("PRACTICAL1_SCRIPT", unset = NA_character_)
@@ -1343,7 +1370,9 @@ test_that("Practical 1 browser cleanup validator rejects unsafe paths at runtime
   status <- attr(output, "status")
   if (is.null(status)) status <- 0L
   expect_equal(status, 0L, info = paste(output, collapse = "\n"))
-  probe_result <- paste(output, collapse = "\n")
-  expect_match(probe_result, '"validAccepted":true', fixed = TRUE)
-  expect_match(probe_result, '"rejected":[true,true,true,true,true,true,true,true,true,true]', fixed = TRUE)
+  probe_result <- jsonlite::fromJSON(paste(output, collapse = "\n"))
+  expect_true(isTRUE(probe_result$validAccepted))
+  expect_true(all(probe_result$rejected))
+  expect_true(isTRUE(probe_result$relativeRejected))
+  expect_true(isTRUE(probe_result$danglingSymlinkRejected))
 })
