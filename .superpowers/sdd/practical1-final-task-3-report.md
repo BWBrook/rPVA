@@ -6,7 +6,10 @@ Task: Build the grouped mission rail and accurate soft progress
 ## Commits
 
 - Base commit: `c4cb7cd960c244075b8ced940fcea957d25f635a`
-- Head implementation commit: `dd07758` (`Guide Practical 1 through Core missions`)
+- Task 3 implementation commit: `dd07758` (`Guide Practical 1 through Core missions`)
+- Verification report commit: `e7b7ea1` (`Document Practical 1 Task 3 verification`)
+- Review repair commit: `69769f8` (`Handle empty Practical 1 comparison state`)
+- Final Task 3 implementation range: `c4cb7cd` through `69769f8`, inclusive.
 
 ## Changed files
 
@@ -34,30 +37,42 @@ exact message.
   from that statement.
 - Updated only the stale Task 3 selector/initial-state tests and added the
   specified `testServer()` baseline contract.
+- Repaired the pre-baseline Compare state: `run_cards_ui()` now renders a clear
+  empty-session message, and the comparison table returns no table until a run
+  exists instead of calling the non-empty comparison API with `list()`.
+- Added a focused `testServer()` regression test that evaluates both Compare
+  outputs before baseline and checks the empty-state message.
 
 ## RED evidence
 
-After adding the Task 3 contracts and before changing `app.R`, the focused test
-command exited non-zero. Failures identified the missing helper source/state,
-grouped rail links, server factory, explicit baseline state, and deleted stage
-selector contract. This confirmed the new tests were exercising absent Task 3
-behaviour rather than passing against the old implementation.
+The original Task 3 RED evidence was collected after adding the Task 3
+contracts and before changing `app.R`. The focused run reported failures for
+the missing helper source/state, grouped rail links, server factory, explicit
+baseline state, and deleted stage-selector contract. This confirmed those
+tests were exercising absent Task 3 behaviour rather than passing against the
+old implementation; it did not cover the later empty-session Compare repair.
+
+For the review repair, direct pre-baseline `testServer()` evaluation reproduced
+the comparison API error for both `output$comparison_table` and
+`output$run_cards`. The added regression test therefore failed on both output
+accesses before the guards were added. This was a focused server-output
+reproduction, not a claim of full browser or viewport coverage.
 
 ## GREEN and final verification
 
-Command run twice after implementation:
+Final focused command run after repair commit `69769f8`:
 
 ```text
 Rscript -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_file("tests/testthat/test-13_practical1_shiny.R", reporter = "summary")'
 ```
 
-Result: exit 0; all 28 tests in `test-13_practical1_shiny.R` completed with no
+Result: exit 0; all 29 tests in `test-13_practical1_shiny.R` completed with no
 failures or errors.
 
 Additional checks:
 
 - `Rscript --vanilla -e 'parse(file = "inst/shiny/practical1/app.R")'`: passed.
-- `git diff --check`: passed before commit.
+- `git diff --check`: passed for the repair changes before this report update.
 - `renv/activate.R`: restored after the documented R startup whitespace drift;
   no renv diff remained before commit.
 - Commit scope was verified: the implementation commit contains only
