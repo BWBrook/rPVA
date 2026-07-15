@@ -1328,6 +1328,7 @@ test_that("Practical 1 browser cleanup validator rejects unsafe paths at runtime
     "const { validateEvidenceDirectory } = require(process.env.PRACTICAL1_SCRIPT);",
     "const tmp = path.resolve(os.tmpdir());",
     "const valid = path.join(tmp, `rpva-practical1-probe-${process.pid}`);",
+    "const validMissing = path.join(tmp, `rpva-practical1-probe-missing-child-${process.pid}`);",
     "const target = path.join(tmp, `rpva-practical1-probe-target-${process.pid}`);",
     "const link = path.join(tmp, `rpva-practical1-probe-link-${process.pid}`);",
     "const relative = `rpva-practical1-relative-${process.pid}`;",
@@ -1348,6 +1349,7 @@ test_that("Practical 1 browser cleanup validator rejects unsafe paths at runtime
     "  catch (error) { return true; }",
     "});",
     "const validAccepted = validateEvidenceDirectory(valid) === valid;",
+    "const validMissingAccepted = validateEvidenceDirectory(validMissing) === validMissing;",
     "let relativeRejected = false;",
     "try { validateEvidenceDirectory(relative); } catch (error) { relativeRejected = true; }",
     "let danglingSymlinkRejected = false;",
@@ -1356,7 +1358,7 @@ test_that("Practical 1 browser cleanup validator rejects unsafe paths at runtime
     "fs.rmSync(target, { recursive: true, force: true });",
     "fs.unlinkSync(link);",
     "fs.unlinkSync(dangling);",
-    "console.log(JSON.stringify({ validAccepted, rejected, relativeRejected, danglingSymlinkRejected }));"
+    "console.log(JSON.stringify({ validAccepted, validMissingAccepted, rejected, relativeRejected, danglingSymlinkRejected }));"
   )
   writeLines(probe, probe_path)
   old_script <- Sys.getenv("PRACTICAL1_SCRIPT", unset = NA_character_)
@@ -1372,7 +1374,65 @@ test_that("Practical 1 browser cleanup validator rejects unsafe paths at runtime
   expect_equal(status, 0L, info = paste(output, collapse = "\n"))
   probe_result <- jsonlite::fromJSON(paste(output, collapse = "\n"))
   expect_true(isTRUE(probe_result$validAccepted))
+  expect_true(isTRUE(probe_result$validMissingAccepted))
   expect_true(all(probe_result$rejected))
   expect_true(isTRUE(probe_result$relativeRejected))
   expect_true(isTRUE(probe_result$danglingSymlinkRejected))
+})
+
+test_that("Practical 1 browser artifact helpers enforce strict final evidence", {
+  node <- Sys.which("node")
+  skip_if(node == "")
+
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  script_path <- file.path(normalizePath(file.path(app_dir, "..", "..", ".."), mustWork = TRUE),
+                           "scripts", "practical1_browser_acceptance.js")
+  probe_path <- tempfile(fileext = ".js")
+  probe <- c(
+    "const {",
+    "  requiredComparisonFields,",
+    "  sharedComparisonFieldsMatch,",
+    "  exactRenderedStagesMatch,",
+    "  canonicalExpectedSettings,",
+    "  settingsRowsExactlyMatch",
+    "} = require(process.env.PRACTICAL1_SCRIPT);",
+    "const csvHeaders = ['run_id', 'stage', 'label', 'scenario', 'years', 'reps', 'PE', 'Nmed', 'Nlo95', 'Nhi95', 'extinct_reps', 'surviving_reps', 'trajectory_available', 'delta_PE', 'delta_Nmed', 'uncertainty_change'];",
+    "const markdownHeaders = [...csvHeaders];",
+    "const complete = ['1', 'deterministic_baseline', 'Deterministic baseline', 'Deterministic baseline', '25', '1', '0', '264', '264', '264', '0', '1', 'FALSE', '0', '0', 'baseline'];",
+    "const missing = [...complete]; missing[4] = undefined;",
+    "const rendered = [{ runId: 1, label: 'Deterministic baseline', visibleStage: 'Baseline', settings: 'Reference settings' }, { runId: 8, label: 'Catastrophe', visibleStage: 'Risk mechanism', settings: 'cat_freq = 0.05' }];",
+    "const expectedSpecs = { '1': [{ runId: 1, stage: 'deterministic_baseline', label: 'Deterministic baseline', setting: 'spec_name', value: 'teaching_deterministic_baseline' }], '8': [{ runId: 8, stage: 'catastrophe', label: 'Catastrophe', setting: 'spec_name', value: 'teaching_catastrophe' }] };",
+    "const expectedSettings = canonicalExpectedSettings(rendered, expectedSpecs);",
+    "const actualSettings = [...expectedSettings];",
+    "const extraSettings = [...actualSettings, { runId: 8, stage: 'catastrophe', label: 'Catastrophe', setting: 'spec_extra', value: 'unexpected' }];",
+    "console.log(JSON.stringify({",
+    "  requiredFieldsPresent: requiredComparisonFields.every((field) => csvHeaders.includes(field)),",
+    "  completeAccepted: sharedComparisonFieldsMatch(csvHeaders, [complete], markdownHeaders, [complete]),",
+    "  missingRejected: !sharedComparisonFieldsMatch(csvHeaders, [missing], markdownHeaders, [missing]),",
+    "  exactStagesAccepted: exactRenderedStagesMatch(['deterministic_baseline', 'catastrophe'], rendered),",
+    "  wrongStageRejected: !exactRenderedStagesMatch(['deterministic_baseline', 'intervention'], rendered),",
+    "  exactSettingsAccepted: settingsRowsExactlyMatch(actualSettings, expectedSettings),",
+    "  extraSettingsRejected: !settingsRowsExactlyMatch(extraSettings, expectedSettings),",
+    "}));"
+  )
+  writeLines(probe, probe_path)
+  old_script <- Sys.getenv("PRACTICAL1_SCRIPT", unset = NA_character_)
+  Sys.setenv(PRACTICAL1_SCRIPT = script_path)
+  on.exit({
+    if (is.na(old_script)) Sys.unsetenv("PRACTICAL1_SCRIPT") else Sys.setenv(PRACTICAL1_SCRIPT = old_script)
+    unlink(probe_path, force = TRUE)
+  }, add = TRUE)
+
+  output <- system2(node, probe_path, stdout = TRUE, stderr = TRUE)
+  status <- attr(output, "status")
+  if (is.null(status)) status <- 0L
+  expect_equal(status, 0L, info = paste(output, collapse = "\n"))
+  probe_result <- jsonlite::fromJSON(paste(output, collapse = "\n"))
+  expect_true(isTRUE(probe_result$requiredFieldsPresent))
+  expect_true(isTRUE(probe_result$completeAccepted))
+  expect_true(isTRUE(probe_result$missingRejected))
+  expect_true(isTRUE(probe_result$exactStagesAccepted))
+  expect_true(isTRUE(probe_result$wrongStageRejected))
+  expect_true(isTRUE(probe_result$exactSettingsAccepted))
+  expect_true(isTRUE(probe_result$extraSettingsRejected))
 })

@@ -119,6 +119,171 @@ const allowedRiskStages = new Set([
 ]);
 const allowedActionStages = new Set(["intervention", "extinction_vortex"]);
 
+const requiredComparisonFields = [
+  "run_id",
+  "stage",
+  "label",
+  "scenario",
+  "years",
+  "reps",
+  "PE",
+  "Nmed",
+  "Nlo95",
+  "Nhi95",
+  "extinct_reps",
+  "surviving_reps",
+  "trajectory_available",
+  "delta_PE",
+  "delta_Nmed",
+  "uncertainty_change"
+];
+
+const renderedStageByLabel = new Map([
+  ["Deterministic baseline", "deterministic_baseline"],
+  ["Ceiling carrying capacity", "carrying_capacity"],
+  ["Demographic stochasticity", "demographic_stochasticity"],
+  ["Environmental stochasticity", "environmental_stochasticity"],
+  ["Genetic stochasticity", "genetic_stochasticity"],
+  ["Catastrophe", "catastrophe"],
+  ["Simple intervention", "intervention"],
+  ["Extinction vortex comparison", "extinction_vortex"]
+]);
+
+const canonicalSpecTemplates = {
+  deterministic_baseline: {
+    years: "25", reps: "1", K: "NA", K_sd: "0",
+    demographic_stochasticity: "FALSE", env_sd: "0", genetics: "FALSE", n0: "31,12,7"
+  },
+  carrying_capacity: {
+    years: "25", reps: "1", K: "30", K_sd: "0",
+    demographic_stochasticity: "FALSE", env_sd: "0", genetics: "FALSE", n0: "31,12,7"
+  },
+  demographic_stochasticity: {
+    years: "25", reps: "100", K: "30", K_sd: "0",
+    demographic_stochasticity: "TRUE", env_sd: "0", genetics: "FALSE", n0: "31,12,7"
+  },
+  environmental_stochasticity: {
+    years: "50", reps: "100", K: "15", K_sd: "5",
+    demographic_stochasticity: "TRUE", env_sd: "0.35", genetics: "FALSE", n0: "31,12,7"
+  },
+  genetic_stochasticity: {
+    years: "25", reps: "100", K: "30", K_sd: "5",
+    demographic_stochasticity: "TRUE", env_sd: "0.3", genetics: "TRUE", n0: "31,12,7"
+  },
+  catastrophe: {
+    years: "25", reps: "100", K: "30", K_sd: "5",
+    demographic_stochasticity: "TRUE", env_sd: "0.2", genetics: "FALSE",
+    cat_freq: "0.05", cat_surv: "0.6", cat_repro: "0.7", n0: "31,12,7"
+  },
+  intervention: {
+    years: "25", reps: "100", K: "60", K_sd: "5",
+    demographic_stochasticity: "TRUE", env_sd: "0.2", genetics: "FALSE", n0: "31,12,7"
+  },
+  extinction_vortex: {
+    years: "25", reps: "100", K: "20", K_sd: "5",
+    demographic_stochasticity: "TRUE", env_sd: "0.3", genetics: "TRUE",
+    cat_freq: "0.05", cat_surv: "0.7", cat_repro: "0.8", n0: "12,5,3"
+  }
+};
+
+function isCompleteExportValue(value) {
+  return value !== undefined && value !== null && String(value).trim() !== "";
+}
+
+function sharedComparisonFieldsMatch(csvHeaders, csvData, markdownHeaders, markdownData) {
+  const sharedFields = csvHeaders.filter((field) => markdownHeaders.includes(field));
+  return requiredComparisonFields.every((field) => csvHeaders.includes(field) && markdownHeaders.includes(field)) &&
+    sharedFields.length === csvHeaders.length &&
+    markdownHeaders.length === csvHeaders.length &&
+    csvData.length === markdownData.length &&
+    sharedFields.every((field) => {
+      const csvIndex = csvHeaders.indexOf(field);
+      const markdownIndex = markdownHeaders.indexOf(field);
+      return csvData.every((row, rowIndex) => (
+        isCompleteExportValue(row[csvIndex]) &&
+        isCompleteExportValue(markdownData[rowIndex]?.[markdownIndex]) &&
+        row[csvIndex] === markdownData[rowIndex][markdownIndex]
+      ));
+    });
+}
+
+function exactRenderedStagesMatch(exportStages, renderedEvidence) {
+  const expectedStages = renderedEvidence.map((evidence) => (
+    renderedStageByLabel.get(evidence.historyLabel || evidence.label) || ""
+  ));
+  return expectedStages.every((stage) => stage !== "") && sameSequence(exportStages, expectedStages);
+}
+
+function renderedSettingControls(settingsLabel) {
+  if (settingsLabel === "Reference settings") return [];
+  if (!isCompleteExportValue(settingsLabel)) return null;
+  return settingsLabel.split("; ").map((fragment) => {
+    const separator = fragment.indexOf(" = ");
+    if (separator < 1) return null;
+    const setting = fragment.slice(0, separator);
+    const value = fragment.slice(separator + 3);
+    if (!isCompleteExportValue(setting) || !isCompleteExportValue(value)) return null;
+    return { setting: `control_${setting}`, value };
+  });
+}
+
+function canonicalExpectedSettings(renderedEvidence, specRowsByRun) {
+  return renderedEvidence.flatMap((evidence) => {
+    const stage = renderedStageByLabel.get(evidence.historyLabel || evidence.label);
+    const controls = renderedSettingControls(evidence.settings);
+    const specRows = specRowsByRun[String(evidence.runId)] || [];
+    if (!stage || !controls || !specRows.length) return [];
+    const metadata = { run_id: String(evidence.runId), stage, label: evidence.label };
+    const controlRows = controls.map((row) => ({ ...metadata, ...row }));
+    const canonicalSpecRows = specRows.map((row) => ({
+      ...metadata,
+      setting: row.setting,
+      value: row.value
+    }));
+    return [...controlRows, ...canonicalSpecRows];
+  });
+}
+
+function settingsRowsExactlyMatch(actualRows, expectedRows) {
+  const fields = ["run_id", "stage", "label", "setting", "value"];
+  const rowKey = (row) => fields.map((field) => row[field]).join("\u0000");
+  const complete = (rows) => rows.every((row) => fields.every((field) => isCompleteExportValue(row[field])));
+  const unique = (rows) => new Set(rows.map(rowKey)).size === rows.length;
+  return complete(actualRows) && complete(expectedRows) &&
+    unique(actualRows) && unique(expectedRows) &&
+    actualRows.length === expectedRows.length &&
+    actualRows.every((row, index) => fields.every((field) => row[field] === expectedRows[index][field]));
+}
+
+function canonicalSpecRowsForEvidence(renderedEvidence) {
+  return Object.fromEntries(renderedEvidence.map((evidence) => {
+    const label = evidence.historyLabel || evidence.label;
+    const stage = renderedStageByLabel.get(label);
+    const template = canonicalSpecTemplates[stage] || {};
+    const controls = renderedSettingControls(evidence.settings) || [];
+    const values = { ...template };
+    const extraSpecValues = {};
+    controls.forEach(({ setting, value }) => {
+      const control = setting.replace(/^control_/, "");
+      const field = control === "advanced_years" ? "years" :
+        control === "advanced_reps" ? "reps" : control;
+      if (Object.prototype.hasOwnProperty.call(values, field)) values[field] = value;
+      if (control === "mortality_pct" || control === "fecundity_pct") extraSpecValues[field] = value;
+    });
+    const specRows = [
+      ...(extraSpecValues.mortality_pct === undefined ? [] : [{ setting: "spec_mortality_pct", value: extraSpecValues.mortality_pct }]),
+      ...(extraSpecValues.fecundity_pct === undefined ? [] : [{ setting: "spec_fecundity_pct", value: extraSpecValues.fecundity_pct }]),
+      { setting: "spec_name", value: `teaching_${stage}` },
+      { setting: "spec_years", value: values.years },
+      { setting: "spec_reps", value: values.reps },
+      ...Object.entries(values)
+        .filter(([field]) => !["years", "reps"].includes(field))
+        .map(([field, value]) => ({ setting: `spec_${field}`, value }))
+    ];
+    return [String(evidence.runId), specRows];
+  }));
+}
+
 let browser;
 
 function record(name, passed, detail = "") {
@@ -274,6 +439,7 @@ function assertExportConsistency(csvRows, notesText, options = {}) {
       evidence.visibleStage !== "" &&
       evidence.label !== "" &&
       evidence.settings !== "" &&
+      renderedStageByLabel.has(evidence.historyLabel || evidence.label) &&
       evidence.historyLabel === evidence.label &&
       evidence.historySettings === evidence.settings
     )),
@@ -301,12 +467,14 @@ function assertExportConsistency(csvRows, notesText, options = {}) {
   );
   record(
     "CSV stages match rendered visible stage categories",
-    csvStages.length === renderedStages.length && csvStages.every((stage, index) => stageMatchesVisibleCategory(stage, renderedStages[index])),
+    exactRenderedStagesMatch(csvStages, renderedEvidence) &&
+      csvStages.every((stage, index) => stageMatchesVisibleCategory(stage, renderedStages[index])),
     JSON.stringify({ csv: csvStages, rendered: renderedStages })
   );
   record(
     "Markdown stages match rendered visible stage categories",
-    markdownStages.length === renderedStages.length && markdownStages.every((stage, index) => stageMatchesVisibleCategory(stage, renderedStages[index])),
+    exactRenderedStagesMatch(markdownStages, renderedEvidence) &&
+      markdownStages.every((stage, index) => stageMatchesVisibleCategory(stage, renderedStages[index])),
     JSON.stringify({ markdown: markdownStages, rendered: renderedStages })
   );
 
@@ -326,15 +494,12 @@ function assertExportConsistency(csvRows, notesText, options = {}) {
   }
 
   const sharedFields = csvHeaders.filter((field) => comparisonHeaders.includes(field));
-  const sharedFieldsMatch =
-    sharedFields.length === csvHeaders.length &&
-    comparisonHeaders.length === csvHeaders.length &&
-    csvData.length === comparisonData.length &&
-    sharedFields.every((field) => {
-      const csvIndex = csvHeaders.indexOf(field);
-      const markdownIndex = comparisonHeaders.indexOf(field);
-      return csvData.every((row, rowIndex) => row[csvIndex] === comparisonData[rowIndex][markdownIndex]);
-    });
+  const sharedFieldsMatch = sharedComparisonFieldsMatch(
+    csvHeaders,
+    csvData,
+    comparisonHeaders,
+    comparisonData
+  );
   record(
     "CSV and Markdown shared comparison fields match",
     sharedFieldsMatch,
@@ -342,6 +507,18 @@ function assertExportConsistency(csvRows, notesText, options = {}) {
   );
 
   const settingsRunIds = columnValues(settingsData, settingsHeaders, "run_id");
+  const settingsRecords = settingsData.map((row) => ({
+    run_id: row[settingsHeaders.indexOf("run_id")],
+    stage: row[settingsHeaders.indexOf("stage")],
+    label: row[settingsHeaders.indexOf("label")],
+    setting: row[settingsHeaders.indexOf("setting")],
+    value: row[settingsHeaders.indexOf("value")]
+  }));
+  const settingsByRun = new Map();
+  settingsRecords.forEach((row) => {
+    if (!settingsByRun.has(row.run_id)) settingsByRun.set(row.run_id, []);
+    settingsByRun.get(row.run_id).push(row);
+  });
   record(
     "Markdown settings rows refer to exactly the selected run-ID set",
     sameSet(settingsRunIds, csvRunIds),
@@ -352,30 +529,23 @@ function assertExportConsistency(csvRows, notesText, options = {}) {
     csvRunIds.every((runId) => settingsRunIds.includes(runId)),
     JSON.stringify({ selected: csvRunIds, settings: [...new Set(settingsRunIds)] })
   );
-  const settingsByRun = new Map();
-  settingsData.forEach((row) => {
-    const runId = row[settingsHeaders.indexOf("run_id")];
-    if (!settingsByRun.has(runId)) settingsByRun.set(runId, []);
-    settingsByRun.get(runId).push(row);
-  });
-  const renderedSettingsMatch = renderedEvidence.every((evidence) => {
-    const rows = settingsByRun.get(String(evidence.runId)) || [];
-    const rowLabelIndex = settingsHeaders.indexOf("label");
-    const settingIndex = settingsHeaders.indexOf("setting");
-    const valueIndex = settingsHeaders.indexOf("value");
-    const fragments = evidence.settings === "Reference settings"
-      ? []
-      : evidence.settings.split("; ").map((fragment) => fragment.split(" = "));
-    return rows.length > 0 &&
-      rows.every((row) => row[rowLabelIndex] === evidence.label) &&
-      fragments.every(([setting, value]) => rows.some((row) => (
-        row[settingIndex] === `control_${setting}` && row[valueIndex] === value
-      )));
-  });
+  const expectedSettings = canonicalExpectedSettings(
+    renderedEvidence,
+    canonicalSpecRowsForEvidence(renderedEvidence)
+  );
+  const baselineEvidence = renderedEvidence.find((evidence) => evidence.settings === "Reference settings");
+  const renderedSettingsMatch = settingsRowsExactlyMatch(settingsRecords, expectedSettings) &&
+    Boolean(baselineEvidence) && expectedSettings.some((row) => (
+      row.run_id === String(baselineEvidence.runId) &&
+      row.stage === "deterministic_baseline" &&
+      row.label === baselineEvidence.label &&
+      row.setting === "spec_name" &&
+      row.value === "teaching_deterministic_baseline"
+    ));
   record(
     "Markdown settings and provenance substantively match rendered cards",
     renderedSettingsMatch,
-    JSON.stringify({ rendered: renderedEvidence, settings: settingsData })
+    JSON.stringify({ rendered: renderedEvidence, expected: expectedSettings, settings: settingsRecords, settingsByRun: [...settingsByRun] })
   );
 
   record(
@@ -1014,5 +1184,10 @@ if (require.main === module) {
 
 module.exports = {
   validateEvidenceDirectory,
-  prepareEvidenceDirectory
+  prepareEvidenceDirectory,
+  requiredComparisonFields,
+  sharedComparisonFieldsMatch,
+  exactRenderedStagesMatch,
+  canonicalExpectedSettings,
+  settingsRowsExactlyMatch
 };
