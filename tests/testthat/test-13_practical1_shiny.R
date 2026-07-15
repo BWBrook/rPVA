@@ -652,6 +652,82 @@ test_that("Practical 1 selects three runs and invalidates stale interpretation",
   })
 })
 
+test_that("Practical 1 preserves duplicate evidence attempts and stale selection state", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  old <- setwd(app_dir)
+  on.exit(setwd(old), add = TRUE)
+  env <- new.env(parent = globalenv())
+  sys.source("app.R", envir = env)
+
+  shiny::testServer(env$make_practical1_server(), {
+    session$setInputs(run_baseline = 1)
+
+    selected_stage("environmental_stochasticity")
+    session$setInputs(env_sd = 0.15, K = 15, run_stage = 1)
+    selected_stage("environmental_stochasticity")
+    session$setInputs(env_sd = 0.35, K = 20, run_stage = 2)
+    selected_stage("intervention")
+    session$setInputs(K = 70, K_sd = 5, run_stage = 3)
+
+    history_ids <- vapply(run_history(), session_run_id, integer(1))
+    expect_length(run_history(), 4L)
+    expect_equal(history_ids, 1:4)
+    expect_equal(diff(history_ids), rep(1L, 3L))
+
+    environmental_runs <- Filter(
+      function(run) identical(run$stage, "environmental_stochasticity"),
+      run_history()
+    )
+    expect_length(environmental_runs, 2L)
+    expect_false(identical(
+      env$run_changed_settings_label(environmental_runs[[1]]),
+      env$run_changed_settings_label(environmental_runs[[2]])
+    ))
+
+    risk_choices <- env$eligible_run_choices(
+      run_history(),
+      env$practical1_evidence_risk_stages
+    )
+    expect_equal(unname(risk_choices), c(2L, 3L))
+    expect_true(all(vapply(
+      c("Run 2", "Run 3"),
+      function(label) any(grepl(label, names(risk_choices), fixed = TRUE)),
+      logical(1)
+    )))
+
+    session$setInputs(selected_risk_run_id = "2")
+    expect_equal(selected_risk_run_id(), 2L)
+    expect_equal(selected_evidence_ids(), c(1L, 2L, 4L))
+    expect_equal(
+      vapply(selected_evidence_runs(), `[[`, character(1), "stage"),
+      c("deterministic_baseline", "environmental_stochasticity", "intervention")
+    )
+    expect_length(selected_evidence_runs(), 3L)
+
+    selected_export <- evidence_export()
+    expect_equal(selected_export$comparison$run_id, c(1L, 2L, 4L))
+    expect_equal(sort(unique(selected_export$settings$run_id)), c(1L, 2L, 4L))
+    cards <- paste(as.character(output$run_cards), collapse = "\n")
+    expect_true(all(vapply(c("Run 1", "Run 2", "Run 4"), grepl, logical(1), cards, fixed = TRUE)))
+    expect_false(grepl("Run 3", cards, fixed = TRUE))
+
+    interpretation <- "Risk increased under shared bad years; intervention improved abundance, with uncertainty remaining."
+    session$setInputs(interpretation_note = interpretation)
+    expect_identical(input$interpretation_note, interpretation)
+    expect_true(evidence_readiness_state()$ready)
+
+    session$setInputs(selected_risk_run_id = "3")
+    expect_equal(selected_evidence_ids(), c(1L, 3L, 4L))
+    expect_identical(input$interpretation_note, interpretation)
+    expect_true(evidence_readiness_state()$checks[["interpretation"]])
+    expect_false(evidence_readiness_state()$checks[["interpretation_current"]])
+
+    session$setInputs(confirm_interpretation = 1)
+    expect_true(evidence_readiness_state()$checks[["interpretation_current"]])
+    expect_true(evidence_readiness_state()$ready)
+  })
+})
+
 test_that("Practical 1 Compare separates session history from selected evidence", {
   app_dir <- rPVA:::practical1_shiny_app_dir()
   app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
