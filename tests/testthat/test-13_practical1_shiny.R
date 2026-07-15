@@ -1081,3 +1081,40 @@ test_that("Practical 1 Week 1 documents use the same route and session language"
   expect_true(grepl(timing, texts[[4]], fixed = TRUE))
   expect_true(grepl(timing, texts[[5]], fixed = TRUE))
 })
+
+test_that("Practical 1 browser acceptance covers Core extension exports and viewports", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  repo_root <- normalizePath(file.path(app_dir, "..", "..", ".."), mustWork = TRUE)
+  script_path <- file.path(repo_root, "scripts", "practical1_browser_acceptance.js")
+  expect_true(file.exists(script_path))
+  script <- paste(readLines(script_path, warn = FALSE), collapse = "\n")
+
+  required_text <- c(
+    "Core 2: Island ceiling",
+    "Core 5: Rescue attempt",
+    "Explore: Small-population pressure",
+    "Explore: Rare bad years",
+    "Explore: Vortex comparison",
+    "Explore PVA",
+    "Explore mission",
+    "Explore evidence",
+    "Control help",
+    "Read outputs",
+    "Read diagnostics",
+    "Read plots",
+    "Comparison CSV",
+    "Evidence notes",
+    "selected CSV has header plus three rows",
+    "consoleErrors",
+    "consoleWarnings",
+    "pageErrors",
+    "#stage_text .mission-label",
+    "assertCompareTableScrollRegion",
+    "compare table is horizontally scrollable when needed at",
+    "compare table can programmatically reach its far edge at",
+    "1366, height: 768",
+    "width: 1440, height: 900",
+    "width: 390, height: 844"
+  )
+  expect_true(all(vapply(required_text, grepl, logical(1), x = script, fixed = TRUE)))
+})
