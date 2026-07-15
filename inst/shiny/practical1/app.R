@@ -547,6 +547,120 @@ run_changed_settings_label <- function(run) {
   paste(labels, collapse = "; ")
 }
 
+evidence_choice_label <- function(run) {
+  paste0(
+    "Run ", session_run_id(run), " - ", run$label,
+    " (", run_changed_settings_label(run), ")"
+  )
+}
+
+eligible_run_choices <- function(runs, eligible_stages) {
+  eligible <- Filter(function(run) run$stage %in% eligible_stages, runs)
+  stats::setNames(
+    vapply(eligible, session_run_id, integer(1)),
+    vapply(eligible, evidence_choice_label, character(1))
+  )
+}
+
+evidence_stage_category <- function(stage) {
+  if (identical(stage, "deterministic_baseline")) return("Baseline")
+  if (stage %in% practical1_evidence_risk_stages) return("Risk mechanism")
+  if (stage %in% practical1_evidence_action_stages) return("Intervention or vortex")
+  "Other"
+}
+
+session_history_ui <- function(runs, selected_risk_id, selected_action_id) {
+  history_rows <- if (length(runs)) {
+    lapply(runs, function(run) {
+      div(
+        class = "session-run-row",
+        span(class = "run-number", paste("Run", session_run_id(run))),
+        strong(run$label),
+        span(class = "run-category", evidence_stage_category(run$stage)),
+        span(class = "run-settings", run_changed_settings_label(run)),
+        if (identical(run$stage, "deterministic_baseline")) {
+          span(class = "run-selection-status", "Pinned in selected evidence")
+        }
+      )
+    })
+  } else {
+    p(class = "muted", "No successful session runs yet. Start baseline to create run 1.")
+  }
+
+  risk_choices <- eligible_run_choices(runs, practical1_evidence_risk_stages)
+  action_choices <- eligible_run_choices(runs, practical1_evidence_action_stages)
+  baseline_id <- first_baseline_run_id(runs)
+
+  div(
+    class = "session-history compare-history-panel",
+    h4("Full session history"),
+    div(class = "session-run-list", history_rows),
+    div(
+      class = "evidence-selection",
+      h4("Selected evidence"),
+      p(
+        class = "pinned-baseline",
+        if (is.na(baseline_id)) {
+          "Baseline missing - use Start baseline."
+        } else {
+          paste("Run", baseline_id, "- Baseline pinned in selected evidence")
+        }
+      ),
+      if (length(risk_choices)) {
+        radioButtons(
+          "selected_risk_run_id",
+          "Choose one risk mechanism",
+          choices = risk_choices,
+          selected = if (is.na(selected_risk_id)) NULL else as.character(selected_risk_id)
+        )
+      } else {
+        p(class = "muted", "Run one risk-mechanism mission to make a selection.")
+      },
+      if (length(action_choices)) {
+        radioButtons(
+          "selected_action_run_id",
+          "Choose one intervention or vortex run",
+          choices = action_choices,
+          selected = if (is.na(selected_action_id)) NULL else as.character(selected_action_id)
+        )
+      } else {
+        p(class = "muted", "Run Rescue attempt or Vortex comparison to make a selection.")
+      }
+    )
+  )
+}
+
+evidence_readiness_ui <- function(state) {
+  labels <- c(
+    baseline = "Baseline",
+    risk = "Risk mechanism",
+    action = "Intervention or vortex",
+    exactly_three = "Exactly three runs",
+    interpretation = "Interpretation",
+    interpretation_current = "Current interpretation"
+  )
+
+  div(
+    class = "evidence-readiness",
+    h4("Evidence readiness"),
+    tags$ul(
+      lapply(names(state$checks), function(name) {
+        ready <- isTRUE(state$checks[[name]])
+        tags$li(
+          class = if (ready) "readiness-check is-ready" else "readiness-check is-missing",
+          strong(labels[[name]], ": "),
+          if (ready) "Ready. " else "Missing. ",
+          state$messages[[name]]
+        )
+      })
+    ),
+    if (isTRUE(state$checks[["interpretation"]]) &&
+        !isTRUE(state$checks[["interpretation_current"]])) {
+      p(class = "review-required", strong("Review required"), ": edit or reconfirm this interpretation for the selected evidence.")
+    }
+  )
+}
+
 comparison_empty_state_ui <- function() {
   div(
     class = "compare-empty-state",
@@ -568,7 +682,7 @@ run_cards_ui <- function(runs) {
       row <- comparison[i, , drop = FALSE]
       div(
         class = "run-card",
-        span(class = "run-card-kicker", paste("Run", i)),
+        span(class = "run-card-kicker", paste("Run", session_run_id(runs[[i]]))),
         h4(runs[[i]]$label),
         p(class = "muted", run_changed_settings_label(runs[[i]])),
         div(
@@ -865,16 +979,24 @@ ui <- navbarPage(
       div(
         class = "compare-grid",
         div(
-          class = "panel-block",
-          h3("Run comparison"),
+          class = "panel-block compare-history-panel",
+          h3("Session history"),
           div(
             class = "mission-cue compare-guidance",
             span(class = "mission-label", "Compare mission evidence"),
             p("Choose a clean comparison: baseline run 1, one risk mechanism, and one intervention or vortex run."),
             p(class = "muted", "Repeated clicks are less useful than a targeted one-factor change.")
           ),
+          uiOutput("session_history"),
+          actionButton("clear_runs", label = tagList(icon("trash"), "Reset comparison")),
+          div(class = "prompt", "The full history stays available so you can distinguish repeated attempts from selected evidence.")
+        ),
+        div(
+          class = "panel-block compare-evidence-panel",
+          h3("Selected evidence"),
           uiOutput("run_cards"),
           div(class = "compare-table", tableOutput("comparison_table")),
+          uiOutput("evidence_readiness"),
           div(
             class = "interpretation-capture",
             textAreaInput("interpretation_note",
@@ -882,7 +1004,8 @@ ui <- navbarPage(
               value = "",
               placeholder = "I changed... The output that moved was... My caveat is...",
               rows = 3
-            )
+            ),
+            actionButton("confirm_interpretation", "Use this interpretation", class = "btn-default")
           ),
           h4("Save evidence"),
           p(class = "muted", "Download a compact comparison table and notes for your own report. These files are evidence for your interpretation."),
@@ -891,11 +1014,7 @@ ui <- navbarPage(
             downloadButton("download_comparison", "Comparison CSV"),
             downloadButton("download_evidence_notes", "Evidence notes")
           ),
-          actionButton("clear_runs", label = tagList(icon("trash"), "Reset comparison")),
-          div(class = "prompt", "What changed between runs, and which output supports your explanation?")
-        ),
-        div(
-          class = "panel-block",
+          div(class = "prompt", "What changed between runs, and which output supports your explanation?"),
           h3("Comparison habits"),
           tags$ul(
             tags$li("Compare extinction risk and abundance together."),
@@ -944,6 +1063,9 @@ make_practical1_server <- function(execute_stage = run_stage) {
   next_run_id <- reactiveVal(1L)
   baseline_started <- reactiveVal(FALSE)
   selected_stage <- reactiveVal(default_stage)
+  selected_risk_run_id <- reactiveVal(NA_integer_)
+  selected_action_run_id <- reactiveVal(NA_integer_)
+  interpretation_signature <- reactiveVal("")
   run_error <- reactiveVal(NULL)
   last_completed_stage <- reactiveVal(NULL)
   last_completed_run_id <- reactiveVal(NA_integer_)
@@ -955,7 +1077,64 @@ make_practical1_server <- function(execute_stage = run_stage) {
     )
   })
   evidence_export <- reactive({
-    rPVA:::build_teaching_evidence_export(run_history(), interpretation = input$interpretation_note)
+    rPVA:::build_teaching_evidence_export(
+      selected_evidence_runs(),
+      interpretation = input$interpretation_note,
+      session_run_count = length(run_history())
+    )
+  })
+
+  selected_evidence_ids <- reactive({
+    ids <- c(
+      first_baseline_run_id(run_history()),
+      selected_risk_run_id(),
+      selected_action_run_id()
+    )
+    as.integer(ids[!is.na(ids)])
+  })
+
+  selected_evidence_runs <- reactive({
+    select_session_runs(run_history(), selected_evidence_ids())
+  })
+
+  evidence_readiness_state <- reactive({
+    evidence_readiness(
+      run_history(),
+      selected_evidence_ids(),
+      input$interpretation_note,
+      interpretation_signature(),
+      baseline_started()
+    )
+  })
+
+  observeEvent(run_history(), {
+    risk_ids <- unname(eligible_run_choices(run_history(), practical1_evidence_risk_stages))
+    action_ids <- unname(eligible_run_choices(run_history(), practical1_evidence_action_stages))
+    selected_risk_run_id(if (length(risk_ids)) tail(risk_ids, 1) else NA_integer_)
+    selected_action_run_id(if (length(action_ids)) tail(action_ids, 1) else NA_integer_)
+  }, ignoreInit = FALSE)
+
+  observeEvent(input$selected_risk_run_id, {
+    if (!is.null(input$selected_risk_run_id) && nzchar(input$selected_risk_run_id)) {
+      selected_risk_run_id(as.integer(input$selected_risk_run_id))
+    }
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$selected_action_run_id, {
+    if (!is.null(input$selected_action_run_id) && nzchar(input$selected_action_run_id)) {
+      selected_action_run_id(as.integer(input$selected_action_run_id))
+    }
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$interpretation_note, {
+    if (nzchar(trimws(input$interpretation_note))) {
+      interpretation_signature(evidence_selection_signature(selected_evidence_ids()))
+    }
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$confirm_interpretation, {
+    req(nzchar(trimws(input$interpretation_note)))
+    interpretation_signature(evidence_selection_signature(selected_evidence_ids()))
   })
 
   observeEvent(input$run_baseline, {
@@ -977,6 +1156,8 @@ make_practical1_server <- function(execute_stage = run_stage) {
     run_history(list(baseline))
     next_run_id(2L)
     baseline_started(TRUE)
+    selected_risk_run_id(NA_integer_)
+    selected_action_run_id(NA_integer_)
     selected_stage(default_stage)
     run_error(NULL)
     last_completed_stage(NULL)
@@ -1085,6 +1266,9 @@ make_practical1_server <- function(execute_stage = run_stage) {
     run_history(list())
     next_run_id(1L)
     baseline_started(FALSE)
+    selected_risk_run_id(NA_integer_)
+    selected_action_run_id(NA_integer_)
+    interpretation_signature("")
     selected_stage(default_stage)
     run_error(NULL)
     last_completed_stage(NULL)
@@ -1237,8 +1421,20 @@ make_practical1_server <- function(execute_stage = run_stage) {
     }
   )
 
+  output$session_history <- renderUI({
+    session_history_ui(
+      run_history(),
+      selected_risk_run_id(),
+      selected_action_run_id()
+    )
+  })
+
+  output$evidence_readiness <- renderUI({
+    evidence_readiness_ui(evidence_readiness_state())
+  })
+
   output$comparison_table <- renderTable({
-    runs <- run_history()
+    runs <- selected_evidence_runs()
     if (!length(runs)) {
       return(NULL)
     }
@@ -1246,7 +1442,7 @@ make_practical1_server <- function(execute_stage = run_stage) {
   }, striped = TRUE, bordered = TRUE, spacing = "s")
 
   output$run_cards <- renderUI({
-    run_cards_ui(run_history())
+    run_cards_ui(selected_evidence_runs())
   })
 
   output$download_comparison <- downloadHandler(

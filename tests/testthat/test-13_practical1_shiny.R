@@ -615,6 +615,59 @@ test_that("Practical 1 readiness requires exactly baseline risk action and curre
   expect_true(stale$checks[["interpretation"]])
 })
 
+test_that("Practical 1 selects three runs and invalidates stale interpretation", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  old <- setwd(app_dir)
+  on.exit(setwd(old), add = TRUE)
+  env <- new.env(parent = globalenv())
+  sys.source("app.R", envir = env)
+
+  shiny::testServer(env$make_practical1_server(), {
+    session$setInputs(run_baseline = 1)
+    selected_stage("environmental_stochasticity")
+    session$setInputs(run_stage = 1)
+    selected_stage("intervention")
+    session$setInputs(run_stage = 2)
+    session$setInputs(
+      interpretation_note = paste(
+        "Risk increased under shared bad years; intervention improved final abundance,",
+        "while uncertainty remained."
+      )
+    )
+
+    expect_equal(length(selected_evidence_ids()), 3L)
+    expect_equal(
+      vapply(selected_evidence_runs(), `[[`, character(1), "stage"),
+      c("deterministic_baseline", "environmental_stochasticity", "intervention")
+    )
+    expect_true(evidence_readiness_state()$ready)
+
+    selected_stage("catastrophe")
+    session$setInputs(run_stage = 3)
+    expect_equal(selected_risk_run_id(), 4L)
+    expect_false(evidence_readiness_state()$checks[["interpretation_current"]])
+    expect_true(evidence_readiness_state()$checks[["interpretation"]])
+    session$setInputs(confirm_interpretation = 1)
+    expect_true(evidence_readiness_state()$checks[["interpretation_current"]])
+  })
+})
+
+test_that("Practical 1 Compare separates session history from selected evidence", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
+
+  expect_true(grepl("Session history", app_text, fixed = TRUE))
+  expect_true(grepl("Selected evidence", app_text, fixed = TRUE))
+  expect_true(grepl("Review required", app_text, fixed = TRUE))
+  expect_true(grepl("Baseline pinned", app_text, fixed = TRUE))
+  expect_true(grepl("Choose one risk mechanism", app_text, fixed = TRUE))
+  expect_true(grepl("Choose one intervention or vortex run", app_text, fixed = TRUE))
+  expect_true(grepl("compare-history-panel", app_text, fixed = TRUE))
+  expect_true(grepl("compare-evidence-panel", app_text, fixed = TRUE))
+  expect_true(grepl("selected_evidence_runs()", app_text, fixed = TRUE))
+  expect_true(grepl("interpretation_signature <- reactiveVal(\"\")", app_text, fixed = TRUE))
+})
+
 test_that("failed Practical 1 runs do not enter history or progress", {
   app_dir <- rPVA:::practical1_shiny_app_dir()
   old <- setwd(app_dir)
