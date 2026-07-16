@@ -8,7 +8,7 @@ Status: immutable image published; dev and production deployment pending
 |---|---|
 | App ID | `kpz308-rpva-practical` |
 | Source commit | `bdb15517d2fe56105c76547a66218e6f798c24ce` |
-| Source branch state | clean `main`; source equals `origin/main` |
+| Source branch state | at build time, clean `main`; source equaled `origin/main` |
 | Immutable image | `git.its.utas.edu.au/utas/kpz308-rpva-practical:dev-20260716-bdb15517d2fe` |
 | Registry digest | `sha256:4c4a57e3b8d1ba1e08984bda333051b06f5ed8b2b1d4a18af8002db0c16d118c` |
 | Registry media type | `application/vnd.docker.distribution.manifest.v2+json` |
@@ -20,6 +20,8 @@ Status: immutable image published; dev and production deployment pending
 
 Tasks 11 and 12 must use the image and digest above unchanged. Stop if a
 remote pull reports a different repository digest or OCI source revision.
+Documentation-only evidence commits after the build may advance `main`; they
+must not be substituted for the recorded image source commit.
 
 ## Scope And Approved Design
 
@@ -100,8 +102,8 @@ recorded below.
 A bounded read-only audit independently rechecked the release evidence and
 returned **APPROVE** with no material assumptions or uncertainty.
 
-- `HEAD`, `origin/main`, and live `origin/main` all resolved to the recorded
-  source commit.
+- Before the evidence-record commit, `HEAD`, `origin/main`, and live
+  `origin/main` all resolved to the recorded source commit.
 - Live Docker inspection confirmed `linux/amd64`, the recorded local image ID,
   and the exact OCI source revision.
 - Smoke health, page marker, and container cleanup were confirmed.
