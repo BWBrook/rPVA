@@ -13,7 +13,7 @@ Task 6: complete (commits 309e95b..e6b7a943, full suite passed and review approv
 Task 7: complete (commits e6b7a943..57a3120, select focus repaired and review approved)
 Task 8: complete (commits 57a3120..4d57dfd, 53/53 browser checks and review approved)
 Task 9: complete (commits 4d57dfd..de888e4 plus release record, full clean gates and final max-level audit approved)
-Task 10: pending
+Task 10: complete (immutable linux/amd64 image built, smoke/browser accepted, pushed at pinned digest, and independent evidence audit approved)
 Task 11: pending (scheduled dev deployment, Saturday 2026-07-18)
 Task 12: pending (scheduled production deployment, Sunday 2026-07-19)
 
