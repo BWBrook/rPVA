@@ -108,8 +108,8 @@ test_that("app exposes mission-mode classroom guidance", {
   app_dir <- rPVA:::practical1_shiny_app_dir()
   app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
 
-  expect_true(grepl("Mission 1: Baseline compass", app_text, fixed = TRUE))
-  expect_true(grepl("First click creates baseline run 1; later clicks return to run 1 without changing your session.", app_text, fixed = TRUE))
+  expect_true(grepl("Mission 1: Build your reference", app_text, fixed = TRUE))
+  expect_true(grepl("Run 1 uses the starting assumptions. Keep it as the reference for every change that follows.", app_text, fixed = TRUE))
   expect_true(grepl("changing one visible control at a time", app_text, fixed = TRUE))
   expect_true(grepl("Choose a clean comparison: baseline run 1, one risk mechanism, and one intervention or vortex run.", app_text, fixed = TRUE))
   expect_true(grepl("Repeated clicks are less useful than a targeted one-factor change.", app_text, fixed = TRUE))
@@ -125,12 +125,16 @@ test_that("Practical 1 opens with a tutorial landing screen", {
   expect_true(grepl("PVA Basics", app_text, fixed = TRUE))
   expect_false(grepl("Woodhen Practical 1", app_text, fixed = TRUE))
   expect_false(grepl("PVA mission", app_text, fixed = TRUE))
-  expect_true(grepl("PVA is a way to test how a population might change", app_text, fixed = TRUE))
+  expect_true(grepl("PVA explores many possible population futures under explicit assumptions", app_text, fixed = TRUE))
+  expect_true(grepl("It is not a single forecast.", app_text, fixed = TRUE))
   expect_true(grepl('class = "landing-task-text"', app_text, fixed = TRUE))
+  expect_true(grepl("Create a baseline, change one factor at a time, compare the outcomes, and save a short evidence trail.", app_text, fixed = TRUE))
   expect_true(grepl("What you will do", app_text, fixed = TRUE))
   expect_true(grepl("Evidence to save", app_text, fixed = TRUE))
-  expect_true(grepl("First click creates baseline run 1; later clicks return to run 1 without changing your session.", app_text, fixed = TRUE))
+  expect_true(grepl("Mission 1: Build your reference", app_text, fixed = TRUE))
+  expect_true(grepl("Create baseline run", app_text, fixed = TRUE))
   expect_true(grepl('actionButton("run_baseline"', app_text, fixed = TRUE))
+  expect_false(grepl("later clicks return to run 1", app_text, fixed = TRUE))
   expect_false(grepl("run `Deterministic baseline` again", app_text, fixed = TRUE))
 })
 
@@ -185,10 +189,13 @@ test_that("landing cards expose Markdown-backed deep-dives", {
   }
 
   expect_true(grepl('modalButton("Close")', app_text, fixed = TRUE))
-  expect_true(grepl("many possible futures under assumptions", content_text$pva, fixed = TRUE))
+  expect_true(grepl("many possible futures under explicit assumptions", content_text$pva, fixed = TRUE))
   expect_true(grepl("Extinction risk", content_text$pva, fixed = TRUE))
+  expect_true(grepl("proportion of simulated futures", content_text$pva, fixed = TRUE))
   expect_true(grepl("Abundance", content_text$pva, fixed = TRUE))
+  expect_true(grepl("chosen projection horizon", content_text$pva, fixed = TRUE))
   expect_true(grepl("Uncertainty", content_text$pva, fixed = TRUE))
+  expect_true(grepl("range of outcomes across simulated futures", content_text$pva, fixed = TRUE))
   expect_true(grepl("Evidence for interpretation", content_text$pva, fixed = TRUE))
 
   expect_true(grepl("guided concept lab", content_text$mission, fixed = TRUE))
@@ -197,7 +204,8 @@ test_that("landing cards expose Markdown-backed deep-dives", {
   expect_true(grepl("Compare", content_text$mission, fixed = TRUE))
 
   expect_true(grepl("comparison CSV", content_text$evidence, fixed = TRUE))
-  expect_true(grepl("evidence-notes Markdown", content_text$evidence, fixed = TRUE))
+  expect_true(grepl("evidence-notes file", content_text$evidence, fixed = TRUE))
+  expect_true(grepl("Markdown", content_text$evidence, fixed = TRUE))
   expect_true(grepl("one-sentence interpretation", content_text$evidence, fixed = TRUE))
   expect_true(grepl("support your explanation", content_text$evidence, fixed = TRUE))
   expect_true(grepl("trade-offs", content_text$evidence, fixed = TRUE))
@@ -211,6 +219,33 @@ test_that("landing cards expose Markdown-backed deep-dives", {
   expect_match(style_text, "\\.landing-card\\.is-interactive")
   expect_match(style_text, "\\.landing-card-action")
   expect_match(style_text, "\\.deep-dive-modal")
+})
+
+test_that("Start landing exposes accessible shared UI semantics", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
+  script_text <- paste(readLines(file.path(app_dir, "www", "practical1.js"), warn = FALSE), collapse = "\n")
+  style_text <- paste(readLines(file.path(app_dir, "www", "styles.css"), warn = FALSE), collapse = "\n")
+
+  expect_true(grepl('h2(title)', app_text, fixed = TRUE))
+  expect_true(grepl('h2("Your evidence pack")', app_text, fixed = TRUE))
+  expect_true(grepl("This browser session is temporary. Before you finish, use Compare to download your evidence.", app_text, fixed = TRUE))
+
+  expected_script_hooks <- c(
+    "lastModalTrigger",
+    "shown.bs.modal",
+    "hidden.bs.modal",
+    "aria-modal",
+    "aria-labelledby",
+    "aria-current",
+    "shown.bs.tab"
+  )
+  expect_true(all(vapply(expected_script_hooks, grepl, logical(1), x = script_text, fixed = TRUE)))
+
+  expect_match(style_text, "@media \\(max-width: 780px\\)")
+  expect_match(style_text, "\\.navbar-nav\\s*\\{[^}]*display:\\s*grid")
+  expect_match(style_text, "grid-template-columns:\\s*repeat\\(2, minmax\\(0, 1fr\\)\\)")
+  expect_match(style_text, "\\.navbar-nav::before,\\s*\\.navbar-nav::after\\s*\\{[^}]*display:\\s*none")
 })
 
 test_that("Concept Lab exposes Markdown-backed contextual help", {
@@ -905,7 +940,7 @@ test_that("repeated Practical 1 baseline clicks preserve the existing session", 
     session$setInputs(run_stage = 1)
     selected_stage("deterministic_baseline")
     session$setInputs(run_stage = 1)
-    expect_match(run_error(), "Use Start baseline")
+    expect_match(run_error(), "Use Create baseline run")
     expect_equal(last_completed_stage(), "carrying_capacity")
 
     session$setInputs(run_baseline = 2)
@@ -1107,8 +1142,8 @@ test_that("Practical 1 declares temporary state and guarded recovery", {
   js_text <- paste(readLines(js_path, warn = FALSE), collapse = "\n")
 
   notice <- paste(
-    "This session is temporary. Download your comparison CSV and evidence notes",
-    "before closing the app."
+    "This browser session is temporary. Before you finish, use Compare to",
+    "download your evidence."
   )
   count_fixed <- function(pattern, text) {
     hits <- gregexpr(pattern, text, fixed = TRUE)[[1]]

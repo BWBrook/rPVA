@@ -158,8 +158,9 @@ body {
   padding: 14px;
 }
 
-.landing-card-copy h3 {
+.landing-card-copy h2 {
   margin-top: 5px;
+  font-size: 24px;
 }
 
 .landing-card-copy p,
@@ -721,6 +722,48 @@ select:focus-visible,
 }
 
 @media (max-width: 780px) {
+  .navbar .container-fluid {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .navbar .navbar-header {
+    margin: 0;
+    width: 100%;
+  }
+
+  .navbar .navbar-brand {
+    float: none;
+    display: block;
+    margin-left: 0;
+    padding-left: 15px;
+    width: 100%;
+  }
+
+  .navbar-nav {
+    display: grid;
+    float: none;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 0;
+    width: 100%;
+  }
+
+  .navbar-nav::before,
+  .navbar-nav::after {
+    display: none;
+  }
+
+  .navbar-nav > li {
+    float: none;
+    margin: 0;
+  }
+
+  .navbar-default .navbar-nav > li > a {
+    border-top: 1px solid var(--line);
+    padding: 10px 8px;
+    text-align: center;
+  }
+
   .page-shell {
     padding: 12px;
   }

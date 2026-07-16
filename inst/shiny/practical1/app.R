@@ -441,7 +441,7 @@ landing_card_ui <- function(image, alt, eyebrow, title, body, action = NULL, ext
     div(
       class = "landing-card-copy",
       span(class = "landing-eyebrow", eyebrow),
-      h3(title),
+      h2(title),
       p(body),
       action
     )
@@ -584,7 +584,7 @@ session_history_ui <- function(runs, selected_risk_id, selected_action_id) {
       )
     })
   } else {
-    p(class = "muted", "No successful session runs yet. Start baseline to create run 1.")
+    p(class = "muted", "No successful session runs yet. Create the baseline run to begin.")
   }
 
   risk_choices <- eligible_run_choices(runs, practical1_evidence_risk_stages)
@@ -601,7 +601,7 @@ session_history_ui <- function(runs, selected_risk_id, selected_action_id) {
       p(
         class = "pinned-baseline",
         if (is.na(baseline_id)) {
-          "Baseline missing - use Start baseline."
+          "Baseline missing - use Create baseline run."
         } else {
           paste("Run", baseline_id, "- Baseline pinned in selected evidence")
         }
@@ -665,7 +665,7 @@ comparison_empty_state_ui <- function() {
   div(
     class = "compare-empty-state",
     h4("No comparison runs yet"),
-    p("Start baseline to begin comparing runs.")
+    p("Create the baseline run to begin comparing runs.")
   )
 }
 
@@ -783,7 +783,7 @@ session_notice_ui <- function() {
   div(
     class = "session-notice",
     icon("clock"),
-    span("This session is temporary. Download your comparison CSV and evidence notes before closing the app.")
+    span("This browser session is temporary. Before you finish, use Compare to download your evidence.")
   )
 }
 
@@ -814,14 +814,13 @@ ui <- navbarPage(
           class = "landing-copy",
           span(class = "landing-eyebrow", "Practical 1: Learning PVA"),
           h1("PVA Basics"),
-          p(class = "landing-lede", "PVA is a way to test how a population might change when survival, breeding, habitat, and chance interact."),
-          p(class = "landing-task-text", "You will build a short chain of model runs, compare what changed, and save evidence for discussion."),
-          actionButton("run_baseline", label = tagList(icon("play"), "Start baseline"), class = "btn-primary"),
+          p(class = "landing-lede", "PVA explores many possible population futures under explicit assumptions about survival, breeding, habitat, and chance. It is not a single forecast."),
+          p(class = "landing-task-text", "Create a baseline, change one factor at a time, compare the outcomes, and save a short evidence trail."),
+          actionButton("run_baseline", label = tagList(icon("play"), "Create baseline run"), class = "btn-primary"),
           div(
             class = "mission-cue landing-start-cue",
-            span(class = "mission-label", "Mission 1: Baseline compass"),
-            p("First click creates baseline run 1; later clicks return to run 1 without changing your session."),
-            p(class = "muted", "Keep run 1 as your reference before changing controls.")
+            span(class = "mission-label", "Mission 1: Build your reference"),
+            p("Run 1 uses the starting assumptions. Keep it as the reference for every change that follows.")
           )
         ),
         div(
@@ -839,7 +838,7 @@ ui <- navbarPage(
           "population trajectory lines and evidence marks on a field notebook page",
           "Background",
           "What is PVA?",
-          "A population viability analysis explores a set of possible futures.",
+          "PVA explores many possible futures under assumptions, not one prediction.",
           action = actionButton(
             "open_pva_deep_dive",
             label = "Explore PVA",
@@ -869,11 +868,11 @@ ui <- navbarPage(
           div(
             class = "landing-card-copy",
             span(class = "landing-eyebrow", "Evidence to save"),
-            h3("Your evidence pack"),
+            h2("Your evidence pack"),
             tags$ul(
-              tags$li("a comparison CSV from Compare;"),
-              tags$li("evidence notes Markdown;"),
-              tags$li("one sentence about what changed and why it matters.")
+              tags$li("a three-run comparison table;"),
+              tags$li("plain-text evidence notes;"),
+              tags$li("your one-sentence interpretation.")
             ),
             actionButton(
               "open_evidence_deep_dive",
@@ -1238,7 +1237,7 @@ make_practical1_server <- function(execute_stage = run_stage) {
     stage <- selected_stage()
     if (identical(stage, default_stage)) {
       updateNavbarPage(session, "section", selected = "Start")
-      run_error("Use Start baseline to create baseline run 1.")
+      run_error("Use Create baseline run to create run 1.")
       return()
     }
 

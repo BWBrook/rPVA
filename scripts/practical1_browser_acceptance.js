@@ -866,7 +866,7 @@ async function main() {
   page.on("pageerror", (error) => result.pageErrors.push(error.message));
 
   await page.goto(baseURL, { waitUntil: "networkidle" });
-  await activePane(page).getByText("This session is temporary.", { exact: false }).waitFor();
+  await activePane(page).getByText("This browser session is temporary.", { exact: false }).waitFor();
   record("page identity has Practical 1 title", (await page.title()).includes("Practical 1"), await page.title());
   record("page identity has requested URL", (await page.url()).startsWith(baseURL), await page.url());
   record("page has meaningful app content", (await page.locator("body").innerText()).includes("PVA Basics"));
@@ -880,12 +880,20 @@ async function main() {
     await explorePva.evaluate((element) => getComputedStyle(element).outlineStyle !== "none")
   );
   await page.keyboard.press("Enter");
-  await page.locator(".modal").waitFor();
+  const pvaDialog = page.getByRole("dialog", { name: "What is PVA?" });
+  await pvaDialog.waitFor();
+  record("Start tab exposes the active page to assistive technology", await tabLink(page, "Start").getAttribute("aria-current") === "page");
+  record("context help exposes dialog semantics", await pvaDialog.getAttribute("aria-modal") === "true");
   markVisited("Explore PVA");
   await page.keyboard.press("Escape");
-  if (await page.locator(".modal").isVisible()) {
+  try {
+    await page.locator("#shiny-modal").waitFor({ state: "detached", timeout: 3000 });
+  } catch (error) {
     await closeModal(page);
+    await page.locator("#shiny-modal").waitFor({ state: "detached" });
   }
+  await page.waitForFunction(() => document.activeElement?.id === "open_pva_deep_dive");
+  record("closing context help returns focus to its trigger", await explorePva.evaluate((element) => document.activeElement === element));
   for (const action of [
     { name: accessibleNames.exploreMission, label: "Explore mission" },
     { name: accessibleNames.exploreEvidence, label: "Explore evidence" }
@@ -896,13 +904,13 @@ async function main() {
   }
 
   await tabLink(page, "Compare").click();
-  await activePane(page).getByText("This session is temporary.", { exact: false }).waitFor();
+  await activePane(page).getByText("This browser session is temporary.", { exact: false }).waitFor();
   record("context help does not create runs", await page.locator(".session-run-row").count() === 0);
   record("CSV is gated before evidence is ready", await page.getByRole("link", { name: "Comparison CSV" }).count() === 0);
   record("notes are gated before evidence is ready", await page.getByRole("link", { name: "Evidence notes" }).count() === 0);
 
   await tabLink(page, "Start").click();
-  await page.getByRole("button", { name: "Start baseline" }).click();
+  await page.getByRole("button", { name: "Create baseline run" }).click();
   await page.locator("#stage_text").getByText("Core 1: Baseline compass", { exact: false }).waitFor();
   markVisited("Core 1: Baseline compass");
 
@@ -1013,7 +1021,7 @@ async function main() {
   await assertNoHorizontalOverflow(page, "Compare 1366x768");
 
   await tabLink(page, "Transfer").click();
-  await activePane(page).getByText("This session is temporary.", { exact: false }).waitFor();
+  await activePane(page).getByText("This browser session is temporary.", { exact: false }).waitFor();
   await page.getByText("Comparison CSV: Download requested", { exact: false }).waitFor();
   await page.getByText("Evidence notes: Download requested", { exact: false }).waitFor();
   record("Transfer reports both requested downloads", true);
@@ -1074,7 +1082,7 @@ async function main() {
   await page.locator('input[name="selected_action_run_id"]').last().check();
   await page.getByText("Review required", { exact: false }).waitFor();
   await tabLink(page, "Transfer").click();
-  await activePane(page).getByText("This session is temporary.", { exact: false }).waitFor();
+  await activePane(page).getByText("This browser session is temporary.", { exact: false }).waitFor();
   await page.getByText("Comparison CSV: Not requested yet", { exact: false }).waitFor();
   await page.getByText("Evidence notes: Not requested yet", { exact: false }).waitFor();
   record("extension selection invalidates the old CSV request", true);
@@ -1144,6 +1152,8 @@ async function main() {
   await tabLink(page, "Start").click();
   await page.screenshot({ path: artifactPath("start-390x844.png"), fullPage: true });
   recordArtifact(artifactPath("start-390x844.png"), "screenshot");
+  const mobileNavHeight = await page.locator(".navbar").evaluate((element) => element.getBoundingClientRect().height);
+  record("Start mobile navigation is compact", mobileNavHeight <= 150, `${mobileNavHeight}px`);
   await assertNoOverlap(page, [".landing-copy", ".landing-hero-visual", ".landing-card-grid"], "390x844");
   await assertNoHorizontalOverflow(page, "Start 390x844");
 

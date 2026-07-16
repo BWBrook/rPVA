@@ -10,7 +10,7 @@ introduction, followed by approximately two hours of guided, self-paced app
 work while the instructor and demonstrators circulate.
 
 Students start on `PVA Basics`, explicitly create baseline run 1 with
-`Start baseline`, and then use the grouped mission rail in Concept Lab.
+`Create baseline run`, and then use the grouped mission rail in Concept Lab.
 
 The five **Core** missions are:
 
