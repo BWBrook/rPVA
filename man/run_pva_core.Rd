@@ -12,7 +12,8 @@ run_pva_core(
   keep_traj = FALSE,
   stasis = NULL,
   seed = NULL,
-  verbose = FALSE
+  verbose = FALSE,
+  progress = NULL
 )
 }
 \arguments{
@@ -31,6 +32,8 @@ is used; otherwise overrides it.*}
 \item{seed}{integer or NULL; set for reproducibility.}
 
 \item{verbose}{logical; progress indicator.}
+
+\item{progress}{Optional callback receiving completed and total replicate counts.}
 }
 \value{
 list with Nend, traj, and params (full inputs used).

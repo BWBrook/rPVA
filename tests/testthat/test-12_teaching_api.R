@@ -85,10 +85,49 @@ test_that("build_teaching_spec accepts bounded controls and rejects unsafe ones"
 
   expect_error(build_teaching_spec("not_a_stage"), "Unknown teaching stage")
   expect_error(build_teaching_spec("allee_effect"), "not implemented")
-  expect_error(build_teaching_spec("catastrophe", list(env_sd = 0.2)), "Unknown control")
+  expect_error(build_teaching_spec("catastrophe", list(not_a_control = 0.2)), "Unknown control")
   expect_error(build_teaching_spec("catastrophe", list(cat_freq = 0.8)), "outside")
   expect_error(build_teaching_spec("demographic_stochasticity", list(reps = 2.5)), "integer")
   expect_error(build_teaching_spec("deterministic_baseline", base = "woodhen"), "Only `base = \"toy\"`")
+})
+
+test_that("Explore stages accept the accumulated Core teaching controls", {
+  shared <- list(
+    years = 50,
+    reps = 500,
+    K = 70,
+    K_sd = 7,
+    env_sd = 0.40,
+    mortality_pct = -10,
+    fecundity_pct = 5
+  )
+
+  catastrophe <- build_teaching_spec(
+    "catastrophe",
+    controls = c(shared, list(cat_freq = 0.10, cat_surv = 0.50))
+  )
+  intervention <- build_teaching_spec("intervention", controls = shared)
+  vortex <- build_teaching_spec(
+    "extinction_vortex",
+    controls = c(
+      shared,
+      list(F_init = 0.30, cat_freq = 0.18, cat_surv = 0.45, cat_repro = 0.60)
+    )
+  )
+
+  for (spec in list(catastrophe, intervention, vortex)) {
+    expect_equal(spec$years, 50L)
+    expect_equal(spec$reps, 500L)
+    expect_equal(spec$K, 70)
+    expect_equal(spec$K_sd, 7)
+    expect_equal(spec$env_sd, 0.40)
+    expect_equal(spec$mortality_pct, -10)
+    expect_equal(spec$fecundity_pct, 5)
+  }
+  expect_equal(vortex$F_init, 0.30)
+  expect_equal(vortex$cat_freq, 0.18)
+  expect_equal(vortex$cat_surv, 0.45)
+  expect_equal(vortex$cat_repro, 0.60)
 })
 
 test_that("advanced teaching controls apply bounded vital-rate adjustments", {
@@ -133,6 +172,19 @@ test_that("environmental stochasticity default exposes extinction-time teaching 
   expect_lte(run$summary$PE, 0.40)
 })
 
+test_that("environmental variability supports the highest valid teaching preset", {
+  spec <- build_teaching_spec(
+    "environmental_stochasticity",
+    controls = list(env_sd = 0.40)
+  )
+
+  expect_equal(spec$env_sd, 0.40)
+  expect_error(
+    build_teaching_spec("environmental_stochasticity", controls = list(env_sd = 0.41)),
+    "outside the supported range"
+  )
+})
+
 test_that("run_teaching_pva returns a labelled Shiny-ready bundle", {
   run <- run_teaching_pva(
     "demographic_stochasticity",
@@ -168,6 +220,24 @@ test_that("run_teaching_pva avoids console progress by default", {
     keep_traj = FALSE,
     seed = 101
   ))
+})
+
+test_that("run_teaching_pva passes replicate progress through", {
+  events <- list()
+  run <- run_teaching_pva(
+    "demographic_stochasticity",
+    controls = list(reps = 6),
+    keep_traj = FALSE,
+    seed = 101,
+    progress = function(completed, total) {
+      events[[length(events) + 1L]] <<- c(completed = completed, total = total)
+    }
+  )
+
+  event_matrix <- do.call(rbind, events)
+  expect_equal(run$summary$reps, 6L)
+  expect_true(all(diff(event_matrix[, "completed"]) > 0))
+  expect_equal(unname(event_matrix[nrow(event_matrix), ]), c(6, 6))
 })
 
 test_that("teaching_settings_record is compact and does not write files", {

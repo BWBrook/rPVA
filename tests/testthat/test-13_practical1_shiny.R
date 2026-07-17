@@ -65,13 +65,41 @@ test_that("app file avoids unsupported implementation markers", {
   expect_false(any(grepl(marker_pattern, c(app_text, style_text))))
 })
 
-test_that("risk plot panel is server-rendered for browser reliability", {
+test_that("risk evidence is server-rendered before population projections", {
   app_dir <- rPVA:::practical1_shiny_app_dir()
-  app_text <- readLines(file.path(app_dir, "app.R"), warn = FALSE)
+  app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
 
-  expect_true(any(grepl('uiOutput\\("extinction_plot_panel"\\)', app_text)))
-  expect_true(any(grepl("output\\$extinction_plot_panel <- renderUI", app_text)))
-  expect_false(any(grepl("output\\.showExtinctionPlot", app_text)))
+  expect_true(grepl('uiOutput("risk_plot_panel")', app_text, fixed = TRUE))
+  expect_true(grepl("output$risk_plot_panel <- renderUI", app_text, fixed = TRUE))
+  risk_position <- regexpr('h3("Risk evidence")', app_text, fixed = TRUE)[[1]]
+  population_position <- regexpr('h3("Population projections")', app_text, fixed = TRUE)[[1]]
+  expect_gt(risk_position, 0L)
+  expect_gt(population_position, risk_position)
+  expect_false(grepl("output.showExtinctionPlot", app_text, fixed = TRUE))
+})
+
+test_that("risk panel distinguishes deterministic, stochastic, and missing-K states", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  old <- setwd(app_dir)
+  on.exit(setwd(old), add = TRUE)
+  env <- new.env(parent = globalenv())
+  sys.source("app.R", envir = env)
+
+  deterministic <- env$run_stage("deterministic_baseline")
+  deterministic_html <- paste(as.character(env$risk_plot_panel_ui(deterministic)), collapse = "\n")
+  expect_match(deterministic_html, "One fixed projection cannot estimate probability", fixed = TRUE)
+
+  stochastic <- env$run_stage(
+    "demographic_stochasticity",
+    controls = list(K = 35, reps = 20)
+  )
+  stochastic_html <- paste(as.character(env$risk_plot_panel_ui(stochastic)), collapse = "\n")
+  expect_match(stochastic_html, 'id="extinction_plot"', fixed = TRUE)
+  expect_match(stochastic_html, 'id="quasi_extinction_plot"', fixed = TRUE)
+
+  stochastic$spec$K <- NA_real_
+  no_K_html <- paste(as.character(env$risk_plot_panel_ui(stochastic)), collapse = "\n")
+  expect_match(no_K_html, "Quasi-extinction risk needs a finite habitat ceiling", fixed = TRUE)
 })
 
 test_that("comparison reset realigns the stage selector", {
@@ -113,7 +141,44 @@ test_that("app exposes mission-mode classroom guidance", {
   expect_true(grepl("changing one visible control at a time", app_text, fixed = TRUE))
   expect_true(grepl("Choose a clean comparison: baseline run 1, one risk mechanism, and one intervention or vortex run.", app_text, fixed = TRUE))
   expect_true(grepl("Repeated clicks are less useful than a targeted one-factor change.", app_text, fixed = TRUE))
-  expect_true(grepl("Use this stage only as a recovery run after resetting comparison.", app_text, fixed = TRUE))
+  expect_true(grepl("Rerun only after changing projection years, mortality, or fecundity; otherwise the same deterministic trajectory repeats.", app_text, fixed = TRUE))
+})
+
+test_that("baseline mission action reflects whether run 1 exists", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  old <- setwd(app_dir)
+  on.exit(setwd(old), add = TRUE)
+  env <- new.env(parent = globalenv())
+  sys.source("app.R", envir = env)
+
+  expect_true(exists("run_stage_action_ui", envir = env, inherits = FALSE))
+  before_baseline <- as.character(env$run_stage_action_ui("deterministic_baseline", FALSE))
+  after_baseline <- as.character(env$run_stage_action_ui("deterministic_baseline", TRUE))
+  another_mission <- as.character(env$run_stage_action_ui("carrying_capacity", TRUE))
+
+  expect_match(before_baseline, "Create baseline on Start", fixed = TRUE)
+  expect_match(before_baseline, 'disabled="disabled"', fixed = TRUE)
+  expect_match(before_baseline, 'aria-disabled="true"', fixed = TRUE)
+  expect_match(after_baseline, "Rerun baseline", fixed = TRUE)
+  expect_false(grepl('disabled="disabled"', after_baseline, fixed = TRUE))
+  expect_false(grepl('aria-disabled="true"', after_baseline, fixed = TRUE))
+  expect_match(another_mission, "Run mission", fixed = TRUE)
+  expect_false(grepl('disabled="disabled"', another_mission, fixed = TRUE))
+})
+
+test_that("baseline Run mission fallback stays in the Concept Lab", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
+  guard_start <- regexpr("observeEvent(input$run_stage", app_text, fixed = TRUE)[[1]]
+  guard_end <- regexpr("observeEvent(input$next_mission", app_text, fixed = TRUE)[[1]]
+
+  expect_gt(guard_start, 0L)
+  expect_gt(guard_end, guard_start)
+  guard <- substr(app_text, guard_start, guard_end - 1L)
+
+  expect_false(grepl("updateNavbarPage", guard, fixed = TRUE))
+  expect_true(grepl("A deterministic run repeats the same population trajectory", guard, fixed = TRUE))
+  expect_true(grepl("Create the baseline run on Start before running missions.", guard, fixed = TRUE))
 })
 
 test_that("Practical 1 opens with a tutorial landing screen", {
@@ -213,7 +278,7 @@ test_that("landing cards expose Markdown-backed deep-dives", {
   for (text in content_text) {
     expect_false(grepl("thylacine", text, ignore.case = TRUE))
     expect_false(grepl("Lord Howe", text, ignore.case = TRUE))
-    expect_false(grepl("Gitea|stochastic|deployment|ShinyProxy|Docker|Moodle", text, ignore.case = TRUE))
+    expect_false(grepl("Gitea|deployment|ShinyProxy|Docker|Moodle", text, ignore.case = TRUE))
   }
 
   expect_match(style_text, "\\.landing-card\\.is-interactive")
@@ -301,8 +366,10 @@ test_that("Concept Lab exposes Markdown-backed contextual help", {
     expect_true(grepl(aria_label, app_text, fixed = TRUE))
   }
 
-  expect_true(grepl("habitat ceiling", content_text$parameters, fixed = TRUE))
-  expect_true(grepl("bad-year variation", content_text$parameters, fixed = TRUE))
+  expect_true(grepl("breeding and territory-holding stages", content_text$parameters, fixed = TRUE))
+  expect_true(grepl("total population can exceed the ceiling", content_text$parameters, fixed = TRUE))
+  expect_true(grepl("environmental variation", content_text$parameters, fixed = TRUE))
+  expect_true(grepl("bonanza and bust years", content_text$parameters, fixed = TRUE))
   expect_true(grepl("starting inbreeding", content_text$parameters, fixed = TRUE))
   expect_true(grepl("catastrophe chance", content_text$parameters, fixed = TRUE))
   expect_true(grepl("simulation futures", content_text$parameters, fixed = TRUE))
@@ -311,14 +378,19 @@ test_that("Concept Lab exposes Markdown-backed contextual help", {
   expect_true(grepl("Nmed", content_text$outputs, fixed = TRUE))
   expect_true(grepl("uncertainty interval", content_text$outputs, fixed = TRUE))
   expect_true(grepl("PE = 0", content_text$outputs, fixed = TRUE))
+  expect_true(grepl("Settings record", content_text$outputs, fixed = TRUE))
 
   expect_true(grepl("warning", content_text$diagnostics, fixed = TRUE))
   expect_true(grepl("caveat", content_text$diagnostics, fixed = TRUE))
   expect_true(grepl("No major diagnostic warnings", content_text$diagnostics, fixed = TRUE))
+  expect_true(grepl("does not prove", content_text$diagnostics, fixed = TRUE))
 
   expect_true(grepl("trajectory", content_text$plots, fixed = TRUE))
   expect_true(grepl("summary interval", content_text$plots, fixed = TRUE))
-  expect_true(grepl("risk detail", content_text$plots, fixed = TRUE))
+  expect_true(grepl("extinction risk through time", tolower(content_text$plots), fixed = TRUE))
+  expect_true(grepl("extinction-time histogram", content_text$plots, fixed = TRUE))
+  expect_true(grepl("quasi-extinction", tolower(content_text$plots), fixed = TRUE))
+  expect_true(grepl("50% of the nominal habitat ceiling", content_text$plots, fixed = TRUE))
 
   for (text in content_text) {
     expect_false(grepl("Woodhen|thylacine|\\bITS\\b|Gitea|Docker|Moodle|ShinyProxy", text, ignore.case = TRUE))
@@ -330,6 +402,40 @@ test_that("Concept Lab exposes Markdown-backed contextual help", {
   expect_false(grepl("7b. Vortex comparison", worksheet_text, fixed = TRUE))
   expect_match(style_text, "\\.contextual-help-button")
   expect_match(style_text, "\\.concept-help-strip")
+})
+
+test_that("Concept Lab explains the complete Core and Explore route in place", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
+  content_path <- file.path(app_dir, "content", "core-explore-help.md")
+  content_text <- if (file.exists(content_path)) {
+    paste(readLines(content_path, warn = FALSE), collapse = "\n")
+  } else {
+    ""
+  }
+
+  expect_true(file.exists(content_path))
+  expect_true(grepl('core_explore_help_path <- file.path("content", "core-explore-help.md")', app_text, fixed = TRUE))
+  expect_match(app_text, 'actionButton\\(\\s*"open_core_explore_help"')
+  expect_true(grepl("observeEvent(input$open_core_explore_help", app_text, fixed = TRUE))
+  expect_true(grepl("showModal(core_explore_help_ui())", app_text, fixed = TRUE))
+  expect_false(grepl('actionButton("show_intro"', app_text, fixed = TRUE))
+  expect_false(grepl("observeEvent(input$show_intro", app_text, fixed = TRUE))
+
+  expected_missions <- c(
+    "Baseline compass",
+    "Island ceiling",
+    "Individual chance",
+    "Environmental variability",
+    "Rescue attempt",
+    "Small-population pressure",
+    "Rare bad years",
+    "Vortex comparison"
+  )
+  expect_true(all(vapply(expected_missions, grepl, logical(1), x = content_text, fixed = TRUE)))
+  expect_true(grepl("latest successful Core settings", content_text, fixed = TRUE))
+  expect_true(grepl("do not rewrite", content_text, fixed = TRUE))
+  expect_true(grepl("carry forward into later Explore missions", content_text, fixed = TRUE))
 })
 
 test_that("Concept Lab exposes a guided mission rail", {
@@ -451,7 +557,7 @@ test_that("Concept Lab settings table uses teaching labels and selected-mission 
   expect_true(grepl("Selected mission value", app_text, fixed = TRUE))
   expect_true(grepl("What changed", app_text, fixed = TRUE))
   expect_true(grepl("Habitat ceiling", app_text, fixed = TRUE))
-  expect_true(grepl("Bad-year variation", app_text, fixed = TRUE))
+  expect_true(grepl("Environmental variation", app_text, fixed = TRUE))
   expect_true(grepl("Starting population", app_text, fixed = TRUE))
   expect_true(grepl("selected_stage_spec <- reactive", app_text, fixed = TRUE))
   expect_true(grepl("settings_for_display(selected_stage_spec(), baseline_run()$spec)", app_text, fixed = TRUE))
@@ -460,13 +566,112 @@ test_that("Concept Lab settings table uses teaching labels and selected-mission 
   expect_match(style_text, "\\.settings-table td:nth-child\\(4\\)")
 })
 
+test_that("Core stochastic controls expose the intended classroom ranges", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  old <- setwd(app_dir)
+  on.exit(setwd(old), add = TRUE)
+  env <- new.env(parent = globalenv())
+  sys.source("app.R", envir = env)
+
+  individual_html <- as.character(env$stage_control_ui("demographic_stochasticity"))
+  environmental_html <- as.character(env$stage_control_ui("environmental_stochasticity"))
+
+  expect_match(individual_html, "Simulation futures", fixed = TRUE)
+  for (choice in c("10", "100", "500", "1000")) {
+    expect_match(individual_html, paste0(">", choice, "<"), fixed = TRUE)
+  }
+  expect_false(grepl('max="200"', individual_html, fixed = TRUE))
+
+  expect_match(environmental_html, "Environmental variation", fixed = TRUE)
+  expect_match(environmental_html, 'data-max="0.4"', fixed = TRUE)
+  expect_match(environmental_html, 'data-from="0.35"', fixed = TRUE)
+})
+
+test_that("Core controls reopen with the accumulated working assumptions", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  old <- setwd(app_dir)
+  on.exit(setwd(old), add = TRUE)
+  env <- new.env(parent = globalenv())
+  sys.source("app.R", envir = env)
+
+  working <- list(
+    years = 50,
+    reps = 500,
+    K = 45,
+    K_sd = 4,
+    env_sd = 0.40,
+    mortality_pct = -10,
+    fecundity_pct = 5
+  )
+
+  baseline_html <- as.character(env$stage_control_ui("deterministic_baseline", working))
+  individual_html <- as.character(env$stage_control_ui("demographic_stochasticity", working))
+  environmental_html <- as.character(env$stage_control_ui("environmental_stochasticity", working))
+  first_intervention_html <- as.character(env$stage_control_ui("intervention", working, stage_completed = FALSE))
+  repeated_intervention_html <- as.character(env$stage_control_ui(
+    "intervention",
+    utils::modifyList(working, list(K = 80, K_sd = 6)),
+    stage_completed = TRUE
+  ))
+  advanced_html <- as.character(env$advanced_stage_controls("catastrophe", working))
+
+  expect_match(baseline_html, 'data-from="50"', fixed = TRUE)
+  expect_match(individual_html, 'data-from="45"', fixed = TRUE)
+  expect_match(individual_html, '<option value="500" selected>500</option>', fixed = TRUE)
+  expect_match(environmental_html, 'data-from="0.4"', fixed = TRUE)
+  expect_match(environmental_html, 'data-from="45"', fixed = TRUE)
+  expect_match(first_intervention_html, 'data-from="70"', fixed = TRUE)
+  expect_match(first_intervention_html, 'data-from="5"', fixed = TRUE)
+  expect_match(repeated_intervention_html, 'data-from="80"', fixed = TRUE)
+  expect_match(repeated_intervention_html, 'data-from="6"', fixed = TRUE)
+  expect_match(advanced_html, '<option value="500" selected>500</option>', fixed = TRUE)
+})
+
+test_that("Explore controls retain accumulated mechanism settings", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  old <- setwd(app_dir)
+  on.exit(setwd(old), add = TRUE)
+  env <- new.env(parent = globalenv())
+  sys.source("app.R", envir = env)
+
+  working <- list(K = 70, K_sd = 7, env_sd = 0.40)
+  explore <- list(F_init = 0.30, cat_freq = 0.18, cat_surv = 0.45)
+  genetic_html <- as.character(env$stage_control_ui(
+    "genetic_stochasticity",
+    working,
+    explore_assumptions = explore
+  ))
+  catastrophe_html <- as.character(env$stage_control_ui(
+    "catastrophe",
+    working,
+    explore_assumptions = explore
+  ))
+  vortex_html <- as.character(env$stage_control_ui(
+    "extinction_vortex",
+    working,
+    explore_assumptions = explore
+  ))
+
+  expect_match(genetic_html, "Starting inbreeding", fixed = TRUE)
+  expect_match(genetic_html, 'data-from="0.3"', fixed = TRUE)
+  expect_false(grepl('id="env_sd"', genetic_html, fixed = TRUE))
+  expect_match(catastrophe_html, "Catastrophe chance each year", fixed = TRUE)
+  expect_match(catastrophe_html, 'data-from="0.18"', fixed = TRUE)
+  expect_match(catastrophe_html, 'data-from="0.45"', fixed = TRUE)
+  expect_false(grepl('id="K"', catastrophe_html, fixed = TRUE))
+  expect_match(vortex_html, "Catastrophe chance each year", fixed = TRUE)
+  expect_match(vortex_html, 'data-from="0.18"', fixed = TRUE)
+  expect_match(vortex_html, 'data-max="0.2"', fixed = TRUE)
+  expect_false(grepl('id="K"', vortex_html, fixed = TRUE))
+})
+
 test_that("Concept Lab exposes optional advanced risk controls", {
   app_dir <- rPVA:::practical1_shiny_app_dir()
   app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
 
   expect_true(grepl('checkboxInput("show_advanced_controls"', app_text, fixed = TRUE))
   expect_true(grepl("Show advanced risk controls", app_text, fixed = TRUE))
-  expect_true(grepl("advanced_stage_controls <- function(stage)", app_text, fixed = TRUE))
+  expect_true(grepl("advanced_stage_controls <- function(stage, working_assumptions = NULL)", app_text, fixed = TRUE))
   expect_true(grepl("advanced_year_choices <- c(10, 25, 50, 100, 1000)", app_text, fixed = TRUE))
   expect_true(grepl("advanced_reps_choices <- c(10, 100, 500, 1000)", app_text, fixed = TRUE))
   expect_true(grepl("advanced_pct_choices <- c(-20, -10, -5, 0, 5, 10, 20)", app_text, fixed = TRUE))
@@ -482,7 +687,24 @@ test_that("Concept Lab exposes optional advanced risk controls", {
   expect_true(grepl("fecundity_pct", app_text, fixed = TRUE))
   expect_true(grepl("5% lower", app_text, fixed = TRUE))
   expect_true(grepl("20% higher", app_text, fixed = TRUE))
-  expect_match(app_text, "stage_control_values\\([^)]*advanced = isTRUE\\(input\\$show_advanced_controls\\)")
+  expect_true(grepl("mission_control_values(", app_text, fixed = TRUE))
+  expect_true(grepl("working_assumptions = working_assumptions()", app_text, fixed = TRUE))
+})
+
+test_that("deterministic baseline advanced controls omit meaningless replication", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  old <- setwd(app_dir)
+  on.exit(setwd(old), add = TRUE)
+  env <- new.env(parent = globalenv())
+  sys.source("app.R", envir = env)
+
+  controls <- env$visible_stage_controls("deterministic_baseline", advanced = TRUE)
+  advanced_html <- as.character(env$advanced_stage_controls("deterministic_baseline"))
+
+  expect_equal(controls, c("years", "mortality_pct", "fecundity_pct"))
+  expect_match(advanced_html, "Mortality change", fixed = TRUE)
+  expect_match(advanced_html, "Fecundity change", fixed = TRUE)
+  expect_false(grepl("Simulation futures", advanced_html, fixed = TRUE))
 })
 
 test_that("Concept Lab can save plot PNGs with automatic filenames", {
@@ -493,9 +715,11 @@ test_that("Concept Lab can save plot PNGs with automatic filenames", {
   expect_true(grepl('downloadButton("download_trajectory_plot"', app_text, fixed = TRUE))
   expect_true(grepl('downloadButton("download_summary_plot"', app_text, fixed = TRUE))
   expect_true(grepl('downloadButton("download_extinction_plot"', app_text, fixed = TRUE))
+  expect_true(grepl('downloadButton("download_quasi_extinction_plot"', app_text, fixed = TRUE))
   expect_true(grepl("output$download_trajectory_plot <- downloadHandler", app_text, fixed = TRUE))
   expect_true(grepl("output$download_summary_plot <- downloadHandler", app_text, fixed = TRUE))
   expect_true(grepl("output$download_extinction_plot <- downloadHandler", app_text, fixed = TRUE))
+  expect_true(grepl("output$download_quasi_extinction_plot <- downloadHandler", app_text, fixed = TRUE))
   expect_true(grepl("plot_png_filename <- function(kind, run)", app_text, fixed = TRUE))
   expect_true(grepl("write_plot_png <- function(file, plot)", app_text, fixed = TRUE))
   expect_true(grepl("practical1-trajectory-", app_text, fixed = TRUE))
@@ -939,8 +1163,10 @@ test_that("repeated Practical 1 baseline clicks preserve the existing session", 
     selected_stage("carrying_capacity")
     session$setInputs(run_stage = 1)
     selected_stage("deterministic_baseline")
+    session$setInputs(years = 25)
     session$setInputs(run_stage = 1)
-    expect_match(run_error(), "Use Create baseline run")
+    expect_match(run_error(), "A deterministic run repeats the same population trajectory")
+    expect_length(run_history(), 2L)
     expect_equal(last_completed_stage(), "carrying_capacity")
 
     session$setInputs(run_baseline = 2)
@@ -952,6 +1178,168 @@ test_that("repeated Practical 1 baseline clicks preserve the existing session", 
     expect_true(baseline_started())
     expect_equal(selected_stage(), "deterministic_baseline")
     expect_equal(session_run_id(current_run()), 1L)
+  })
+})
+
+test_that("changed deterministic assumptions create exploratory baseline reruns", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  old <- setwd(app_dir)
+  on.exit(setwd(old), add = TRUE)
+  env <- new.env(parent = globalenv())
+  sys.source("app.R", envir = env)
+
+  shiny::testServer(env$make_practical1_server(), {
+    session$setInputs(run_baseline = 1)
+    original_baseline <- baseline_run()
+    session$setInputs(years = 25, run_stage = 1)
+    expect_length(run_history(), 1L)
+    expect_equal(next_run_id(), 2L)
+    expect_match(run_error(), "A deterministic run repeats the same population trajectory")
+
+    session$setInputs(years = 50, run_stage = 2)
+    expect_length(run_history(), 2L)
+    expect_equal(vapply(run_history(), session_run_id, integer(1)), 1:2)
+    expect_equal(current_run()$stage, "deterministic_baseline")
+    expect_equal(current_run()$spec$years, 50L)
+    expect_equal(baseline_run()$spec$years, 25L)
+    expect_identical(baseline_run(), original_baseline)
+    expect_null(run_error())
+
+    session$setInputs(run_stage = 3)
+    expect_length(run_history(), 2L)
+    expect_match(run_error(), "A deterministic run repeats the same population trajectory")
+
+    session$setInputs(
+      show_advanced_controls = TRUE,
+      mortality_pct = "-10",
+      fecundity_pct = "0",
+      run_stage = 4
+    )
+    expect_length(run_history(), 3L)
+    expect_equal(current_run()$spec$mortality_pct, -10)
+    expect_equal(current_run()$spec$fecundity_pct, 0)
+    expect_null(run_error())
+
+    session$setInputs(fecundity_pct = "5", run_stage = 5)
+    expect_length(run_history(), 4L)
+    expect_equal(current_run()$spec$mortality_pct, -10)
+    expect_equal(current_run()$spec$fecundity_pct, 5)
+    expect_identical(baseline_run(), original_baseline)
+    expect_equal(env$first_baseline_run_id(run_history()), 1L)
+
+    selected_stage("carrying_capacity")
+    session$setInputs(
+      show_advanced_controls = FALSE,
+      K = 35,
+      K_sd = 5,
+      run_stage = 6
+    )
+    expect_equal(current_run()$stage, "carrying_capacity")
+    expect_equal(current_run()$spec$years, 50L)
+    expect_equal(current_run()$spec$mortality_pct, -10)
+    expect_equal(current_run()$spec$fecundity_pct, 5)
+    expect_identical(baseline_run(), original_baseline)
+
+    settings <- env$settings_for_display(current_run()$spec, baseline_run()$spec)
+    years_row <- settings[settings$Parameter == "Projection years", , drop = FALSE]
+    expect_equal(years_row$`Selected mission value`, "50")
+    expect_equal(years_row$`What changed`, "Higher than baseline")
+
+    history_html <- paste(as.character(output$session_history), collapse = "\n")
+    pinned_hits <- gregexpr("Pinned in selected evidence", history_html, fixed = TRUE)[[1]]
+    expect_equal(sum(pinned_hits > 0L), 1L)
+
+    session$setInputs(confirm_clear_runs = 1)
+    session$setInputs(run_baseline = 2)
+    selected_stage("carrying_capacity")
+    session$setInputs(K = 35, K_sd = 5, run_stage = 7)
+    expect_equal(current_run()$spec$years, 25L)
+    expect_equal(current_run()$spec$mortality_pct, 0)
+    expect_equal(current_run()$spec$fecundity_pct, 0)
+  })
+})
+
+test_that("Core and Explore settings accumulate separately before Vortex", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  old <- setwd(app_dir)
+  on.exit(setwd(old), add = TRUE)
+  env <- new.env(parent = globalenv())
+  sys.source("app.R", envir = env)
+
+  captured <- list()
+  execute_stage <- function(stage, controls = list(), progress = NULL) {
+    captured[[length(captured) + 1L]] <<- list(stage = stage, controls = controls)
+    bounded <- controls
+    if (!is.null(bounded$reps)) {
+      bounded$reps <- min(as.integer(bounded$reps), 10L)
+    }
+    env$run_stage(stage, bounded, progress = progress)
+  }
+
+  shiny::testServer(env$make_practical1_server(execute_stage), {
+    session$setInputs(run_baseline = 1)
+
+    selected_stage("deterministic_baseline")
+    session$setInputs(
+      show_advanced_controls = TRUE,
+      years = 50,
+      mortality_pct = "-10",
+      fecundity_pct = "5",
+      run_stage = 1
+    )
+
+    selected_stage("carrying_capacity")
+    session$setInputs(show_advanced_controls = FALSE, K = 45, K_sd = 4, run_stage = 2)
+
+    selected_stage("demographic_stochasticity")
+    session$setInputs(K = 45, reps = "500", run_stage = 3)
+
+    selected_stage("environmental_stochasticity")
+    session$setInputs(env_sd = 0.40, K = 45, run_stage = 4)
+
+    selected_stage("intervention")
+    session$setInputs(K = 70, K_sd = 7, run_stage = 5)
+
+    expected_working <- list(
+      years = 50,
+      mortality_pct = -10,
+      fecundity_pct = 5,
+      K = 70,
+      K_sd = 7,
+      reps = 500,
+      env_sd = 0.40
+    )
+    expect_equal(working_assumptions(), expected_working)
+
+    before_explore <- working_assumptions()
+    selected_stage("genetic_stochasticity")
+    session$setInputs(F_init = 0.30, run_stage = 6)
+    expect_equal(explore_assumptions(), list(F_init = 0.30))
+    genetic_controls_html <- paste(as.character(output$stage_controls), collapse = "\n")
+    expect_match(genetic_controls_html, 'data-from="0.3"', fixed = TRUE)
+
+    selected_stage("catastrophe")
+    session$setInputs(cat_freq = 0.18, cat_surv = 0.45, run_stage = 7)
+    expect_equal(
+      explore_assumptions(),
+      list(F_init = 0.30, cat_freq = 0.18, cat_surv = 0.45)
+    )
+    catastrophe_controls_html <- paste(as.character(output$stage_controls), collapse = "\n")
+    expect_match(catastrophe_controls_html, 'data-from="0.18"', fixed = TRUE)
+    expect_match(catastrophe_controls_html, 'data-from="0.45"', fixed = TRUE)
+
+    selected_stage("extinction_vortex")
+    session$setInputs(cat_freq = 0.18, run_stage = 8)
+
+    explore_controls <- captured[[length(captured)]]$controls
+    expect_equal(explore_controls[names(expected_working)], expected_working)
+    expect_equal(explore_controls$F_init, 0.30)
+    expect_equal(explore_controls$cat_freq, 0.18)
+    expect_equal(explore_controls$cat_surv, 0.45)
+    expect_identical(working_assumptions(), before_explore)
+
+    session$setInputs(confirm_clear_runs = 1)
+    expect_identical(explore_assumptions(), list())
   })
 })
 
@@ -1159,7 +1547,8 @@ test_that("Practical 1 declares temporary state and guarded recovery", {
   expect_true(grepl('role = "alert"', app_text, fixed = TRUE))
   expect_true(grepl('$(document).on("shiny:busy"', js_text, fixed = TRUE))
   expect_true(grepl('$(document).on("shiny:idle"', js_text, fixed = TRUE))
-  expect_true(grepl('$("#run_stage").prop("disabled", true)', js_text, fixed = TRUE))
+  expect_true(grepl('$("#run_stage:not(:disabled)")', js_text, fixed = TRUE))
+  expect_true(grepl('$("#run_stage[data-shiny-busy-disabled=\'true\']")', js_text, fixed = TRUE))
 })
 
 test_that("Practical 1 final polish retains help and responsive state selectors", {
@@ -1170,7 +1559,7 @@ test_that("Practical 1 final polish retains help and responsive state selectors"
     "open_pva_deep_dive",
     "open_mission_deep_dive",
     "open_evidence_deep_dive",
-    "show_intro",
+    "open_core_explore_help",
     "open_parameter_help",
     "open_output_help",
     "open_diagnostic_help",
@@ -1222,7 +1611,7 @@ test_that("Practical 1 Week 1 documents use the same route and session language"
   texts <- lapply(docs, function(path) paste(readLines(path, warn = FALSE), collapse = "\n"))
   route_block <- paste(
     "Start with the five **Core** model missions: Baseline compass, Island ceiling,",
-    "Individual chance, Shared bad years, and Rescue attempt. Then go to **Compare**",
+    "Individual chance, Environmental variability, and Rescue attempt. Then go to **Compare**",
     "and build a three-run evidence set containing baseline, one risk mechanism, and",
     "one intervention or vortex run.",
     "",
@@ -1429,6 +1818,7 @@ test_that("Practical 1 browser artifact helpers enforce strict final evidence", 
     "  sharedComparisonFieldsMatch,",
     "  exactRenderedStagesMatch,",
     "  canonicalExpectedSettings,",
+    "  canonicalSpecRowsForEvidence,",
     "  settingsRowsExactlyMatch",
     "} = require(process.env.PRACTICAL1_SCRIPT);",
     "const csvHeaders = ['run_id', 'stage', 'label', 'scenario', 'years', 'reps', 'PE', 'Nmed', 'Nlo95', 'Nhi95', 'extinct_reps', 'surviving_reps', 'trajectory_available', 'delta_PE', 'delta_Nmed', 'uncertainty_change'];",
@@ -1438,6 +1828,7 @@ test_that("Practical 1 browser artifact helpers enforce strict final evidence", 
     "const rendered = [{ runId: 1, label: 'Deterministic baseline', visibleStage: 'Baseline', settings: 'Reference settings' }, { runId: 8, label: 'Catastrophe', visibleStage: 'Risk mechanism', settings: 'cat_freq = 0.05' }];",
     "const expectedSpecs = { '1': [{ runId: 1, stage: 'deterministic_baseline', label: 'Deterministic baseline', setting: 'spec_name', value: 'teaching_deterministic_baseline' }], '8': [{ runId: 8, stage: 'catastrophe', label: 'Catastrophe', setting: 'spec_name', value: 'teaching_catastrophe' }] };",
     "const expectedSettings = canonicalExpectedSettings(rendered, expectedSpecs);",
+    "const vortexSpecs = canonicalSpecRowsForEvidence([{ runId: 9, label: 'Extinction vortex comparison', settings: 'F_init = 0.3; cat_freq = 0.18' }])['9'];",
     "const actualSettings = [...expectedSettings];",
     "const extraSettings = [...actualSettings, { runId: 8, stage: 'catastrophe', label: 'Catastrophe', setting: 'spec_extra', value: 'unexpected' }];",
     "console.log(JSON.stringify({",
@@ -1448,6 +1839,7 @@ test_that("Practical 1 browser artifact helpers enforce strict final evidence", 
     "  wrongStageRejected: !exactRenderedStagesMatch(['deterministic_baseline', 'intervention'], rendered),",
     "  exactSettingsAccepted: settingsRowsExactlyMatch(actualSettings, expectedSettings),",
     "  extraSettingsRejected: !settingsRowsExactlyMatch(extraSettings, expectedSettings),",
+    "  vortexInbreedingRecorded: vortexSpecs.some((row) => row.setting === 'spec_F_init' && row.value === '0.3'),",
     "}));"
   )
   writeLines(probe, probe_path)
@@ -1470,4 +1862,5 @@ test_that("Practical 1 browser artifact helpers enforce strict final evidence", 
   expect_true(isTRUE(probe_result$wrongStageRejected))
   expect_true(isTRUE(probe_result$exactSettingsAccepted))
   expect_true(isTRUE(probe_result$extraSettingsRejected))
+  expect_true(isTRUE(probe_result$vortexInbreedingRecorded))
 })

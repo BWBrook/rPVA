@@ -13,7 +13,7 @@ Open the approved Practical 1 app link, this launch page, and
 ## Your route through Practical 1
 
 Start with the five **Core** model missions: Baseline compass, Island ceiling,
-Individual chance, Shared bad years, and Rescue attempt. Then go to **Compare**
+Individual chance, Environmental variability, and Rescue attempt. Then go to **Compare**
 and build a three-run evidence set containing baseline, one risk mechanism, and
 one intervention or vortex run.
 
@@ -34,7 +34,7 @@ app work while the instructor and demonstrators circulate. Work through the
 Core missions in order:
 
 1. On Start, click `Start baseline` and keep it as run 1.
-2. Run Island ceiling, Individual chance, Shared bad years, and Rescue attempt,
+2. Run Island ceiling, Individual chance, Environmental variability, and Rescue attempt,
    changing one visible control at a time.
 3. In Compare, select exactly baseline plus one risk mechanism plus one
    intervention or vortex run.

@@ -10,7 +10,7 @@ supports the observation, and what caveat remains.
 ## Your route through Practical 1
 
 Start with the five **Core** model missions: Baseline compass, Island ceiling,
-Individual chance, Shared bad years, and Rescue attempt. Then go to **Compare**
+Individual chance, Environmental variability, and Rescue attempt. Then go to **Compare**
 and build a three-run evidence set containing baseline, one risk mechanism, and
 one intervention or vortex run.
 
@@ -30,7 +30,7 @@ selection, progress, and interpretation.
 | 1. Baseline compass |  |  |  |  |
 | 2. Island ceiling |  |  |  |  |
 | 3. Individual chance |  |  |  |  |
-| 4. Shared bad years |  |  |  |  |
+| 4. Environmental variability |  |  |  |  |
 | 5. Rescue attempt |  |  |  |  |
 
 ## Core prompts
@@ -51,10 +51,10 @@ Run demographic stochasticity. Did the median change, or did the spread among
 possible futures become more important? Why might individual chance matter more
 for a small population?
 
-### 4. Shared bad years
+### 4. Environmental variability
 
-Run environmental stochasticity. Which output best shows shared good and bad
-years? What would be misleading about reporting only an average trajectory?
+Run environmental stochasticity. Which output best shows shared bonanza and
+bust years? What would be misleading about reporting only an average trajectory?
 
 ### 5. Rescue attempt
 

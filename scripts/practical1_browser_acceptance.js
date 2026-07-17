@@ -80,6 +80,7 @@ const accessibleNames = {
   explorePva: "Explore population viability analysis",
   exploreMission: "Explore the Practical 1 mission",
   exploreEvidence: "Explore the Practical 1 evidence pack",
+  coreExploreHelp: "Open Core and Explore mission help",
   controlHelp: "Open Practical 1 parameter help",
   outputHelp: "Open Practical 1 output help",
   diagnosticHelp: "Open Practical 1 diagnostic help",
@@ -91,12 +92,12 @@ const expectedRouteLabels = [
   "Core 1: Baseline compass",
   "Core 2: Island ceiling",
   "Core 3: Individual chance",
-  "Core 4: Shared bad years",
+  "Core 4: Environmental variability",
   "Core 5: Rescue attempt",
   "Explore: Small-population pressure",
   "Explore: Rare bad years",
   "Explore: Vortex comparison",
-  "Introduction",
+  "Core and Explore",
   "Explore PVA",
   "Explore mission",
   "Explore evidence",
@@ -106,7 +107,8 @@ const expectedRouteLabels = [
   "Read plots",
   "Comparison CSV",
   "Evidence notes",
-  "Risk PNG"
+  "Extinction risk PNG",
+  "Quasi-extinction PNG"
 ];
 
 const visitedRouteLabels = new Set();
@@ -168,7 +170,8 @@ const canonicalSpecTemplates = {
   },
   genetic_stochasticity: {
     years: "25", reps: "100", K: "30", K_sd: "5",
-    demographic_stochasticity: "TRUE", env_sd: "0.3", genetics: "TRUE", n0: "31,12,7"
+    demographic_stochasticity: "TRUE", env_sd: "0.3", genetics: "TRUE",
+    F_init: "0.1", n0: "31,12,7"
   },
   catastrophe: {
     years: "25", reps: "100", K: "30", K_sd: "5",
@@ -182,7 +185,7 @@ const canonicalSpecTemplates = {
   extinction_vortex: {
     years: "25", reps: "100", K: "20", K_sd: "5",
     demographic_stochasticity: "TRUE", env_sd: "0.3", genetics: "TRUE",
-    cat_freq: "0.05", cat_surv: "0.7", cat_repro: "0.8", n0: "12,5,3"
+    cat_freq: "0.05", cat_surv: "0.7", cat_repro: "0.8", F_init: "0.1", n0: "12,5,3"
   }
 };
 
@@ -913,28 +916,101 @@ async function main() {
   await page.getByRole("button", { name: "Create baseline run" }).click();
   await page.locator("#stage_text").getByText("Core 1: Baseline compass", { exact: false }).waitFor();
   markVisited("Core 1: Baseline compass");
+  const rerunBaselineAction = page.getByRole("button", { name: "Rerun baseline" });
+  await rerunBaselineAction.waitFor();
+  await page.waitForFunction(() => {
+    const action = document.querySelector("#run_stage");
+    return action && !action.disabled;
+  });
+  record(
+    "baseline rerun action is visible and enabled",
+    await rerunBaselineAction.isVisible() && await rerunBaselineAction.isEnabled()
+  );
+  await rerunBaselineAction.click();
+  const unchangedBaselineMessage = page.getByText(
+    "A deterministic run repeats the same population trajectory",
+    { exact: false }
+  );
+  await unchangedBaselineMessage.waitFor();
+  record("unchanged baseline rerun explains deterministic behaviour", await unchangedBaselineMessage.isVisible());
+  record(
+    "unchanged baseline rerun remains in the Concept Lab",
+    await tabLink(page, "Concept Lab").evaluate((element) => element.parentElement?.classList.contains("active"))
+  );
+  await page.screenshot({ path: artifactPath("concept-lab-baseline-unchanged-1366x768.png"), fullPage: true });
+  recordArtifact(artifactPath("concept-lab-baseline-unchanged-1366x768.png"), "screenshot");
+
+  await missionLink(page, "Core 3: Individual chance").click();
+  await page.locator("#reps").waitFor({ state: "attached" });
+  const coreThreeFutures = await page.locator("#reps").evaluate((element) => (
+    element.selectize ? Object.keys(element.selectize.options) : [...element.options].map((option) => option.value)
+  ));
+  record(
+    "Core 3 exposes the full simulation-futures presets",
+    sameSequence(coreThreeFutures, ["10", "100", "500", "1000"]),
+    JSON.stringify(coreThreeFutures)
+  );
+
+  await missionLink(page, "Core 4: Environmental variability").click();
+  await page.locator("#env_sd").waitFor({ state: "attached" });
+  const environmentalControl = await page.locator("#env_sd").evaluate((element) => ({
+    value: element.value,
+    maximum: element.dataset.max,
+    label: document.querySelector("#env_sd-label")?.textContent.trim()
+  }));
+  record(
+    "Core 4 uses the revised environmental-variation range",
+    environmentalControl.value === "0.35" && environmentalControl.maximum === "0.4" && environmentalControl.label === "Environmental variation",
+    JSON.stringify(environmentalControl)
+  );
 
   for (const mission of [
     "Core 2: Island ceiling",
     "Core 3: Individual chance",
-    "Core 4: Shared bad years",
+    "Core 4: Environmental variability",
     "Core 5: Rescue attempt"
   ]) {
     await runMission(page, mission);
   }
 
   for (const action of [
-    { name: "Introduction", label: "Introduction", tab: "Concept Lab" },
-    { name: accessibleNames.controlHelp, label: "Control help" },
-    { name: accessibleNames.outputHelp, label: "Read outputs" },
-    { name: accessibleNames.diagnosticHelp, label: "Read diagnostics" },
-    { name: accessibleNames.plotHelp, label: "Read plots" }
+    {
+      name: accessibleNames.coreExploreHelp,
+      label: "Core and Explore",
+      expectedText: ["Baseline compass", "Rescue attempt", "Vortex comparison", "latest successful Core settings"]
+    },
+    {
+      name: accessibleNames.controlHelp,
+      label: "Control help",
+      expectedText: ["breeding and territory-holding stages", "bonanza and bust years"]
+    },
+    {
+      name: accessibleNames.outputHelp,
+      label: "Read outputs",
+      expectedText: ["fixed deterministic projection", "Settings record"]
+    },
+    {
+      name: accessibleNames.diagnosticHelp,
+      label: "Read diagnostics",
+      expectedText: ["does not prove", "No observed extinctions"]
+    },
+    {
+      name: accessibleNames.plotHelp,
+      label: "Read plots",
+      expectedText: ["Extinction risk through time", "extinction-time histogram", "Quasi-extinction risk"]
+    }
   ]) {
     await page.getByRole("button", { name: action.name }).click();
     markVisited(action.label);
     if (action.tab) {
       await tabLink(page, action.tab).click();
     } else {
+      const modalText = await page.locator("#shiny-modal").innerText();
+      record(
+        `${action.label} reflects the current teaching interface`,
+        action.expectedText.every((text) => modalText.includes(text)),
+        modalText
+      );
       await closeModal(page);
     }
   }
@@ -977,7 +1053,7 @@ async function main() {
   await page.locator(".run-card").nth(2).waitFor();
   record("selected evidence shows exactly three cards", await page.locator(".run-card").count() === 3);
 
-  const interpretation = "Risk increased under shared bad years; intervention improved final abundance, while uncertainty remained.";
+  const interpretation = "Risk increased under environmental variability; intervention improved final abundance, while uncertainty remained.";
   await page.getByLabel("One-sentence interpretation").fill(interpretation);
   await page.getByRole("button", { name: "Use this interpretation" }).click();
   await page.getByRole("link", { name: "Comparison CSV" }).waitFor();
@@ -1068,10 +1144,15 @@ async function main() {
   await runMission(page, "Explore: Rare bad years");
   await runMission(page, "Explore: Vortex comparison");
 
-  const plotPromise = page.waitForEvent("download");
-  await page.getByRole("link", { name: "Risk PNG" }).click();
-  await saveDownload(await plotPromise, "PNG");
-  markVisited("Risk PNG");
+  const extinctionPlotPromise = page.waitForEvent("download");
+  await page.getByRole("link", { name: "Extinction risk PNG" }).click();
+  await saveDownload(await extinctionPlotPromise, "extinction-risk PNG");
+  markVisited("Extinction risk PNG");
+
+  const quasiExtinctionPlotPromise = page.waitForEvent("download");
+  await page.getByRole("link", { name: "Quasi-extinction PNG" }).click();
+  await saveDownload(await quasiExtinctionPlotPromise, "quasi-extinction PNG");
+  markVisited("Quasi-extinction PNG");
 
   await tabLink(page, "Compare").click();
   await page.locator(".session-run-row").nth(8).waitFor();
@@ -1199,5 +1280,6 @@ module.exports = {
   sharedComparisonFieldsMatch,
   exactRenderedStagesMatch,
   canonicalExpectedSettings,
+  canonicalSpecRowsForEvidence,
   settingsRowsExactlyMatch
 };

@@ -179,6 +179,136 @@ plot_pva_matrix <- function(spec) {
   invisible(p)
 }
 
+plot_extinction_timing <- function(out) {
+  risk <- build_extinction_timing_data(out)
+  final_year <- tail(risk$cumulative$Year, 1)
+  subtitle <- sprintf(
+    "%d of %d futures extinct by year %d",
+    risk$extinct_reps,
+    risk$total_reps,
+    final_year
+  )
+
+  cumulative_plot <- ggplot2::ggplot(
+    risk$cumulative,
+    ggplot2::aes(x = Year, y = Probability)
+  ) +
+    ggplot2::geom_line(colour = "#9f2f37", linewidth = 1.1) +
+    ggplot2::geom_point(colour = "#9f2f37", size = 1.4) +
+    ggplot2::scale_y_continuous(
+      limits = c(0, 1),
+      labels = function(value) paste0(round(100 * value), "%")
+    ) +
+    ggplot2::labs(
+      title = "Extinction risk through time",
+      subtitle = subtitle,
+      x = "Projection year",
+      y = "Cumulative probability"
+    ) +
+    ggplot2::theme_minimal(base_size = 12)
+
+  if (is.finite(risk$median_extinction_year)) {
+    cumulative_plot <- cumulative_plot +
+      ggplot2::geom_vline(
+        xintercept = risk$median_extinction_year,
+        colour = "#b47b16",
+        linetype = "dashed",
+        linewidth = 0.9
+      ) +
+      ggplot2::annotate(
+        "text",
+        x = risk$median_extinction_year,
+        y = 0.96,
+        label = paste("Median:", round(risk$median_extinction_year, 1), "years"),
+        hjust = -0.05,
+        vjust = 1,
+        colour = "#76500d",
+        size = 3.6
+      )
+  }
+
+  observed_times <- risk$first_extinction_year[!is.na(risk$first_extinction_year)]
+  if (length(observed_times)) {
+    timing_plot <- ggplot2::ggplot(
+      data.frame(Year = observed_times),
+      ggplot2::aes(x = Year)
+    ) +
+      ggplot2::geom_histogram(
+        binwidth = 1,
+        boundary = -0.5,
+        fill = "#176c73",
+        colour = "white"
+      ) +
+      ggplot2::labs(
+        title = "When extinction occurred",
+        subtitle = "Among futures that became extinct",
+        x = "First extinction year",
+        y = "Number of futures"
+      ) +
+      ggplot2::theme_minimal(base_size = 12)
+  } else {
+    timing_plot <- ggplot2::ggplot() +
+      ggplot2::annotate(
+        "text",
+        x = 0,
+        y = 0,
+        label = "No extinction times observed\nin these simulated futures",
+        colour = "#52616a",
+        size = 4.2,
+        lineheight = 1.1
+      ) +
+      ggplot2::xlim(-1, 1) +
+      ggplot2::ylim(-1, 1) +
+      ggplot2::labs(title = "When extinction occurred") +
+      ggplot2::theme_void(base_size = 12) +
+      ggplot2::theme(plot.title = ggplot2::element_text(hjust = 0))
+  }
+
+  plot <- patchwork::wrap_plots(
+    cumulative_plot,
+    timing_plot,
+    ncol = 2,
+    widths = c(1.35, 1)
+  )
+  print(plot)
+  invisible(plot)
+}
+
+plot_quasi_extinction_risk <- function(out, K, max_fraction = 0.5) {
+  risk <- build_quasi_extinction_plot_data(out, K, max_fraction)
+  K_sd <- out$params$K_sd
+  variation_note <- if (!is.null(K_sd) && is.finite(K_sd) && K_sd > 0) {
+    "; annual ceiling variation is active"
+  } else {
+    ""
+  }
+
+  plot <- ggplot2::ggplot(
+    risk,
+    ggplot2::aes(x = Threshold, y = Probability)
+  ) +
+    ggplot2::geom_step(colour = "#176c73", linewidth = 1.1) +
+    ggplot2::geom_point(colour = "#176c73", size = 1.8) +
+    ggplot2::scale_y_continuous(
+      limits = c(0, 1),
+      labels = function(value) paste0(round(100 * value), "%")
+    ) +
+    ggplot2::labs(
+      title = "Quasi-extinction risk",
+      subtitle = paste0(
+        "Chance of ever reaching each threshold; nominal K = ",
+        format(K, trim = TRUE),
+        variation_note
+      ),
+      x = "Population threshold (animals; shown to 50% of nominal K)",
+      y = "Probability of reaching threshold"
+    ) +
+    ggplot2::theme_minimal(base_size = 12)
+
+  print(plot)
+  invisible(plot)
+}
+
 #' Plot extinction probability together with mean F and mean sex-ratio
 #'
 #' @param out   result list from `run_pva_core(... , keep_traj = TRUE)`

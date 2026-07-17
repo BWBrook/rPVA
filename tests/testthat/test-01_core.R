@@ -47,3 +47,21 @@ test_that("engine throws on biologically impossible inputs", {
   spec_bad$surv[1] <- 1.5 # Impossible survival
   expect_error(run_pva_core(spec_bad), "surv")
 })
+
+test_that("engine reports monotonic replicate progress", {
+  events <- list()
+  out <- run_pva_core(
+    spec_stoch,
+    keep_traj = FALSE,
+    progress = function(completed, total) {
+      events[[length(events) + 1L]] <<- c(completed = completed, total = total)
+    }
+  )
+
+  event_matrix <- do.call(rbind, events)
+  expect_length(out$Nend, spec_stoch$reps)
+  expect_true(all(diff(event_matrix[, "completed"]) > 0))
+  expect_true(all(event_matrix[, "total"] == spec_stoch$reps))
+  expect_equal(unname(event_matrix[nrow(event_matrix), ]), c(spec_stoch$reps, spec_stoch$reps))
+  expect_error(run_pva_core(spec_stoch, progress = 0.5), "function or NULL")
+})

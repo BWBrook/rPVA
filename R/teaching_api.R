@@ -59,12 +59,12 @@ teaching_stage_catalog <- function() {
     controls = c(
       "years,reps",
       "K,K_sd,years,reps",
-      "K,years,reps",
+      "K,K_sd,years,reps",
       "K,K_sd,env_sd,years,reps",
       "K,K_sd,env_sd,F_init,years,reps",
-      "cat_freq,cat_surv,cat_repro,years,reps",
-      "K,K_sd,years,reps",
-      "K,env_sd,cat_freq,years,reps",
+      "K,K_sd,env_sd,cat_freq,cat_surv,cat_repro,years,reps",
+      "K,K_sd,env_sd,years,reps",
+      "K,K_sd,env_sd,F_init,cat_freq,cat_surv,cat_repro,years,reps",
       "",
       ""
     ),
@@ -119,6 +119,8 @@ build_teaching_spec <- function(stage, controls = list(), base = "toy") {
 #' @param keep_traj Logical; keep trajectories for plotting.
 #' @param seed Integer seed or NULL.
 #' @param verbose Logical; passed to `run_pva_core()`.
+#' @param progress Optional replicate-progress callback passed to
+#'   `run_pva_core()`.
 #' @return A `teaching_pva_run` list with stage, label, spec, result, summary,
 #'   diagnostics, and settings.
 #' @export
@@ -126,12 +128,19 @@ run_teaching_pva <- function(stage,
                              controls = list(),
                              keep_traj = TRUE,
                              seed = 42,
-  verbose = FALSE) {
+                             verbose = FALSE,
+                             progress = NULL) {
   stage_info <- resolve_teaching_stage(stage, require_implemented = TRUE)
   spec <- build_teaching_spec(stage, controls = controls)
   engine_spec <- spec
   engine_spec[teaching_vital_adjustment_controls()] <- NULL
-  result <- run_pva_core(engine_spec, keep_traj = keep_traj, seed = seed, verbose = verbose)
+  result <- run_pva_core(
+    engine_spec,
+    keep_traj = keep_traj,
+    seed = seed,
+    verbose = verbose,
+    progress = progress
+  )
   summary <- summarize_pva_result(result, scenario = stage_info$label)
   diagnostics <- diagnose_pva_result(result, scenario = stage_info$label)
   settings <- teaching_settings_record(stage, controls, spec)
@@ -465,45 +474,45 @@ teaching_control_specs <- function(stage) {
       stringsAsFactors = FALSE
     ),
     demographic_stochasticity = data.frame(
-      control = "K",
-      type = "numeric",
-      min = 10,
-      max = 200,
+      control = c("K", "K_sd"),
+      type = c("numeric", "numeric"),
+      min = c(10, 0),
+      max = c(200, 50),
       stringsAsFactors = FALSE
     ),
     environmental_stochasticity = data.frame(
       control = c("K", "K_sd", "env_sd"),
       type = c("numeric", "numeric", "numeric"),
       min = c(10, 0, 0.01),
-      max = c(200, 50, 0.35),
+      max = c(200, 50, 0.40),
       stringsAsFactors = FALSE
     ),
     genetic_stochasticity = data.frame(
       control = c("K", "K_sd", "env_sd", "F_init"),
       type = c("numeric", "numeric", "numeric", "numeric"),
       min = c(10, 0, 0.01, 0),
-      max = c(200, 50, 0.35, 0.5),
+      max = c(200, 50, 0.40, 0.5),
       stringsAsFactors = FALSE
     ),
     catastrophe = data.frame(
-      control = c("cat_freq", "cat_surv", "cat_repro"),
-      type = c("numeric", "numeric", "numeric"),
-      min = c(0, 0.20, 0.20),
-      max = c(0.20, 1, 1.50),
+      control = c("K", "K_sd", "env_sd", "cat_freq", "cat_surv", "cat_repro"),
+      type = rep("numeric", 6),
+      min = c(10, 0, 0.01, 0, 0.20, 0.20),
+      max = c(200, 50, 0.40, 0.20, 1, 1.50),
       stringsAsFactors = FALSE
     ),
     intervention = data.frame(
-      control = c("K", "K_sd"),
-      type = c("numeric", "numeric"),
-      min = c(30, 0),
-      max = c(200, 50),
+      control = c("K", "K_sd", "env_sd"),
+      type = rep("numeric", 3),
+      min = c(30, 0, 0.01),
+      max = c(200, 50, 0.40),
       stringsAsFactors = FALSE
     ),
     extinction_vortex = data.frame(
-      control = c("K", "env_sd", "cat_freq"),
-      type = c("numeric", "numeric", "numeric"),
-      min = c(10, 0.10, 0),
-      max = c(60, 0.35, 0.15),
+      control = c("K", "K_sd", "env_sd", "F_init", "cat_freq", "cat_surv", "cat_repro"),
+      type = rep("numeric", 7),
+      min = c(10, 0, 0.01, 0, 0, 0.20, 0.20),
+      max = c(200, 50, 0.40, 0.50, 0.20, 1, 1.50),
       stringsAsFactors = FALSE
     ),
     stop("Unknown teaching stage: ", stage, call. = FALSE)

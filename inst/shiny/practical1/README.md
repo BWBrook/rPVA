@@ -17,7 +17,7 @@ The five **Core** missions are:
 1. Baseline compass;
 2. Island ceiling;
 3. Individual chance;
-4. Shared bad years; and
+4. Environmental variability; and
 5. Rescue attempt.
 
 **Compare** is the Core completion destination. It keeps the full successful

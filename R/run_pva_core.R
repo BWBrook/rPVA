@@ -16,6 +16,8 @@
 #'                  is used; otherwise overrides it.*
 #' @param seed      integer or NULL; set for reproducibility.
 #' @param verbose   logical; progress indicator.
+#' @param progress  optional function called with completed and total replicate
+#'   counts at throttled intervals.
 #' @return list with Nend, traj, and params (full inputs used).
 #' @export
 run_pva_core <- function(
@@ -25,8 +27,12 @@ run_pva_core <- function(
     keep_traj = FALSE,
     stasis    = NULL,
     seed      = NULL,
-    verbose   = FALSE
+    verbose   = FALSE,
+    progress  = NULL
 ) {
+  if (!is.null(progress) && !is.function(progress)) {
+    stop("`progress` must be a function or NULL.", call. = FALSE)
+  }
   spec$years <- years
   spec$reps <- reps
   normalized <- normalize_pva_spec(spec, stasis)
@@ -40,6 +46,7 @@ run_pva_core <- function(
   if (!is.null(seed)) set.seed(seed)
 
   outputs <- initialize_pva_outputs(years, n_stage, reps, keep_traj)
+  progress_every <- max(1L, as.integer(floor(reps / 100)))
 
   for (r in seq_len(reps)) {
     N <- as.integer(spec$n0)
@@ -84,6 +91,9 @@ run_pva_core <- function(
     }
     outputs$Nend[r] <- sum(N)
     if (verbose && r %% max(1, reps %/% 50) == 0) cat(".")
+    if (!is.null(progress) && (r %% progress_every == 0L || r == reps)) {
+      progress(as.integer(r), as.integer(reps))
+    }
   }
   if (verbose) cat("\n")
 

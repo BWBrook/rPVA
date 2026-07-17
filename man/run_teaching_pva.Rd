@@ -9,7 +9,8 @@ run_teaching_pva(
   controls = list(),
   keep_traj = TRUE,
   seed = 42,
-  verbose = FALSE
+  verbose = FALSE,
+  progress = NULL
 )
 }
 \arguments{
@@ -22,6 +23,8 @@ run_teaching_pva(
 \item{seed}{Integer seed or NULL.}
 
 \item{verbose}{Logical; passed to `run_pva_core()`.}
+
+\item{progress}{Optional callback receiving completed and total replicate counts.}
 }
 \value{
 A `teaching_pva_run` list with stage, label, spec, result, summary,

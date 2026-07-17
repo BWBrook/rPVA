@@ -535,6 +535,50 @@ body {
   margin: 8px 0 12px;
 }
 
+.risk-plot-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 16px;
+  align-items: start;
+  margin-top: 10px;
+}
+
+.risk-plot-block {
+  min-width: 0;
+}
+
+.risk-plot-block h4 {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+
+.risk-download-grid {
+  margin-bottom: 20px;
+}
+
+.risk-empty-state {
+  border-left: 4px solid var(--gold);
+  background: #fff8e8;
+  margin: 10px 0 18px;
+  padding: 12px 14px;
+}
+
+.risk-empty-state h4,
+.risk-empty-state p {
+  margin-top: 0;
+}
+
+.risk-empty-state p {
+  margin-bottom: 0;
+}
+
+.risk-empty-state-inline {
+  min-height: 190px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
 .btn {
   white-space: normal;
 }
@@ -803,6 +847,10 @@ select:focus-visible,
   }
 
   .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .risk-plot-grid {
     grid-template-columns: 1fr;
   }
 }
