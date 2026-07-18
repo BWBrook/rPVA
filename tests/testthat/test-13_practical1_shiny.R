@@ -877,6 +877,100 @@ test_that("Practical 1 readiness requires exactly baseline risk action and curre
   expect_true(stale$checks[["interpretation"]])
 })
 
+test_that("Practical 1 evidence pack signatures track notebook and synthesis state", {
+  helpers <- load_practical1_session_helpers()
+  observation_1 <- list(
+    id = 1L,
+    run_ids = c(1L, 2L, 3L),
+    note = "Risk increased and uncertainty widened."
+  )
+  observation_2 <- list(
+    id = 2L,
+    run_ids = c(1L, 4L, 3L),
+    note = "A second risk mechanism changed the result."
+  )
+
+  signature_a <- helpers$evidence_pack_signature(
+    c(1L, 2L, 3L),
+    list(observation_1),
+    "Synthesis"
+  )
+  signature_b <- helpers$evidence_pack_signature(
+    c(1L, 2L, 3L),
+    list(observation_1, observation_2),
+    "Synthesis"
+  )
+  signature_c <- helpers$evidence_pack_signature(
+    c(1L, 2L, 3L),
+    list(observation_1),
+    "Changed synthesis"
+  )
+
+  expect_false(identical(signature_a, signature_b))
+  expect_false(identical(signature_a, signature_c))
+  expect_equal(
+    vapply(
+      helpers$remove_evidence_observation(list(observation_1, observation_2), 1L),
+      `[[`,
+      integer(1),
+      "id"
+    ),
+    2L
+  )
+  expect_error(
+    helpers$remove_evidence_observation(list(observation_1), 99L),
+    "does not exist"
+  )
+})
+
+test_that("Practical 1 notebook readiness requires an observation and final synthesis", {
+  helpers <- load_practical1_session_helpers()
+  runs <- list(
+    practical1_stub_run("deterministic_baseline", 1),
+    practical1_stub_run("environmental_stochasticity", 2),
+    practical1_stub_run("intervention", 3)
+  )
+  selected <- c(1L, 2L, 3L)
+  observation <- list(
+    id = 1L,
+    run_ids = selected,
+    note = "Environmental variability increased risk; intervention improved abundance."
+  )
+
+  no_observation <- helpers$evidence_readiness(
+    runs,
+    selected,
+    observations = list(),
+    synthesis = "The final comparison supports a cautious recommendation.",
+    baseline_started = TRUE
+  )
+  no_synthesis <- helpers$evidence_readiness(
+    runs,
+    selected,
+    observations = list(observation),
+    synthesis = "",
+    baseline_started = TRUE
+  )
+  ready <- helpers$evidence_readiness(
+    runs,
+    selected,
+    observations = list(observation),
+    synthesis = "The final comparison supports a cautious recommendation.",
+    baseline_started = TRUE
+  )
+
+  expect_false(no_observation$ready)
+  expect_false(no_observation$checks[["observation"]])
+  expect_false(no_synthesis$ready)
+  expect_false(no_synthesis$checks[["synthesis"]])
+  expect_true(ready$ready)
+  expect_true(all(ready$checks))
+  expect_named(
+    ready$checks,
+    c("baseline", "risk", "action", "exactly_three", "observation", "synthesis")
+  )
+})
+
 test_that("Practical 1 selects three runs and invalidates stale interpretation", {
   app_dir <- rPVA:::practical1_shiny_app_dir()
   old <- setwd(app_dir)

@@ -99,11 +99,54 @@ evidence_selection_signature <- function(selected_ids) {
   paste(as.integer(selected_ids), collapse = ":")
 }
 
+evidence_pack_signature <- function(selected_ids, observations, synthesis) {
+  synthesis <- if (is.null(synthesis)) "" else trimws(as.character(synthesis))
+  state <- list(
+    selected_ids = as.integer(selected_ids),
+    observations = observations,
+    synthesis = synthesis
+  )
+  paste(as.integer(serialize(state, NULL, version = 2)), collapse = "-")
+}
+
+valid_evidence_observation <- function(observation) {
+  is.list(observation) &&
+    all(c("id", "run_ids", "note") %in% names(observation)) &&
+    length(observation$id) == 1L &&
+    !is.na(observation$id) &&
+    observation$id >= 1L &&
+    length(observation$run_ids) == 3L &&
+    length(unique(as.integer(observation$run_ids))) == 3L &&
+    length(observation$note) == 1L &&
+    !is.na(observation$note) &&
+    nzchar(trimws(as.character(observation$note)))
+}
+
+remove_evidence_observation <- function(observations, observation_id) {
+  valid_id <-
+    is.numeric(observation_id) &&
+    length(observation_id) == 1L &&
+    is.finite(observation_id) &&
+    observation_id >= 1 &&
+    observation_id == floor(observation_id)
+  if (!valid_id) {
+    stop("observation_id must be one positive integer.", call. = FALSE)
+  }
+  observation_id <- as.integer(observation_id)
+  ids <- vapply(observations, `[[`, integer(1), "id")
+  if (!observation_id %in% ids) {
+    stop("The requested evidence observation does not exist.", call. = FALSE)
+  }
+  observations[ids != observation_id]
+}
+
 evidence_readiness <- function(runs,
                                selected_ids,
-                               interpretation,
-                               interpretation_signature,
-                               baseline_started) {
+                               interpretation = NULL,
+                               interpretation_signature = "",
+                               baseline_started,
+                               observations = NULL,
+                               synthesis = NULL) {
   selected_ids <- as.integer(selected_ids)
   selected <- tryCatch(
     select_session_runs(runs, selected_ids),
@@ -114,6 +157,41 @@ evidence_readiness <- function(runs,
   } else {
     character()
   }
+
+  if (!is.null(observations)) {
+    observation_present <- length(observations) > 0L && all(vapply(
+      observations,
+      valid_evidence_observation,
+      logical(1)
+    ))
+    synthesis_present <-
+      length(synthesis) == 1L &&
+      !is.na(synthesis) &&
+      nzchar(trimws(as.character(synthesis)))
+
+    checks <- c(
+      baseline = isTRUE(baseline_started) && sum(stages == "deterministic_baseline") == 1L,
+      risk = sum(stages %in% practical1_evidence_risk_stages) == 1L,
+      action = sum(stages %in% practical1_evidence_action_stages) == 1L,
+      exactly_three = length(selected_ids) == 3L && length(unique(selected_ids)) == 3L && length(selected) == 3L,
+      observation = observation_present,
+      synthesis = synthesis_present
+    )
+
+    return(list(
+      ready = all(checks),
+      checks = checks,
+      messages = c(
+        baseline = "Baseline run 1 is included.",
+        risk = "One risk-mechanism run is selected.",
+        action = "One intervention or vortex run is selected.",
+        exactly_three = "The evidence set contains exactly three different runs.",
+        observation = "At least one evidence observation is saved.",
+        synthesis = "A final synthesis is present."
+      )
+    ))
+  }
+
   interpretation_present <- length(interpretation) == 1L && nzchar(trimws(interpretation))
   current_signature <- evidence_selection_signature(selected_ids)
 
