@@ -139,8 +139,8 @@ test_that("app exposes mission-mode classroom guidance", {
   expect_true(grepl("Mission 1: Build your reference", app_text, fixed = TRUE))
   expect_true(grepl("Run 1 uses the starting assumptions. Keep it as the reference for every change that follows.", app_text, fixed = TRUE))
   expect_true(grepl("changing one visible control at a time", app_text, fixed = TRUE))
-  expect_true(grepl("Choose a clean comparison: baseline run 1, one risk mechanism, and one intervention or vortex run.", app_text, fixed = TRUE))
-  expect_true(grepl("Repeated clicks are less useful than a targeted one-factor change.", app_text, fixed = TRUE))
+  expect_true(grepl("Choose one reference, one risk mechanism, and one intervention or vortex run.", app_text, fixed = TRUE))
+  expect_true(grepl("Change the other two selectors to answer a focused comparison question.", app_text, fixed = TRUE))
   expect_true(grepl("Rerun only after changing projection years, mortality, or fecundity; otherwise the same deterministic trajectory repeats.", app_text, fixed = TRUE))
 })
 
@@ -494,21 +494,22 @@ test_that("Compare outputs are safe before baseline", {
   })
 })
 
-test_that("Compare view exposes run cards, baseline deltas, and interpretation capture", {
+test_that("Compare view exposes an evidence workspace and baseline deltas", {
   app_dir <- rPVA:::practical1_shiny_app_dir()
   app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
   style_text <- paste(readLines(file.path(app_dir, "www", "styles.css"), warn = FALSE), collapse = "\n")
 
-  expect_true(grepl("run_cards_ui <- function(runs)", app_text, fixed = TRUE))
-  expect_true(grepl('uiOutput("run_cards")', app_text, fixed = TRUE))
-  expect_true(grepl("output$run_cards <- renderUI", app_text, fixed = TRUE))
+  expect_true(grepl("evidence_selection_ui <- function", app_text, fixed = TRUE))
+  expect_true(grepl("comparison_matrix_ui <- function(runs)", app_text, fixed = TRUE))
+  expect_true(grepl('uiOutput("evidence_selection")', app_text, fixed = TRUE))
+  expect_true(grepl('uiOutput("comparison_matrix")', app_text, fixed = TRUE))
   expect_true(grepl("compare_teaching_runs(runs, include_deltas = TRUE)", app_text, fixed = TRUE))
   expect_true(grepl('textAreaInput("interpretation_note"', app_text, fixed = TRUE))
   expect_true(grepl("interpretation = input$interpretation_note", app_text, fixed = TRUE))
-  expect_true(grepl("Delta PE", app_text, fixed = TRUE))
-  expect_true(grepl("Delta Nmed", app_text, fixed = TRUE))
-  expect_match(style_text, "\\.run-card-grid")
-  expect_match(style_text, "\\.run-card")
+  expect_true(grepl("Change in extinction probability", app_text, fixed = TRUE))
+  expect_true(grepl("Change in median abundance", app_text, fixed = TRUE))
+  expect_match(style_text, "\\.evidence-selection-grid")
+  expect_match(style_text, "\\.evidence-matrix")
   expect_match(style_text, "\\.interpretation-capture")
 })
 
@@ -743,15 +744,16 @@ test_that("Practical 1 student-facing prose uses British spelling and direct dia
   expect_false(grepl("favorable|analyze|visualize|customize|modeling", content_text, ignore.case = TRUE))
 })
 
-test_that("comparison table is styled for horizontal scanning", {
+test_that("comparison matrix swaps to stacked cards without horizontal scanning", {
   app_dir <- rPVA:::practical1_shiny_app_dir()
   style_text <- paste(readLines(file.path(app_dir, "www", "styles.css"), warn = FALSE), collapse = "\n")
 
-  expect_match(style_text, "\\.compare-table\\s*\\{[^}]*overflow-x:\\s*auto")
-  expect_match(style_text, "\\.compare-table\\s*\\{[^}]*-webkit-overflow-scrolling:\\s*touch")
-  expect_match(style_text, "\\.compare-table table\\s*\\{[^}]*min-width:")
-  expect_match(style_text, "\\.compare-table th,\\s*\\.compare-table td\\s*\\{[^}]*white-space:\\s*nowrap")
-  expect_match(style_text, "\\.compare-table th,\\s*\\.compare-table td\\s*\\{[^}]*overflow-wrap:\\s*normal")
+  expect_match(style_text, "\\.evidence-matrix\\s*\\{[^}]*table-layout:\\s*fixed")
+  expect_match(style_text, "\\.evidence-matrix th,\\s*\\.evidence-matrix td\\s*\\{[^}]*overflow-wrap:\\s*anywhere")
+  expect_match(style_text, "\\.evidence-matrix-mobile\\s*\\{[^}]*display:\\s*none")
+  expect_true(grepl("\\.evidence-matrix-desktop\\s*\\{\\s*display:\\s*none", style_text, perl = TRUE))
+  expect_true(grepl("\\.evidence-matrix-mobile\\s*\\{\\s*display:\\s*grid", style_text, perl = TRUE))
+  expect_false(grepl("min-width: 960px", style_text, fixed = TRUE))
 })
 
 load_practical1_session_helpers <- function() {
@@ -1181,20 +1183,57 @@ test_that("confirmed Practical 1 reset clears all in-memory student state", {
   })
 })
 
-test_that("Practical 1 Compare separates session history from selected evidence", {
+test_that("Practical 1 Compare collapses session history behind selected evidence", {
   app_dir <- rPVA:::practical1_shiny_app_dir()
   app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
 
   expect_true(grepl("Session history", app_text, fixed = TRUE))
-  expect_true(grepl("Selected evidence", app_text, fixed = TRUE))
+  expect_true(grepl("Choose evidence", app_text, fixed = TRUE))
+  expect_true(grepl("Compare outcomes", app_text, fixed = TRUE))
   expect_true(grepl("Review required", app_text, fixed = TRUE))
-  expect_true(grepl("Baseline pinned", app_text, fixed = TRUE))
-  expect_true(grepl("Choose one risk mechanism", app_text, fixed = TRUE))
-  expect_true(grepl("Choose one intervention or vortex run", app_text, fixed = TRUE))
-  expect_true(grepl("compare-history-panel", app_text, fixed = TRUE))
-  expect_true(grepl("compare-evidence-panel", app_text, fixed = TRUE))
+  expect_true(grepl("Baseline reference", app_text, fixed = TRUE))
+  expect_true(grepl("session_history_disclosure_ui", app_text, fixed = TRUE))
+  expect_true(grepl("tags$details", app_text, fixed = TRUE))
+  expect_true(grepl("compare-workspace", app_text, fixed = TRUE))
   expect_true(grepl("selected_evidence_runs()", app_text, fixed = TRUE))
   expect_true(grepl("interpretation_signature <- reactiveVal(\"\")", app_text, fixed = TRUE))
+})
+
+test_that("Practical 1 Compare prioritises concise evidence roles and outcomes", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  old <- setwd(app_dir)
+  on.exit(setwd(old), add = TRUE)
+  env <- new.env(parent = globalenv())
+  sys.source("app.R", envir = env)
+  runs <- list(
+    env$attach_session_run_id(env$run_stage("deterministic_baseline"), 1L),
+    env$attach_session_run_id(
+      env$run_stage("environmental_stochasticity", list(reps = 10L)),
+      2L
+    ),
+    env$attach_session_run_id(env$run_stage("intervention", list(reps = 10L)), 3L)
+  )
+
+  selection_html <- paste(as.character(
+    env$evidence_selection_ui(runs, selected_risk_id = 2L, selected_action_id = 3L)
+  ), collapse = "\n")
+  history_html <- paste(as.character(env$session_history_disclosure_ui(runs)), collapse = "\n")
+  matrix_html <- paste(as.character(env$comparison_matrix_ui(runs)), collapse = "\n")
+  style_text <- paste(readLines(file.path("www", "styles.css"), warn = FALSE), collapse = "\n")
+
+  expect_match(selection_html, "Baseline reference", fixed = TRUE)
+  expect_match(selection_html, "Risk mechanism", fixed = TRUE)
+  expect_match(selection_html, "Intervention or vortex", fixed = TRUE)
+  expect_match(selection_html, 'id="selected_risk_run_id"', fixed = TRUE)
+  expect_match(selection_html, 'id="selected_action_run_id"', fixed = TRUE)
+  expect_match(history_html, "<details", fixed = TRUE)
+  expect_match(history_html, "Review all 3 session runs", fixed = TRUE)
+  expect_match(matrix_html, "Extinction probability", fixed = TRUE)
+  expect_match(matrix_html, "Median final abundance", fixed = TRUE)
+  expect_match(matrix_html, "95% interval", fixed = TRUE)
+  expect_match(matrix_html, "evidence-matrix-desktop", fixed = TRUE)
+  expect_match(matrix_html, "evidence-matrix-mobile", fixed = TRUE)
+  expect_false(grepl("min-width: 960px", style_text, fixed = TRUE))
 })
 
 test_that("failed Practical 1 runs do not enter history or progress", {
@@ -1340,7 +1379,7 @@ test_that("changed deterministic assumptions create exploratory baseline reruns"
     expect_equal(years_row$`What changed`, "Higher than baseline")
 
     history_html <- paste(as.character(output$session_history), collapse = "\n")
-    pinned_hits <- gregexpr("Pinned in selected evidence", history_html, fixed = TRUE)[[1]]
+    pinned_hits <- gregexpr("Baseline reference", history_html, fixed = TRUE)[[1]]
     expect_equal(sum(pinned_hits > 0L), 1L)
 
     session$setInputs(confirm_clear_runs = 1)

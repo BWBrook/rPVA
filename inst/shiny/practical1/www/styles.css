@@ -60,6 +60,167 @@ body {
   align-items: start;
 }
 
+.compare-workspace {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.compare-workspace-header,
+.evidence-workspace-section {
+  padding: 18px 20px;
+}
+
+.compare-workspace-header {
+  background: #f0f7f5;
+}
+
+.compare-workspace-header h2,
+.evidence-workspace-section h3 {
+  margin-top: 0;
+}
+
+.compare-workspace-header p {
+  max-width: 78ch;
+  margin-bottom: 0;
+}
+
+.evidence-workspace-section {
+  border-top: 1px solid var(--line);
+}
+
+.evidence-selection-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.evidence-slot {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #fbfdfe;
+}
+
+.evidence-slot-baseline {
+  border-left: 4px solid var(--teal);
+}
+
+.evidence-role,
+.evidence-matrix-role {
+  display: block;
+  color: var(--teal);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.evidence-slot h4 {
+  margin: 6px 0 8px;
+  font-size: 16px;
+}
+
+.evidence-slot .form-group {
+  margin: 6px 0 10px;
+}
+
+.evidence-slot select {
+  width: 100%;
+}
+
+.evidence-slot-mission,
+.evidence-slot-settings,
+.evidence-slot-empty {
+  margin: 4px 0 0;
+}
+
+.evidence-slot-mission {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.evidence-slot-settings,
+.evidence-slot-empty {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.evidence-matrix {
+  width: 100%;
+  margin-top: 12px;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.evidence-matrix th,
+.evidence-matrix td {
+  overflow-wrap: anywhere;
+  border: 1px solid var(--line);
+  padding: 9px;
+  vertical-align: top;
+}
+
+.evidence-matrix thead th {
+  background: #edf4f5;
+}
+
+.evidence-matrix thead th:first-child {
+  width: 20%;
+}
+
+.evidence-matrix thead strong,
+.evidence-matrix thead span:last-child {
+  display: block;
+}
+
+.evidence-matrix tbody th {
+  background: #f8fafb;
+  font-weight: 700;
+}
+
+.evidence-matrix-mobile {
+  display: none;
+}
+
+.session-history-disclosure {
+  margin: 10px 0 12px;
+}
+
+.session-history-disclosure > summary {
+  cursor: pointer;
+  color: var(--teal);
+  font-weight: 700;
+}
+
+.session-run-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.session-run-row {
+  display: grid;
+  grid-template-columns: auto minmax(150px, 0.8fr) minmax(130px, 0.6fr) minmax(220px, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+  border-top: 1px solid var(--line);
+  padding: 8px 0;
+}
+
+.run-number,
+.run-selection-status {
+  color: var(--teal);
+  font-weight: 700;
+}
+
+.run-category,
+.run-settings {
+  color: var(--muted);
+}
+
 .lab-grid > *,
 .compare-grid > * {
   min-width: 0;
@@ -713,7 +874,7 @@ select:focus-visible,
 }
 
 .compare-table table {
-  min-width: 960px;
+  width: 100%;
   table-layout: auto;
 }
 
@@ -817,8 +978,59 @@ select:focus-visible,
   .intro-grid,
   .lab-grid,
   .compare-grid,
+  .evidence-selection-grid,
   .species-strip {
     grid-template-columns: 1fr;
+  }
+
+  .compare-workspace-header,
+  .evidence-workspace-section {
+    padding: 14px;
+  }
+
+  .evidence-matrix-desktop {
+    display: none;
+  }
+
+  .evidence-matrix-mobile {
+    display: grid;
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  .evidence-matrix-card {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px;
+    background: #fbfdfe;
+  }
+
+  .evidence-matrix-card h4 {
+    margin: 5px 0 10px;
+    font-size: 16px;
+  }
+
+  .evidence-matrix-card dl {
+    display: grid;
+    grid-template-columns: minmax(120px, 0.8fr) minmax(0, 1.2fr);
+    gap: 5px 10px;
+    margin: 0;
+  }
+
+  .evidence-matrix-card dt,
+  .evidence-matrix-card dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .session-run-row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .session-run-row .run-category,
+  .session-run-row .run-settings,
+  .session-run-row .run-selection-status {
+    grid-column: 2;
   }
 
   .evidence-downloads {

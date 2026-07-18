@@ -843,8 +843,42 @@ run_changed_settings_label <- function(run) {
 evidence_choice_label <- function(run) {
   paste0(
     "Run ", session_run_id(run), " - ", run$label,
-    " (", run_changed_settings_label(run), ")"
+    " | ", run_key_settings_label(run)
   )
+}
+
+evidence_key_fields <- list(
+  deterministic_baseline = c("years", "mortality_pct", "fecundity_pct"),
+  carrying_capacity = c("K", "K_sd", "years"),
+  demographic_stochasticity = c("K", "reps", "years"),
+  environmental_stochasticity = c("env_sd", "K", "reps"),
+  genetic_stochasticity = c("F_init", "K", "reps"),
+  catastrophe = c("cat_freq", "cat_surv", "K"),
+  intervention = c("K", "K_sd", "env_sd"),
+  extinction_vortex = c("cat_freq", "F_init", "K")
+)
+
+run_key_settings <- function(run) {
+  fields <- evidence_key_fields[[run$stage]]
+  if (is.null(fields)) {
+    return(character())
+  }
+  catalog <- teaching_parameter_catalog()
+  fields <- fields[fields %in% catalog$field]
+  stats::setNames(
+    vapply(fields, function(field) {
+      format_parameter_value(field, spec_value(run$spec, field))
+    }, character(1)),
+    catalog$Parameter[match(fields, catalog$field)]
+  )
+}
+
+run_key_settings_label <- function(run) {
+  settings <- run_key_settings(run)
+  if (!length(settings)) {
+    return("Reference settings")
+  }
+  paste(paste(names(settings), settings, sep = " "), collapse = "; ")
 }
 
 eligible_run_choices <- function(runs, eligible_stages) {
@@ -862,66 +896,181 @@ evidence_stage_category <- function(stage) {
   "Other"
 }
 
-session_history_ui <- function(runs, selected_risk_id, selected_action_id) {
-  pinned_baseline_id <- first_baseline_run_id(runs)
-  history_rows <- if (length(runs)) {
-    lapply(runs, function(run) {
-      div(
-        class = "session-run-row",
-        span(class = "run-number", paste("Run", session_run_id(run))),
-        strong(run$label),
-        span(class = "run-category", evidence_stage_category(run$stage)),
-        span(class = "run-settings", run_changed_settings_label(run)),
-        if (identical(session_run_id(run), pinned_baseline_id)) {
-          span(class = "run-selection-status", "Pinned in selected evidence")
-        }
-      )
-    })
-  } else {
-    p(class = "muted", "No successful session runs yet. Create the baseline run to begin.")
-  }
-
+evidence_selection_ui <- function(runs, selected_risk_id, selected_action_id) {
   risk_choices <- eligible_run_choices(runs, practical1_evidence_risk_stages)
   action_choices <- eligible_run_choices(runs, practical1_evidence_action_stages)
   baseline_id <- first_baseline_run_id(runs)
+  baseline <- if (is.na(baseline_id)) {
+    NULL
+  } else {
+    select_session_runs(runs, baseline_id)[[1]]
+  }
+  selected_risk <- if (is.na(selected_risk_id)) {
+    NULL
+  } else {
+    tryCatch(select_session_runs(runs, selected_risk_id)[[1]], error = function(...) NULL)
+  }
+  selected_action <- if (is.na(selected_action_id)) {
+    NULL
+  } else {
+    tryCatch(select_session_runs(runs, selected_action_id)[[1]], error = function(...) NULL)
+  }
+
+  evidence_slot_detail <- function(run, empty_message) {
+    if (is.null(run)) {
+      return(p(class = "evidence-slot-empty", empty_message))
+    }
+    tagList(
+      p(class = "evidence-slot-mission", stage_missions[[run$stage]]),
+      p(class = "evidence-slot-settings", run_key_settings_label(run))
+    )
+  }
 
   div(
-    class = "session-history compare-history-panel",
-    h4("Full session history"),
-    div(class = "session-run-list", history_rows),
+    class = "evidence-selection-grid",
     div(
-      class = "evidence-selection",
-      h4("Selected evidence"),
-      p(
-        class = "pinned-baseline",
-        if (is.na(baseline_id)) {
-          "Baseline missing - use Create baseline run."
-        } else {
-          paste("Run", baseline_id, "- Baseline pinned in selected evidence")
-        }
-      ),
+      class = "evidence-slot evidence-slot-baseline",
+      span(class = "evidence-role", "Baseline reference"),
+      if (is.null(baseline)) {
+        h4("Not yet available")
+      } else {
+        h4(paste("Run", baseline_id, "-", baseline$label))
+      },
+      evidence_slot_detail(baseline, "Create the baseline on Start to establish the reference.")
+    ),
+    div(
+      class = "evidence-slot evidence-slot-risk",
+      span(class = "evidence-role", "Risk mechanism"),
       if (length(risk_choices)) {
-        radioButtons(
+        selectInput(
           "selected_risk_run_id",
-          "Choose one risk mechanism",
+          label = NULL,
           choices = risk_choices,
           selected = if (is.na(selected_risk_id)) NULL else as.character(selected_risk_id)
         )
       } else {
-        p(class = "muted", "Run one risk-mechanism mission to make a selection.")
+        p(class = "evidence-slot-empty", "Run a risk-mechanism mission to fill this role.")
       },
+      evidence_slot_detail(selected_risk, "Choose one risk-mechanism run.")
+    ),
+    div(
+      class = "evidence-slot evidence-slot-action",
+      span(class = "evidence-role", "Intervention or vortex"),
       if (length(action_choices)) {
-        radioButtons(
+        selectInput(
           "selected_action_run_id",
-          "Choose one intervention or vortex run",
+          label = NULL,
           choices = action_choices,
           selected = if (is.na(selected_action_id)) NULL else as.character(selected_action_id)
         )
       } else {
-        p(class = "muted", "Run Rescue attempt or Vortex comparison to make a selection.")
-      }
+        p(class = "evidence-slot-empty", "Run Rescue attempt or Vortex comparison to fill this role.")
+      },
+      evidence_slot_detail(selected_action, "Choose one action or compounded-risk run.")
     )
   )
+}
+
+session_history_disclosure_ui <- function(runs) {
+  if (!length(runs)) {
+    return(div(
+      class = "session-history-disclosure",
+      p(class = "muted", "No successful session runs yet. Create the baseline run to begin.")
+    ))
+  }
+
+  pinned_baseline_id <- first_baseline_run_id(runs)
+  tags$details(
+    class = "session-history-disclosure",
+    tags$summary(paste("Review all", length(runs), "session runs")),
+    div(
+      class = "session-run-list",
+      lapply(runs, function(run) {
+        div(
+          class = "session-run-row",
+          span(class = "run-number", paste("Run", session_run_id(run))),
+          strong(run$label),
+          span(class = "run-category", evidence_stage_category(run$stage)),
+          span(class = "run-settings", run_key_settings_label(run)),
+          if (identical(session_run_id(run), pinned_baseline_id)) {
+            span(class = "run-selection-status", "Baseline reference")
+          }
+        )
+      })
+    )
+  )
+}
+
+comparison_matrix_ui <- function(runs) {
+  if (length(runs) != 3L) {
+    return(div(
+      class = "compare-empty-state",
+      h4("Complete the three evidence roles"),
+      p("Select a baseline, one risk mechanism, and one intervention or vortex run.")
+    ))
+  }
+
+  comparison <- rPVA::compare_teaching_runs(runs, include_deltas = TRUE)
+  roles <- c("Baseline", "Risk mechanism", "Intervention or vortex")
+  values <- lapply(seq_along(runs), function(i) {
+    row <- comparison[i, , drop = FALSE]
+    c(
+      Mission = stage_missions[[runs[[i]]$stage]],
+      `Key settings` = run_key_settings_label(runs[[i]]),
+      `Extinction probability` = sprintf("%.1f%%", 100 * row$PE),
+      `Median final abundance` = format(row$Nmed, trim = TRUE),
+      `95% interval` = paste0(row$Nlo95, " to ", row$Nhi95),
+      `Change in extinction probability` = if (i == 1L) {
+        "Reference"
+      } else {
+        sprintf("%+.1f percentage points", 100 * row$delta_PE)
+      },
+      `Change in median abundance` = if (i == 1L) {
+        "Reference"
+      } else {
+        sprintf("%+d", as.integer(row$delta_Nmed))
+      },
+      `Uncertainty change` = tools::toTitleCase(row$uncertainty_change)
+    )
+  })
+  metric_names <- names(values[[1]])
+
+  desktop <- tags$table(
+    class = "evidence-matrix evidence-matrix-desktop",
+    tags$thead(tags$tr(
+      tags$th(scope = "col", "Measure"),
+      lapply(seq_along(runs), function(i) {
+        tags$th(
+          scope = "col",
+          span(class = "evidence-matrix-role", roles[[i]]),
+          strong(paste("Run", session_run_id(runs[[i]]))),
+          span(runs[[i]]$label)
+        )
+      })
+    )),
+    tags$tbody(lapply(metric_names, function(metric) {
+      tags$tr(
+        tags$th(scope = "row", metric),
+        lapply(values, function(run_values) tags$td(run_values[[metric]]))
+      )
+    }))
+  )
+
+  mobile <- div(
+    class = "evidence-matrix-mobile",
+    lapply(seq_along(runs), function(i) {
+      div(
+        class = "evidence-matrix-card",
+        span(class = "evidence-matrix-role", roles[[i]]),
+        h4(paste("Run", session_run_id(runs[[i]]), "-", runs[[i]]$label)),
+        tags$dl(lapply(metric_names, function(metric) {
+          tagList(tags$dt(metric), tags$dd(values[[i]][[metric]]))
+        }))
+      )
+    })
+  )
+
+  tagList(desktop, mobile)
 }
 
 evidence_readiness_ui <- function(state) {
@@ -1291,25 +1440,34 @@ ui <- navbarPage(
       class = "page-shell",
       session_notice_ui(),
       div(
-        class = "compare-grid",
+        class = "compare-workspace",
         div(
-          class = "panel-block compare-history-panel",
-          h3("Session history"),
-          div(
-            class = "mission-cue compare-guidance",
-            span(class = "mission-label", "Compare mission evidence"),
-            p("Choose a clean comparison: baseline run 1, one risk mechanism, and one intervention or vortex run."),
-            p(class = "muted", "Repeated clicks are less useful than a targeted one-factor change.")
-          ),
-          uiOutput("session_history"),
-          actionButton("clear_runs", label = tagList(icon("trash"), "Reset comparison")),
-          div(class = "prompt", "The full history stays available so you can distinguish repeated attempts from selected evidence.")
+          class = "compare-workspace-header",
+          span(class = "landing-eyebrow", "Evidence workspace"),
+          h2("Reason from evidence"),
+          p("Choose one reference, one risk mechanism, and one intervention or vortex run. Then read risk, abundance, and uncertainty together.")
         ),
         div(
-          class = "panel-block compare-evidence-panel",
-          h3("Selected evidence"),
-          uiOutput("run_cards"),
-          div(class = "compare-table", tableOutput("comparison_table")),
+          class = "evidence-workspace-section",
+          div(
+            class = "panel-heading-row",
+            h3("1. Choose evidence")
+          ),
+          p(class = "muted", "The baseline remains fixed. Change the other two selectors to answer a focused comparison question."),
+          uiOutput("evidence_selection")
+        ),
+        div(
+          class = "evidence-workspace-section",
+          div(
+            class = "panel-heading-row",
+            h3("2. Compare outcomes")
+          ),
+          p(class = "muted", "Use the baseline-relative rows to separate a change in risk from a change in final abundance or uncertainty."),
+          uiOutput("comparison_matrix")
+        ),
+        div(
+          class = "evidence-workspace-section evidence-interpretation-legacy",
+          h3("3. Record your interpretation"),
           uiOutput("evidence_readiness"),
           div(
             class = "interpretation-capture",
@@ -1324,13 +1482,14 @@ ui <- navbarPage(
           h4("Save evidence"),
           p(class = "muted", "Download a compact comparison table and notes for your own report. These files are evidence for your interpretation."),
           uiOutput("evidence_downloads"),
-          div(class = "prompt", "What changed between runs, and which output supports your explanation?"),
-          h3("Comparison habits"),
-          tags$ul(
-            tags$li("Compare extinction risk and abundance together."),
-            tags$li("Interpret zero observed extinction with the horizon, sample size, and assumptions in view."),
-            tags$li("Use uncertainty intervals when judging management actions.")
-          )
+          div(class = "prompt", "What changed between runs, and which output supports your explanation?")
+        ),
+        div(
+          class = "evidence-workspace-section evidence-history-section",
+          h3("Session history"),
+          p(class = "muted", "Open this only when you need to audit another attempt or change the selected evidence."),
+          uiOutput("session_history"),
+          actionButton("clear_runs", label = tagList(icon("trash"), "Reset comparison"), class = "btn-default")
         )
       )
     )
@@ -1857,11 +2016,19 @@ make_practical1_server <- function(execute_stage = run_stage) {
   )
 
   output$session_history <- renderUI({
-    session_history_ui(
+    session_history_disclosure_ui(run_history())
+  })
+
+  output$evidence_selection <- renderUI({
+    evidence_selection_ui(
       run_history(),
       selected_risk_run_id(),
       selected_action_run_id()
     )
+  })
+
+  output$comparison_matrix <- renderUI({
+    comparison_matrix_ui(selected_evidence_runs())
   })
 
   output$evidence_readiness <- renderUI({
