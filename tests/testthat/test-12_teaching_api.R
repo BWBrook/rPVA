@@ -370,3 +370,103 @@ test_that("teaching evidence notes distinguish selected runs from full session h
   )))
   expect_true(any(grepl("## Student interpretation note", export$notes, fixed = TRUE)))
 })
+
+test_that("teaching observations freeze a three-run evidence snapshot", {
+  baseline <- run_teaching_pva("deterministic_baseline", keep_traj = FALSE, seed = 42)
+  risk <- run_teaching_pva(
+    "environmental_stochasticity",
+    controls = list(env_sd = 0.25, K = 35),
+    keep_traj = FALSE,
+    seed = 42
+  )
+  action <- run_teaching_pva("intervention", keep_traj = FALSE, seed = 42)
+  baseline$session_run_id <- 1L
+  risk$session_run_id <- 4L
+  action$session_run_id <- 5L
+
+  observation <- rPVA:::build_teaching_observation(
+    list(baseline, risk, action),
+    observation_id = 1L,
+    note = "Environmental variability increased risk; rescue improved abundance, with wider uncertainty."
+  )
+
+  expect_identical(observation$id, 1L)
+  expect_equal(observation$run_ids, c(1L, 4L, 5L))
+  expect_equal(nrow(observation$comparison), 3L)
+  expect_true(all(c(
+    "run_id", "PE", "Nmed", "delta_PE", "delta_Nmed"
+  ) %in% names(observation$comparison)))
+  expect_true(all(c("run_id", "setting", "value") %in% names(observation$settings)))
+  expect_match(observation$note, "Environmental variability increased risk", fixed = TRUE)
+  expect_error(
+    rPVA:::build_teaching_observation(list(baseline, risk), 2L, "Too few runs"),
+    "exactly three"
+  )
+  expect_error(
+    rPVA:::build_teaching_observation(list(baseline, risk, action), 0L, "Invalid ID"),
+    "positive integer"
+  )
+  expect_error(
+    rPVA:::build_teaching_observation(list(baseline, risk, action), 1.5, "Invalid ID"),
+    "positive integer"
+  )
+  expect_error(
+    rPVA:::build_teaching_observation(list(baseline, risk, action), 2L, "  "),
+    "non-empty note"
+  )
+})
+
+test_that("teaching evidence export collects observations and final synthesis", {
+  baseline <- run_teaching_pva("deterministic_baseline", keep_traj = FALSE, seed = 42)
+  risk_1 <- run_teaching_pva(
+    "environmental_stochasticity",
+    controls = list(env_sd = 0.25, K = 35),
+    keep_traj = FALSE,
+    seed = 42
+  )
+  action_1 <- run_teaching_pva("intervention", keep_traj = FALSE, seed = 42)
+  risk_2 <- run_teaching_pva(
+    "catastrophe",
+    controls = list(cat_freq = 0.10),
+    keep_traj = FALSE,
+    seed = 42
+  )
+  action_2 <- run_teaching_pva("extinction_vortex", keep_traj = FALSE, seed = 42)
+  runs <- list(baseline, risk_1, action_1, risk_2, action_2)
+  for (i in seq_along(runs)) {
+    runs[[i]]$session_run_id <- as.integer(i)
+  }
+
+  observation_1 <- rPVA:::build_teaching_observation(
+    runs[c(1, 2, 3)],
+    observation_id = 1L,
+    note = "Environmental variability widened the range of plausible futures."
+  )
+  observation_2 <- rPVA:::build_teaching_observation(
+    runs[c(1, 4, 5)],
+    observation_id = 2L,
+    note = "Catastrophes increased risk while the vortex compounded uncertainty."
+  )
+
+  export <- rPVA:::build_teaching_evidence_export(
+    runs[c(1, 4, 5)],
+    observations = list(observation_1, observation_2),
+    synthesis = "Risk mechanisms differed, but all useful recommendations retained uncertainty.",
+    session_run_count = 5L
+  )
+
+  expect_equal(nrow(export$comparison), 3L)
+  expect_true(any(grepl("## Final synthesis", export$notes, fixed = TRUE)))
+  expect_true(any(grepl("## Observation notebook", export$notes, fixed = TRUE)))
+  expect_true(any(grepl("### Observation 1", export$notes, fixed = TRUE)))
+  expect_true(any(grepl("### Observation 2", export$notes, fixed = TRUE)))
+  expect_true(any(grepl("## Settings and provenance appendix", export$notes, fixed = TRUE)))
+  expect_lt(
+    grep("## Final synthesis", export$notes, fixed = TRUE),
+    grep("## Final selected comparison", export$notes, fixed = TRUE)
+  )
+  expect_lt(
+    grep("### Observation 1", export$notes, fixed = TRUE),
+    grep("### Observation 2", export$notes, fixed = TRUE)
+  )
+})

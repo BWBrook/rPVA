@@ -194,11 +194,7 @@ compare_teaching_runs <- function(runs, include_deltas = FALSE) {
   comparison
 }
 
-build_teaching_evidence_export <- function(runs,
-                                           generated_at = Sys.time(),
-                                           seed = 42,
-                                           interpretation = NULL,
-                                           session_run_count = length(runs)) {
+teaching_evidence_tables <- function(runs) {
   run_ids <- vapply(seq_along(runs), function(i) {
     id <- runs[[i]]$session_run_id
     if (is.null(id)) as.integer(i) else as.integer(id)
@@ -242,16 +238,95 @@ build_teaching_evidence_export <- function(runs,
   )
   rownames(settings) <- NULL
 
+  list(comparison = comparison, settings = settings)
+}
+
+build_teaching_observation <- function(runs, observation_id, note) {
+  valid_observation_id <-
+    is.numeric(observation_id) &&
+    length(observation_id) == 1L &&
+    is.finite(observation_id) &&
+    observation_id >= 1 &&
+    observation_id == floor(observation_id)
+  observation_id <- suppressWarnings(as.integer(observation_id))
+  note <- trimws(as.character(note))
+  if (length(runs) != 3L) {
+    stop("An evidence observation requires exactly three runs.", call. = FALSE)
+  }
+  if (
+    !valid_observation_id ||
+      is.na(observation_id)
+  ) {
+    stop("observation_id must be one positive integer.", call. = FALSE)
+  }
+  if (length(note) != 1L || is.na(note) || !nzchar(note)) {
+    stop("An evidence observation requires a non-empty note.", call. = FALSE)
+  }
+
+  tables <- teaching_evidence_tables(runs)
+  if (anyDuplicated(tables$comparison$run_id)) {
+    stop("An evidence observation requires three unique run IDs.", call. = FALSE)
+  }
+
+  list(
+    id = observation_id,
+    run_ids = tables$comparison$run_id,
+    run_labels = tables$comparison$label,
+    stages = tables$comparison$stage,
+    comparison = tables$comparison,
+    settings = tables$settings,
+    note = note
+  )
+}
+
+build_teaching_evidence_export <- function(runs,
+                                           generated_at = Sys.time(),
+                                           seed = 42,
+                                           interpretation = NULL,
+                                           session_run_count = length(runs),
+                                           observations = list(),
+                                           synthesis = NULL) {
+  tables <- teaching_evidence_tables(runs)
+  comparison <- tables$comparison
+  settings <- tables$settings
+  if (!is.list(observations)) {
+    stop("observations must be a list of evidence observations.", call. = FALSE)
+  }
+  valid_observation <- vapply(observations, function(observation) {
+    is.list(observation) &&
+      all(c("id", "run_ids", "comparison", "settings", "note") %in% names(observation)) &&
+      length(observation$run_ids) == 3L &&
+      nrow(observation$comparison) == 3L &&
+      nzchar(trimws(as.character(observation$note)))
+  }, logical(1))
+  if (!all(valid_observation)) {
+    stop("Every notebook item must be a valid evidence observation.", call. = FALSE)
+  }
+
+  appendix_settings <- settings
+  if (length(observations)) {
+    appendix_settings <- do.call(
+      rbind,
+      c(list(settings), lapply(observations, `[[`, "settings"))
+    )
+    appendix_settings <- unique(appendix_settings[, c(
+      "run_id", "stage", "label", "setting", "value"
+    ), drop = FALSE])
+    rownames(appendix_settings) <- NULL
+  }
+
   list(
     comparison = comparison,
     settings = settings,
     notes = teaching_evidence_notes(
-      comparison,
-      settings,
-      generated_at,
-      seed,
-      interpretation,
-      session_run_count
+      comparison = comparison,
+      settings = appendix_settings,
+      generated_at = generated_at,
+      seed = seed,
+      interpretation = interpretation,
+      session_run_count = session_run_count,
+      observations = observations,
+      synthesis = synthesis
     )
   )
 }
@@ -629,12 +704,18 @@ teaching_evidence_notes <- function(comparison,
                                     generated_at,
                                     seed,
                                     interpretation = NULL,
-                                    session_run_count = nrow(comparison)) {
+                                    session_run_count = nrow(comparison),
+                                    observations = list(),
+                                    synthesis = NULL) {
   seed_label <- if (is.null(seed)) "not fixed" else as.character(seed)
   session_run_count <- as.integer(session_run_count)
   if (length(session_run_count) != 1L || is.na(session_run_count) || session_run_count < nrow(comparison)) {
     stop("session_run_count must be at least the number of selected evidence runs.", call. = FALSE)
   }
+
+  synthesis_text <- if (is.null(synthesis)) "" else trimws(as.character(synthesis))
+  interpretation_text <- if (is.null(interpretation)) "" else trimws(as.character(interpretation))
+  notebook_mode <- length(observations) > 0L || nzchar(synthesis_text)
 
   notes <- c(
     "# Practical 1 PVA Evidence Notes",
@@ -648,41 +729,91 @@ teaching_evidence_notes <- function(comparison,
     paste0("Fixed teaching seed: ", seed_label),
     "",
     "Use this export with the comparison CSV from the same browser session.",
-    "This export is evidence for your own interpretation.",
-    "",
-    "## Comparison table",
-    utils::capture.output(utils::write.table(
-      comparison,
-      sep = "\t",
-      row.names = FALSE,
-      quote = FALSE
-    )),
-    "",
-    "## Settings and provenance",
-    utils::capture.output(utils::write.table(
-      settings,
-      sep = "\t",
-      row.names = FALSE,
-      quote = FALSE
-    )),
-    "",
-    "## Interpretation prompts",
-    "- What changed between the runs you compared?",
-    "- Which output supports your explanation of extinction risk?",
-    "- Which output supports your explanation of final abundance and uncertainty?",
-    "- What caveat would you report before turning this evidence into a recommendation?"
+    "This export is evidence for your own interpretation."
   )
 
-  if (!is.null(interpretation) && nzchar(trimws(interpretation))) {
+  if (notebook_mode) {
     notes <- c(
       notes,
       "",
-      "## Student interpretation note",
-      trimws(interpretation)
+      "## Final synthesis",
+      if (nzchar(synthesis_text)) synthesis_text else "Not yet completed.",
+      "",
+      "## Final selected comparison",
+      teaching_evidence_table_lines(comparison)
     )
+
+    if (length(observations)) {
+      notes <- c(notes, "", "## Observation notebook")
+      for (observation in observations) {
+        compact_columns <- intersect(
+          c(
+            "run_id", "label", "PE", "Nmed", "Nlo95", "Nhi95",
+            "delta_PE", "delta_Nmed", "uncertainty_change"
+          ),
+          names(observation$comparison)
+        )
+        run_summary <- paste0(
+          "Run ", observation$run_ids, " - ", observation$run_labels,
+          collapse = "; "
+        )
+        notes <- c(
+          notes,
+          "",
+          paste0("### Observation ", observation$id),
+          paste0("Selected evidence: ", run_summary),
+          "",
+          observation$note,
+          "",
+          teaching_evidence_table_lines(
+            observation$comparison[, compact_columns, drop = FALSE]
+          )
+        )
+      }
+    }
+
+    if (nzchar(interpretation_text) && !nzchar(synthesis_text)) {
+      notes <- c(notes, "", "## Student interpretation note", interpretation_text)
+    }
+
+    notes <- c(
+      notes,
+      "",
+      "## Settings and provenance appendix",
+      teaching_evidence_table_lines(settings)
+    )
+  } else {
+    notes <- c(
+      notes,
+      "",
+      "## Comparison table",
+      teaching_evidence_table_lines(comparison),
+      "",
+      "## Settings and provenance",
+      teaching_evidence_table_lines(settings),
+      "",
+      "## Interpretation prompts",
+      "- What changed between the runs you compared?",
+      "- Which output supports your explanation of extinction risk?",
+      "- Which output supports your explanation of final abundance and uncertainty?",
+      "- What caveat would you report before turning this evidence into a recommendation?"
+    )
+
+    if (nzchar(interpretation_text)) {
+      notes <- c(notes, "", "## Student interpretation note", interpretation_text)
+    }
   }
 
   notes
+}
+
+teaching_evidence_table_lines <- function(x) {
+  utils::capture.output(utils::write.table(
+    x,
+    sep = "\t",
+    row.names = FALSE,
+    quote = FALSE
+  ))
 }
 
 format_teaching_export_time <- function(generated_at) {
