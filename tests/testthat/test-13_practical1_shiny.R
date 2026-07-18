@@ -1932,7 +1932,7 @@ test_that("Practical 1 Week 1 documents use the same route and session language"
   expect_true(grepl(timing, texts[[5]], fixed = TRUE))
 })
 
-test_that("Practical 1 browser acceptance covers Core extension exports and viewports", {
+test_that("Practical 1 browser acceptance covers the evidence notebook and viewports", {
   app_dir <- rPVA:::practical1_shiny_app_dir()
   repo_root <- normalizePath(file.path(app_dir, "..", "..", ".."), mustWork = TRUE)
   script_path <- file.path(repo_root, "scripts", "practical1_browser_acceptance.js")
@@ -1953,7 +1953,11 @@ test_that("Practical 1 browser acceptance covers Core extension exports and view
     "Read diagnostics",
     "Read plots",
     "Comparison CSV",
-    "Evidence notes",
+    "Evidence notebook",
+    "Add to notebook",
+    "Final synthesis",
+    "Evidence pack complete",
+    "Stale - download again",
     "selected CSV has header plus three rows",
     "consoleErrors",
     "consoleWarnings",
@@ -1971,7 +1975,7 @@ test_that("Practical 1 browser acceptance covers Core extension exports and view
     "CSV and Markdown selected stages match",
     "CSV and Markdown selected labels match",
     "CSV and Markdown shared comparison fields match",
-    "Markdown settings rows refer to exactly the selected run-ID set",
+    "Markdown settings rows include every final selected run ID",
     "Markdown settings has at least one row per selected run",
     "selected evidence has exactly one deterministic baseline",
     "selected evidence has exactly one allowed risk stage",
@@ -1985,7 +1989,16 @@ test_that("Practical 1 browser acceptance covers Core extension exports and view
     "if (require.main === module)",
     "module.exports",
     "final-comparison.csv",
-    "final-evidence-notes.md",
+    "final-evidence-notebook.md",
+    "compare-notebook-1440x900.png",
+    "compare-notebook-390x844.png",
+    "transfer-incomplete-1440x900.png",
+    "transfer-complete-1440x900.png",
+    "transfer-complete-390x844.png",
+    "### Observation 1",
+    "### Observation 2",
+    "### Observation 3",
+    "## Final synthesis",
     "final selected evidence is rendered as runs 1, 8, and 9",
     "Selected evidence: 3 runs from 9 successful session runs",
     "deterministic_baseline",
@@ -2006,7 +2019,7 @@ test_that("Practical 1 browser acceptance covers Core extension exports and view
     "Concept Lab 390x844",
     "Concept Lab mission controls are visible and enabled at 1440x900",
     "Compare 390x844",
-    "Compare controls and downloads are visible at 390x844",
+    "Compare notebook controls are visible at 390x844",
     "#stage_text .mission-label",
     "renderedSelectedEvidence",
     "stageMatchesVisibleCategory",
@@ -2016,9 +2029,7 @@ test_that("Practical 1 browser acceptance covers Core extension exports and view
     "Markdown labels match rendered selected evidence",
     "CSV stages match rendered visible stage categories",
     "Markdown settings and provenance substantively match rendered cards",
-    "assertCompareTableScrollRegion",
-    "compare table is horizontally scrollable when needed at",
-    "compare table can programmatically reach its far edge at",
+    "evidence matrix does not require horizontal scrolling at",
     "1366, height: 768",
     "width: 1440, height: 900",
     "width: 390, height: 844"

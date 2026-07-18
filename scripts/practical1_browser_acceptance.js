@@ -84,7 +84,11 @@ const accessibleNames = {
   controlHelp: "Open Practical 1 parameter help",
   outputHelp: "Open Practical 1 output help",
   diagnosticHelp: "Open Practical 1 diagnostic help",
-  plotHelp: "Open Practical 1 plot help"
+  plotHelp: "Open Practical 1 plot help",
+  selectionHelp: "Open Practical 1 evidence selection help",
+  outcomesHelp: "Open Practical 1 comparison outcome help",
+  notebookHelp: "Open Practical 1 evidence notebook help",
+  transferHelp: "Open Practical 1 evidence pack help"
 };
 
 // These labels are the routes/actions that this acceptance flow must actually visit.
@@ -105,8 +109,12 @@ const expectedRouteLabels = [
   "Read outputs",
   "Read diagnostics",
   "Read plots",
+  "Selection help",
+  "Read outcomes",
+  "Notebook help",
+  "Evidence pack help",
   "Comparison CSV",
-  "Evidence notes",
+  "Evidence notebook",
   "Extinction risk PNG",
   "Quasi-extinction PNG"
 ];
@@ -380,8 +388,8 @@ function markVisited(label) {
 function assertExportConsistency(csvRows, notesText, options = {}) {
   const csvHeaders = csvRows[0] || [];
   const csvData = csvRows.slice(1);
-  const comparisonTable = parseMarkdownTable(notesText, "## Comparison table");
-  const settingsTable = parseMarkdownTable(notesText, "## Settings and provenance");
+  const comparisonTable = parseMarkdownTable(notesText, "## Final selected comparison");
+  const settingsTable = parseMarkdownTable(notesText, "## Settings and provenance appendix");
   const comparisonHeaders = comparisonTable[0];
   const comparisonData = comparisonTable.slice(1);
   const settingsHeaders = settingsTable[0];
@@ -523,8 +531,8 @@ function assertExportConsistency(csvRows, notesText, options = {}) {
     settingsByRun.get(row.run_id).push(row);
   });
   record(
-    "Markdown settings rows refer to exactly the selected run-ID set",
-    sameSet(settingsRunIds, csvRunIds),
+    "Markdown settings rows include every final selected run ID",
+    csvRunIds.every((runId) => settingsRunIds.includes(runId)),
     JSON.stringify({ selected: csvRunIds, settings: [...new Set(settingsRunIds)] })
   );
   record(
@@ -532,23 +540,20 @@ function assertExportConsistency(csvRows, notesText, options = {}) {
     csvRunIds.every((runId) => settingsRunIds.includes(runId)),
     JSON.stringify({ selected: csvRunIds, settings: [...new Set(settingsRunIds)] })
   );
-  const expectedSettings = canonicalExpectedSettings(
-    renderedEvidence,
-    canonicalSpecRowsForEvidence(renderedEvidence)
-  );
-  const baselineEvidence = renderedEvidence.find((evidence) => evidence.settings === "Reference settings");
-  const renderedSettingsMatch = settingsRowsExactlyMatch(settingsRecords, expectedSettings) &&
-    Boolean(baselineEvidence) && expectedSettings.some((row) => (
-      row.run_id === String(baselineEvidence.runId) &&
-      row.stage === "deterministic_baseline" &&
-      row.label === baselineEvidence.label &&
-      row.setting === "spec_name" &&
-      row.value === "teaching_deterministic_baseline"
+  const renderedSettingsMatch = settingsRecords.every((row) => (
+    ["run_id", "stage", "label", "setting", "value"].every((field) => isCompleteExportValue(row[field])) &&
+    Number.isInteger(Number(row.run_id)) && Number(row.run_id) > 0
+  )) && renderedEvidence.every((evidence) => {
+    const stage = renderedStageByLabel.get(evidence.historyLabel || evidence.label);
+    const records = settingsByRun.get(String(evidence.runId)) || [];
+    return records.length > 0 && records.every((row) => (
+      row.stage === stage && row.label === evidence.label
     ));
+  });
   record(
     "Markdown settings and provenance substantively match rendered cards",
     renderedSettingsMatch,
-    JSON.stringify({ rendered: renderedEvidence, expected: expectedSettings, settings: settingsRecords, settingsByRun: [...settingsByRun] })
+    JSON.stringify({ rendered: renderedEvidence, settings: settingsRecords, settingsByRun: [...settingsByRun] })
   );
 
   record(
@@ -745,69 +750,57 @@ function assertRenderedRunNumbers(numbers, expectedCount) {
 }
 
 async function renderedSelectedRunNumbers(page) {
-  return page.locator(".run-card .run-card-kicker").evaluateAll((elements) => elements.map((element) => {
-    const match = element.textContent.trim().match(/^Run\s+(\d+)$/);
-    return match ? Number(match[1]) : NaN;
-  }));
+  return (await renderedSelectedEvidence(page)).map((evidence) => evidence.runId);
 }
 
 async function renderedSelectedEvidence(page) {
-  return page.locator(".run-card").evaluateAll((cards) => cards.map((card) => {
-    const kicker = card.querySelector(".run-card-kicker").textContent.trim();
+  return page.locator(".evidence-matrix-desktop thead th").evaluateAll((headers) => headers.slice(1).map((header) => {
+    const kicker = header.querySelector("strong")?.textContent.trim() || "";
     const idMatch = kicker.match(/^Run\s+(\d+)$/);
     const runId = idMatch ? Number(idMatch[1]) : NaN;
     const historyRow = [...document.querySelectorAll(".session-run-row")].find((row) => {
       const runMatch = row.querySelector(".run-number")?.textContent.trim().match(/^Run\s+(\d+)$/);
       return runMatch && Number(runMatch[1]) === runId;
     });
+    const role = header.querySelector(".evidence-matrix-role")?.textContent.trim() || "";
+    const spans = [...header.querySelectorAll("span")];
     return {
       runId,
-      label: card.querySelector("h4")?.textContent.trim() || "",
-      settings: card.querySelector("p.muted")?.textContent.trim() || "",
-      visibleStage: historyRow?.querySelector(".run-category")?.textContent.trim() || "",
+      label: spans.at(-1)?.textContent.trim() || "",
+      settings: historyRow?.querySelector(".run-settings")?.textContent.trim() || "",
+      visibleStage: role,
       historyLabel: historyRow?.querySelector("strong")?.textContent.trim() || "",
       historySettings: historyRow?.querySelector(".run-settings")?.textContent.trim() || ""
     };
   }));
 }
 
-async function assertCompareTableScrollRegion(page, viewportLabel) {
-  const scrollState = await page.locator(".compare-table").evaluate((container) => {
-    const table = container.querySelector("table");
-    if (!table) {
-      return { hasTable: false };
-    }
-
-    const initialScrollLeft = container.scrollLeft;
-    const maxScrollLeft = Math.max(0, container.scrollWidth - container.clientWidth);
-    const overflowX = getComputedStyle(container).overflowX;
-    container.scrollLeft = maxScrollLeft;
-    const reachedFarEdge = Math.abs(container.scrollLeft - maxScrollLeft) <= 1;
-    const containerRight = container.getBoundingClientRect().right;
-    const tableRight = table.getBoundingClientRect().right;
-    container.scrollLeft = initialScrollLeft;
-
+async function assertEvidenceMatrixFits(page, viewportLabel) {
+  const matrixState = await page.evaluate(() => {
+    const candidates = [
+      document.querySelector(".evidence-matrix-desktop"),
+      document.querySelector(".evidence-matrix-mobile")
+    ].filter(Boolean);
+    const visible = candidates.filter((element) => {
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== "none" && rect.width > 0 && rect.height > 0;
+    });
     return {
-      hasTable: true,
-      overflowX,
-      scrollWidth: container.scrollWidth,
-      clientWidth: container.clientWidth,
-      maxScrollLeft,
-      horizontallyScrollable: maxScrollLeft > 0 && ["auto", "scroll"].includes(overflowX),
-      reachedFarEdge,
-      farEdgeVisible: tableRight <= containerRight + 1
+      visibleCount: visible.length,
+      matrices: visible.map((element) => ({
+        className: element.className,
+        clientWidth: element.clientWidth,
+        scrollWidth: element.scrollWidth
+      }))
     };
   });
-  const detail = JSON.stringify(scrollState);
   record(
-    `compare table is horizontally scrollable when needed at ${viewportLabel}`,
-    scrollState.horizontallyScrollable,
-    detail
-  );
-  record(
-    `compare table can programmatically reach its far edge at ${viewportLabel}`,
-    scrollState.horizontallyScrollable && scrollState.reachedFarEdge && scrollState.farEdgeVisible,
-    detail
+    `evidence matrix does not require horizontal scrolling at ${viewportLabel}`,
+    matrixState.visibleCount === 1 && matrixState.matrices.every((matrix) => (
+      matrix.scrollWidth <= matrix.clientWidth + 1
+    )),
+    JSON.stringify(matrixState)
   );
 }
 
@@ -838,6 +831,31 @@ async function runMission(page, mission) {
 async function closeModal(page) {
   await page.getByRole("button", { name: "Close" }).click();
   await page.locator(".modal").waitFor({ state: "hidden" });
+}
+
+async function chooseEvidenceRun(page, inputId, runId) {
+  const input = page.locator(`#${inputId}`);
+  await input.waitFor({ state: "attached" });
+  await input.evaluate((element, value) => {
+    if (element.selectize) {
+      element.selectize.setValue(String(value));
+      return;
+    }
+    element.value = String(value);
+    element.dispatchEvent(new Event("input", { bubbles: true }));
+    element.dispatchEvent(new Event("change", { bubbles: true }));
+  }, runId);
+  await page.waitForFunction(
+    ({ id, value }) => document.querySelector(`#${id}`)?.value === String(value),
+    { id: inputId, value: runId }
+  );
+  await page.waitForTimeout(250);
+}
+
+async function addNotebookObservation(page, note, observationId) {
+  await page.locator("#observation_draft").fill(note);
+  await page.getByRole("button", { name: "Add to notebook" }).click();
+  await page.locator(".observation-entry").filter({ hasText: `Observation ${observationId}` }).waitFor();
 }
 
 function tabLink(page, name) {
@@ -910,7 +928,7 @@ async function main() {
   await activePane(page).getByText("This browser session is temporary.", { exact: false }).waitFor();
   record("context help does not create runs", await page.locator(".session-run-row").count() === 0);
   record("CSV is gated before evidence is ready", await page.getByRole("link", { name: "Comparison CSV" }).count() === 0);
-  record("notes are gated before evidence is ready", await page.getByRole("link", { name: "Evidence notes" }).count() === 0);
+  record("notebook is gated before evidence is ready", await page.getByRole("link", { name: "Evidence notebook" }).count() === 0);
 
   await tabLink(page, "Start").click();
   await page.getByRole("button", { name: "Create baseline run" }).click();
@@ -1048,61 +1066,95 @@ async function main() {
   await page.setViewportSize({ width: 1366, height: 768 });
 
   await tabLink(page, "Compare").click();
-  await page.locator(".session-run-row").nth(4).waitFor();
+  await page.locator(".session-run-row").nth(4).waitFor({ state: "attached" });
   record("Core route keeps five successful session runs", await page.locator(".session-run-row").count() === 5);
-  await page.locator(".run-card").nth(2).waitFor();
-  record("selected evidence shows exactly three cards", await page.locator(".run-card").count() === 3);
-
-  const interpretation = "Risk increased under environmental variability; intervention improved final abundance, while uncertainty remained.";
-  await page.getByLabel("One-sentence interpretation").fill(interpretation);
-  await page.getByRole("button", { name: "Use this interpretation" }).click();
-  await page.getByRole("link", { name: "Comparison CSV" }).waitFor();
-  await page.getByRole("link", { name: "Evidence notes" }).waitFor();
-  const initialRenderedEvidence = await renderedSelectedEvidence(page);
-
-  const csvPromise = page.waitForEvent("download");
-  await page.getByRole("link", { name: "Comparison CSV" }).click();
-  const csvPath = await saveDownload(await csvPromise, "initial CSV", "initial-comparison.csv");
-
-  const notesPromise = page.waitForEvent("download");
-  await page.getByRole("link", { name: "Evidence notes" }).click();
-  const notesPath = await saveDownload(await notesPromise, "initial Markdown", "initial-evidence-notes.md");
-
-  const csvRows = parseCsv(fs.readFileSync(csvPath, "utf8"));
-  record("selected CSV has header plus three rows", csvRows.length === 4, `rows=${csvRows.length - 1}`);
-  const headers = csvRows[0];
-  const rows = csvRows.slice(1);
-  const requiredColumns = ["run_id", "stage", "label", "PE", "Nmed"];
-  const requiredIndexes = requiredColumns.map((name) => headers.indexOf(name));
-  record("selected CSV has required columns", requiredIndexes.every((index) => index >= 0), headers.join(","));
+  const historyDisclosure = page.locator("details.session-history-disclosure");
+  record("full session history starts collapsed", !(await historyDisclosure.getAttribute("open")));
   record(
-    "selected CSV required values are complete",
-    rows.every((row) => requiredIndexes.every((index) => row[index] !== undefined && row[index] !== ""))
+    "collapsed history reports all five runs",
+    (await historyDisclosure.locator("summary").innerText()).includes("Review all 5 session runs")
   );
-  const notesText = fs.readFileSync(notesPath, "utf8");
-  record("notes describe three selected runs", notesText.includes("Selected evidence: 3 runs from"));
-  record("notes retain interpretation", notesText.includes(interpretation));
-  const selectedStages = rows.map((row) => row[headers.indexOf("stage")]);
-  record("notes and CSV name the same stages", selectedStages.every((stage) => notesText.includes(stage)));
-  assertExportConsistency(csvRows, notesText, {
+  await page.locator(".evidence-slot").nth(2).waitFor();
+  await page.locator(".evidence-matrix-desktop").waitFor();
+  record("selected evidence shows exactly three roles", await page.locator(".evidence-slot").count() === 3);
+
+  for (const help of [
+    {
+      name: accessibleNames.selectionHelp,
+      label: "Selection help",
+      expectedText: ["baseline, risk mechanism, and intervention or vortex", "does not rewrite observations"]
+    },
+    {
+      name: accessibleNames.outcomesHelp,
+      label: "Read outcomes",
+      expectedText: ["Extinction probability", "95% interval", "zero observed extinction probability"]
+    },
+    {
+      name: accessibleNames.notebookHelp,
+      label: "Notebook help",
+      expectedText: ["final synthesis", "Saved observations keep their original run numbers"]
+    }
+  ]) {
+    await page.getByRole("button", { name: help.name }).click();
+    const modalText = await page.locator("#shiny-modal").innerText();
+    record(`${help.label} explains the redesigned evidence workflow`, help.expectedText.every((text) => modalText.includes(text)), modalText);
+    markVisited(help.label);
+    await closeModal(page);
+  }
+
+  const observationOne = "Environmental variability widened the range of futures and increased risk relative to the deterministic baseline; the finite simulation set remains a caveat.";
+  await addNotebookObservation(page, observationOne, 1);
+  await chooseEvidenceRun(page, "selected_risk_run_id", 2);
+  const observationTwo = "The island ceiling reduced median final abundance relative to baseline, showing that breeding-territory limits can constrain recovery even without observed extinction.";
+  await addNotebookObservation(page, observationTwo, 2);
+  const initialSynthesis = "Across the first comparisons, both environmental variation and a breeding-adult ceiling weakened viability evidence. The rescue action improved abundance, but conclusions still depend on the chosen horizon and simulated futures.";
+  await page.locator("#final_synthesis").fill(initialSynthesis);
+  await page.getByText("Evidence pack ready", { exact: false }).waitFor();
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.screenshot({ path: artifactPath("compare-notebook-1440x900.png"), fullPage: true });
+  recordArtifact(artifactPath("compare-notebook-1440x900.png"), "screenshot");
+  await assertEvidenceMatrixFits(page, "Compare 1440x900");
+  await assertNoHorizontalOverflow(page, "Compare 1440x900");
+
+  await page.getByRole("button", { name: "Review evidence pack" }).click();
+  await activePane(page).getByText("This browser session is temporary.", { exact: false }).waitFor();
+  await page.getByText("Not downloaded", { exact: true }).first().waitFor();
+  record("Transfer starts incomplete before downloads", await page.getByText("Evidence pack needs a fresh download", { exact: false }).count() > 0);
+  await page.getByRole("button", { name: accessibleNames.transferHelp }).click();
+  const transferHelpText = await page.locator("#shiny-modal").innerText();
+  record(
+    "Evidence pack help explains temporary sessions and stale files",
+    ["temporary browser session", "Current", "stale"].every((text) => transferHelpText.includes(text)),
+    transferHelpText
+  );
+  markVisited("Evidence pack help");
+  await closeModal(page);
+  await page.screenshot({ path: artifactPath("transfer-incomplete-1440x900.png"), fullPage: true });
+  recordArtifact(artifactPath("transfer-incomplete-1440x900.png"), "screenshot");
+
+  const initialCsvPromise = page.waitForEvent("download");
+  await page.getByRole("link", { name: "Comparison CSV" }).click();
+  const initialCsvPath = await saveDownload(await initialCsvPromise, "initial CSV", "initial-comparison.csv");
+  const initialNotesPromise = page.waitForEvent("download");
+  await page.getByRole("link", { name: "Evidence notebook" }).click();
+  const initialNotesPath = await saveDownload(await initialNotesPromise, "initial Markdown", "initial-evidence-notebook.md");
+  await page.getByText("Evidence pack complete", { exact: false }).waitFor();
+  record("initial Transfer completes after both current downloads", true);
+
+  const initialCsvRows = parseCsv(fs.readFileSync(initialCsvPath, "utf8"));
+  const initialNotesText = fs.readFileSync(initialNotesPath, "utf8");
+  record("selected CSV has header plus three rows", initialCsvRows.length === 4, `rows=${initialCsvRows.length - 1}`);
+  record("initial notebook includes both observations", initialNotesText.includes("### Observation 1") && initialNotesText.includes("### Observation 2"));
+  record("initial notebook retains final synthesis", initialNotesText.includes(initialSynthesis));
+  await tabLink(page, "Compare").click();
+  const initialRenderedEvidence = await renderedSelectedEvidence(page);
+  assertExportConsistency(initialCsvRows, initialNotesText, {
     sessionRunCount: 5,
     renderedEvidence: initialRenderedEvidence
   });
   markVisited("Comparison CSV");
-  markVisited("Evidence notes");
-  await page.screenshot({ path: artifactPath("minimum-success-1366x768.png"), fullPage: true });
-  recordArtifact(artifactPath("minimum-success-1366x768.png"), "screenshot");
-  await assertNoOverlap(page, [".compare-history-panel", ".compare-evidence-panel"], "1366x768");
-  await assertCompareTableScrollRegion(page, "1366x768");
-  await assertNoHorizontalOverflow(page, "Compare 1366x768");
-
-  await tabLink(page, "Transfer").click();
-  await activePane(page).getByText("This browser session is temporary.", { exact: false }).waitFor();
-  await page.getByText("Comparison CSV: Download requested", { exact: false }).waitFor();
-  await page.getByText("Evidence notes: Download requested", { exact: false }).waitFor();
-  record("Transfer reports both requested downloads", true);
-  await page.screenshot({ path: artifactPath("transfer-1366x768.png"), fullPage: true });
-  recordArtifact(artifactPath("transfer-1366x768.png"), "screenshot");
+  markVisited("Evidence notebook");
 
   await page.setViewportSize({ width: 390, height: 844 });
   await tabLink(page, "Concept Lab").click();
@@ -1127,12 +1179,15 @@ async function main() {
   await assertNoHorizontalOverflow(page, "Concept Lab 390x844");
 
   await tabLink(page, "Compare").click();
-  await page.getByRole("link", { name: "Comparison CSV" }).waitFor();
-  await page.getByRole("link", { name: "Evidence notes" }).waitFor();
-  record("Compare controls and downloads are visible at 390x844", await page.getByLabel("One-sentence interpretation").isVisible() && await page.getByRole("link", { name: "Comparison CSV" }).isVisible() && await page.getByRole("link", { name: "Evidence notes" }).isVisible());
-  await page.screenshot({ path: artifactPath("compare-390x844.png"), fullPage: true });
-  recordArtifact(artifactPath("compare-390x844.png"), "screenshot");
-  await assertNoOverlap(page, [".compare-history-panel", ".compare-evidence-panel"], "Compare 390x844");
+  record(
+    "Compare notebook controls are visible at 390x844",
+    await page.locator("#observation_draft").isVisible() &&
+      await page.getByRole("button", { name: "Add to notebook" }).isVisible() &&
+      await page.locator("#final_synthesis").isVisible()
+  );
+  await page.screenshot({ path: artifactPath("compare-notebook-390x844.png"), fullPage: true });
+  recordArtifact(artifactPath("compare-notebook-390x844.png"), "screenshot");
+  await assertEvidenceMatrixFits(page, "Compare 390x844");
   await assertNoHorizontalOverflow(page, "Compare 390x844");
 
   await page.setViewportSize({ width: 1366, height: 768 });
@@ -1155,28 +1210,17 @@ async function main() {
   markVisited("Quasi-extinction PNG");
 
   await tabLink(page, "Compare").click();
-  await page.locator(".session-run-row").nth(8).waitFor();
+  await page.locator(".session-run-row").nth(8).waitFor({ state: "attached" });
   record("extension route keeps duplicate attempts", await page.locator(".session-run-row").count() === 9);
   const finalRenderedRunNumbers = await renderedRunNumbers(page);
   assertRenderedRunNumbers(finalRenderedRunNumbers, 9);
-  await page.locator('input[name="selected_risk_run_id"]').last().check();
-  await page.locator('input[name="selected_action_run_id"]').last().check();
-  await page.getByText("Review required", { exact: false }).waitFor();
-  await tabLink(page, "Transfer").click();
-  await activePane(page).getByText("This browser session is temporary.", { exact: false }).waitFor();
-  await page.getByText("Comparison CSV: Not requested yet", { exact: false }).waitFor();
-  await page.getByText("Evidence notes: Not requested yet", { exact: false }).waitFor();
-  record("extension selection invalidates the old CSV request", true);
-  record("extension selection invalidates the old notes request", true);
-  record("Transfer remains incomplete until final downloads", await page.getByText("Both evidence requests are complete", { exact: false }).count() === 0);
-
-  await tabLink(page, "Compare").click();
-  const extensionInterpretation = "Extension runs showed that rare bad years and the extinction vortex changed risk and action evidence; uncertainty remains.";
-  await page.getByLabel("One-sentence interpretation").fill(extensionInterpretation);
-  await page.getByRole("button", { name: "Use this interpretation" }).click();
-  await page.locator(".review-required").waitFor({ state: "hidden" });
-  await page.getByRole("link", { name: "Comparison CSV" }).waitFor();
-  await page.getByRole("link", { name: "Evidence notes" }).waitFor();
+  await chooseEvidenceRun(page, "selected_risk_run_id", 8);
+  await chooseEvidenceRun(page, "selected_action_run_id", 9);
+  const observationThree = "Rare bad years and the extinction-vortex comparison produced the strongest warning signal in this session; their combined assumptions should be tested rather than treated as a forecast.";
+  await addNotebookObservation(page, observationThree, 3);
+  const finalSynthesis = "Across the selected evidence, compounding environmental, catastrophic, and small-population pressures produced the clearest viability concern. Management should test actions against several plausible assumptions because these teaching simulations describe conditional futures, not a single prediction.";
+  await page.locator("#final_synthesis").fill(finalSynthesis);
+  await page.getByText("Evidence pack ready", { exact: false }).waitFor();
   const finalRenderedEvidence = await renderedSelectedEvidence(page);
   const finalSelectedRunNumbers = await renderedSelectedRunNumbers(page);
   record(
@@ -1184,27 +1228,39 @@ async function main() {
     sameSequence(finalSelectedRunNumbers, [1, 8, 9]),
     JSON.stringify(finalSelectedRunNumbers)
   );
-  await page.screenshot({ path: artifactPath("extension-1366x768.png"), fullPage: true });
-  recordArtifact(artifactPath("extension-1366x768.png"), "screenshot");
-
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.screenshot({ path: artifactPath("compare-1440x900.png"), fullPage: true });
-  recordArtifact(artifactPath("compare-1440x900.png"), "screenshot");
-  await assertNoOverlap(page, [".compare-history-panel", ".compare-evidence-panel"], "1440x900");
-  await assertCompareTableScrollRegion(page, "1440x900");
-  await assertNoHorizontalOverflow(page, "Compare 1440x900");
+  await page.screenshot({ path: artifactPath("compare-final-1440x900.png"), fullPage: true });
+  recordArtifact(artifactPath("compare-final-1440x900.png"), "screenshot");
+  await assertEvidenceMatrixFits(page, "Compare final 1440x900");
+
+  await page.getByRole("button", { name: "Review evidence pack" }).click();
+  await activePane(page).getByText("Stale - download again", { exact: true }).first().waitFor();
+  record(
+    "extension selection invalidates the old CSV request",
+    await activePane(page).getByText("Stale - download again", { exact: true }).count() === 2
+  );
+  record(
+    "Transfer remains incomplete until final downloads",
+    await page.getByText("Evidence pack needs a fresh download", { exact: false }).count() > 0
+  );
+  await page.screenshot({ path: artifactPath("transfer-stale-1440x900.png"), fullPage: true });
+  recordArtifact(artifactPath("transfer-stale-1440x900.png"), "screenshot");
 
   const finalCsvPromise = page.waitForEvent("download");
   await page.getByRole("link", { name: "Comparison CSV" }).click();
   const finalCsvPath = await saveDownload(await finalCsvPromise, "final CSV", "final-comparison.csv");
-  await tabLink(page, "Transfer").click();
-  await activePane(page).getByText("Comparison CSV: Download requested", { exact: false }).waitFor();
-  record("Transfer remains incomplete after only the fresh final CSV", await page.getByText("Evidence notes: Not requested yet", { exact: false }).count() > 0 && await page.getByText("Both evidence requests are complete", { exact: false }).count() === 0);
+  await activePane(page).getByText("Current", { exact: true }).waitFor();
+  record(
+    "Transfer remains incomplete after only the fresh final CSV",
+    await activePane(page).getByText("Current", { exact: true }).count() === 1 &&
+      await activePane(page).getByText("Stale - download again", { exact: true }).count() === 1 &&
+      await page.getByText("Evidence pack needs a fresh download", { exact: false }).count() > 0
+  );
 
-  await tabLink(page, "Compare").click();
   const finalNotesPromise = page.waitForEvent("download");
-  await page.getByRole("link", { name: "Evidence notes" }).click();
-  const finalNotesPath = await saveDownload(await finalNotesPromise, "final Markdown", "final-evidence-notes.md");
+  await page.getByRole("link", { name: "Evidence notebook" }).click();
+  const finalNotesPath = await saveDownload(await finalNotesPromise, "final Markdown", "final-evidence-notebook.md");
+  await page.getByText("Evidence pack complete", { exact: false }).waitFor();
   const finalCsvRows = parseCsv(fs.readFileSync(finalCsvPath, "utf8"));
   const finalNotesText = fs.readFileSync(finalNotesPath, "utf8");
   const finalExpectedStages = ["deterministic_baseline", "catastrophe", "extinction_vortex"];
@@ -1214,7 +1270,16 @@ async function main() {
     finalRenderedRunNumbers.length === 9 && finalNotesText.includes(finalEvidenceSummary),
     finalEvidenceSummary
   );
-  record("final notes retain extension-specific interpretation", finalNotesText.includes(extensionInterpretation));
+  record(
+    "final notebook retains all chronological observations",
+    finalNotesText.includes("### Observation 1") &&
+      finalNotesText.includes("### Observation 2") &&
+      finalNotesText.includes("### Observation 3") &&
+      finalNotesText.includes(observationOne) &&
+      finalNotesText.includes(observationTwo) &&
+      finalNotesText.includes(observationThree)
+  );
+  record("final notebook retains final synthesis", finalNotesText.includes("## Final synthesis") && finalNotesText.includes(finalSynthesis));
   assertExportConsistency(finalCsvRows, finalNotesText, {
     expectedRunIds: [1, 8, 9],
     expectedStages: finalExpectedStages,
@@ -1222,14 +1287,22 @@ async function main() {
     renderedEvidence: finalRenderedEvidence
   });
   markVisited("Comparison CSV");
-  markVisited("Evidence notes");
+  markVisited("Evidence notebook");
 
-  await tabLink(page, "Transfer").click();
-  await activePane(page).getByText("Comparison CSV: Download requested", { exact: false }).waitFor();
-  await activePane(page).getByText("Evidence notes: Download requested", { exact: false }).waitFor();
-  record("Transfer completes only after both fresh final downloads", await page.getByText("Both evidence requests are complete", { exact: false }).count() > 0);
+  record(
+    "Transfer completes only after both fresh final downloads",
+    await activePane(page).getByText("Current", { exact: true }).count() === 2 &&
+      await page.getByText("Evidence pack complete", { exact: false }).count() > 0
+  );
+  await page.screenshot({ path: artifactPath("transfer-complete-1440x900.png"), fullPage: true });
+  recordArtifact(artifactPath("transfer-complete-1440x900.png"), "screenshot");
+  await assertNoHorizontalOverflow(page, "Transfer 1440x900");
 
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: artifactPath("transfer-complete-390x844.png"), fullPage: true });
+  recordArtifact(artifactPath("transfer-complete-390x844.png"), "screenshot");
+  await assertNoHorizontalOverflow(page, "Transfer 390x844");
+
   await tabLink(page, "Start").click();
   await page.screenshot({ path: artifactPath("start-390x844.png"), fullPage: true });
   recordArtifact(artifactPath("start-390x844.png"), "screenshot");
@@ -1240,7 +1313,7 @@ async function main() {
 
   await tabLink(page, "Compare").click();
   await page.getByRole("button", { name: "Reset comparison" }).click();
-  await page.getByText("Run history, evidence selection, interpretation", { exact: false }).waitFor();
+  await page.getByText("Run history, evidence selection, notebook observations, synthesis", { exact: false }).waitFor();
   await page.keyboard.press("Escape");
   if (await page.locator(".modal").isVisible()) {
     await page.getByRole("button", { name: "Keep my work" }).click();
