@@ -1128,6 +1128,114 @@ observation_notebook_ui <- function(observations) {
   )
 }
 
+transfer_evidence_pack_ui <- function(runs,
+                                      synthesis,
+                                      observation_count,
+                                      readiness,
+                                      comparison_status,
+                                      notes_status) {
+  synthesis <- if (is.null(synthesis)) "" else trimws(as.character(synthesis))
+  run_summary <- if (length(runs) == 3L) {
+    div(
+      class = "transfer-run-summary",
+      lapply(seq_along(runs), function(i) {
+        role <- c("Baseline", "Risk mechanism", "Intervention or vortex")[[i]]
+        div(
+          class = "transfer-run",
+          span(class = "evidence-role", role),
+          strong(paste("Run", session_run_id(runs[[i]]), "-", runs[[i]]$label)),
+          span(run_key_settings_label(runs[[i]]))
+        )
+      })
+    )
+  } else {
+    p(class = "muted", "Complete the three evidence roles on Compare.")
+  }
+  observation_label <- if (identical(as.integer(observation_count), 1L)) {
+    "1 notebook observation"
+  } else {
+    paste(as.integer(observation_count), "notebook observations")
+  }
+  missing <- if (isTRUE(readiness$ready)) character() else names(readiness$checks)[!readiness$checks]
+  downloads_current <- identical(comparison_status, "Current") && identical(notes_status, "Current")
+
+  div(
+    class = "transfer-evidence-pack",
+    div(
+      class = "panel-heading-row",
+      h2("Your evidence pack"),
+      actionButton(
+        "open_transfer_evidence_help",
+        label = "Evidence pack help",
+        icon = icon("circle-question"),
+        class = "btn-default btn-xs contextual-help-button",
+        `aria-label` = "Open Practical 1 evidence pack help"
+      )
+    ),
+    run_summary,
+    div(
+      class = "transfer-pack-summary",
+      div(
+        span(class = "transfer-summary-label", "Notebook"),
+        strong(observation_label)
+      ),
+      div(
+        span(class = "transfer-summary-label", "Final synthesis"),
+        p(if (nzchar(synthesis)) synthesis else "Not yet written.")
+      )
+    ),
+    div(
+      class = "transfer-download-status",
+      div(
+        span("Comparison CSV"),
+        strong(class = paste("artifact-status", tolower(strsplit(comparison_status, " ")[[1]][[1]])), comparison_status)
+      ),
+      div(
+        span("Evidence notebook"),
+        strong(class = paste("artifact-status", tolower(strsplit(notes_status, " ")[[1]][[1]])), notes_status)
+      )
+    ),
+    div(
+      class = if (downloads_current) {
+        "transfer-completion is-ready"
+      } else {
+        "transfer-completion is-incomplete"
+      },
+      strong(if (downloads_current) "Evidence pack complete" else "Evidence pack needs a fresh download"),
+      span(if (downloads_current) {
+        "Both files match the current selection, notebook, and synthesis."
+      } else {
+        "Download both current files before closing this tab."
+      })
+    ),
+    if (length(missing)) {
+      div(
+        class = "transfer-missing",
+        strong("Complete on Compare:"),
+        tags$ul(lapply(missing, function(name) tags$li(readiness$messages[[name]]))),
+        actionButton(
+          "return_to_compare",
+          label = tagList(icon("arrow-left"), "Return to Compare"),
+          class = "btn-default"
+        )
+      )
+    }
+  )
+}
+
+download_artifact_status <- function(ready, requested, recorded_signature, current_signature) {
+  if (!isTRUE(ready)) {
+    return("Unavailable")
+  }
+  if (!isTRUE(requested)) {
+    return("Not downloaded")
+  }
+  if (identical(recorded_signature, current_signature)) {
+    return("Current")
+  }
+  "Stale - download again"
+}
+
 evidence_readiness_ui <- function(state) {
   labels <- c(
     baseline = "Baseline",
@@ -1211,6 +1319,10 @@ output_help_path <- file.path("content", "output-reading-help.md")
 diagnostic_help_path <- file.path("content", "diagnostics-help.md")
 plot_help_path <- file.path("content", "plot-reading-help.md")
 core_explore_help_path <- file.path("content", "core-explore-help.md")
+compare_selection_help_path <- file.path("content", "compare-selection-help.md")
+compare_outcomes_help_path <- file.path("content", "compare-outcomes-help.md")
+compare_notebook_help_path <- file.path("content", "compare-notebook-help.md")
+transfer_evidence_help_path <- file.path("content", "transfer-evidence-help.md")
 
 markdown_unavailable_ui <- function(message) {
   div(
@@ -1289,11 +1401,27 @@ core_explore_help_ui <- function() {
   deep_dive_modal_ui("Core and Explore", core_explore_help_path)
 }
 
+compare_selection_help_ui <- function() {
+  deep_dive_modal_ui("Choosing evidence", compare_selection_help_path)
+}
+
+compare_outcomes_help_ui <- function() {
+  deep_dive_modal_ui("Reading the outcome matrix", compare_outcomes_help_path)
+}
+
+compare_notebook_help_ui <- function() {
+  deep_dive_modal_ui("Building the notebook", compare_notebook_help_path)
+}
+
+transfer_evidence_help_ui <- function() {
+  deep_dive_modal_ui("Securing the evidence pack", transfer_evidence_help_path)
+}
+
 session_notice_ui <- function() {
   div(
     class = "session-notice",
     icon("clock"),
-    span("This browser session is temporary. Before you finish, use Compare to download your evidence.")
+    span("This browser session is temporary. Before you finish, use Transfer to download your current evidence pack.")
   )
 }
 
@@ -1504,7 +1632,14 @@ ui <- navbarPage(
           class = "evidence-workspace-section",
           div(
             class = "panel-heading-row",
-            h3("1. Choose evidence")
+            h3("1. Choose evidence"),
+            actionButton(
+              "open_compare_selection_help",
+              label = "Selection help",
+              icon = icon("circle-question"),
+              class = "btn-default btn-xs contextual-help-button",
+              `aria-label` = "Open Practical 1 evidence selection help"
+            )
           ),
           p(class = "muted", "The baseline remains fixed. Change the other two selectors to answer a focused comparison question."),
           uiOutput("evidence_selection")
@@ -1513,14 +1648,31 @@ ui <- navbarPage(
           class = "evidence-workspace-section",
           div(
             class = "panel-heading-row",
-            h3("2. Compare outcomes")
+            h3("2. Compare outcomes"),
+            actionButton(
+              "open_compare_outcomes_help",
+              label = "Read outcomes",
+              icon = icon("circle-question"),
+              class = "btn-default btn-xs contextual-help-button",
+              `aria-label` = "Open Practical 1 comparison outcome help"
+            )
           ),
           p(class = "muted", "Use the baseline-relative rows to separate a change in risk from a change in final abundance or uncertainty."),
           uiOutput("comparison_matrix")
         ),
         div(
           class = "evidence-workspace-section evidence-notebook-section",
-          h3("3. Build your notebook"),
+          div(
+            class = "panel-heading-row",
+            h3("3. Build your notebook"),
+            actionButton(
+              "open_compare_notebook_help",
+              label = "Notebook help",
+              icon = icon("circle-question"),
+              class = "btn-default btn-xs contextual-help-button",
+              `aria-label` = "Open Practical 1 evidence notebook help"
+            )
+          ),
           p(class = "muted", "Save a short observation against the three runs currently selected. Later selections do not rewrite earlier observations."),
           div(
             class = "observation-composer",
@@ -1573,23 +1725,42 @@ ui <- navbarPage(
       class = "page-shell",
       session_notice_ui(),
       div(
-        class = "panel-block",
-        uiOutput("transfer_checklist"),
-        uiOutput("evidence_downloads"),
-        h2("Transfer to the Woodhen practical"),
-        p("Use the evidence habits from Practical 1 as a short bridge to later work."),
-        tags$ol(
-          tags$li("Which output shows extinction risk?"),
-          tags$li("Which output shows abundance?"),
-          tags$li("Which output shows uncertainty?")
+        class = "transfer-workspace",
+        div(
+          class = "transfer-workspace-section",
+          uiOutput("transfer_evidence_pack"),
+          uiOutput("evidence_downloads")
         ),
-        p("Practical 2 will revisit these habits in a later context; this session ends with your selected evidence and caveated interpretation."),
-        h3("Future concepts"),
-        tags$ul(
-          class = "future-list",
-          lapply(seq_len(nrow(deferred)), function(i) {
-            tags$li(strong(deferred$label[[i]]), ": ", deferred$concept[[i]])
-          })
+        div(
+          class = "transfer-workspace-section",
+          h2("What you practised"),
+          p("You used a guided model to build evidence habits that travel beyond this exercise."),
+          tags$ul(
+            class = "transfer-practice-list",
+            tags$li("Change assumptions deliberately."),
+            tags$li("Retain a reference case."),
+            tags$li("Compare risk, abundance, and uncertainty together."),
+            tags$li("Record evidence promptly."),
+            tags$li("Separate results, inference, and caveats.")
+          )
+        ),
+        div(
+          class = "transfer-workspace-section transfer-bridge",
+          h2("From guided comparison to independent investigation"),
+          p("This notebook is unassessed practice. In Practical 2, the same evidence habits will support your individual Woodhen investigation and the report worth 25% of the unit."),
+          p("You will frame a question, construct scenarios, test sensitivity to uncertain assumptions, choose comparisons that answer your question, and build your own reproducible argument."),
+          tags$ol(
+            class = "research-cycle",
+            lapply(
+              c("Question", "Scenario", "Simulation", "Comparison", "Evidence note", "Synthesis"),
+              function(stage) tags$li(stage)
+            )
+          )
+        ),
+        div(
+          class = "transfer-workspace-section transfer-final-cue",
+          strong("Before closing this tab"),
+          span("Confirm both evidence files above are Current.")
         )
       )
     )
@@ -1736,8 +1907,6 @@ make_practical1_server <- function(execute_stage = run_stage) {
   }, ignoreInit = TRUE)
 
   observeEvent(list(selected_evidence_ids(), evidence_notebook(), input$final_synthesis), {
-    download_requested$comparison <- FALSE
-    download_requested$notes <- FALSE
     download_recorded_signatures$comparison <- ""
     download_recorded_signatures$notes <- ""
   }, ignoreInit = TRUE)
@@ -1866,6 +2035,22 @@ make_practical1_server <- function(execute_stage = run_stage) {
     showModal(plot_help_ui())
   })
 
+  observeEvent(input$open_compare_selection_help, {
+    showModal(compare_selection_help_ui())
+  })
+
+  observeEvent(input$open_compare_outcomes_help, {
+    showModal(compare_outcomes_help_ui())
+  })
+
+  observeEvent(input$open_compare_notebook_help, {
+    showModal(compare_notebook_help_ui())
+  })
+
+  observeEvent(input$open_transfer_evidence_help, {
+    showModal(transfer_evidence_help_ui())
+  })
+
   observeEvent(input$run_stage, {
     stage <- selected_stage()
     controls <- mission_control_values(
@@ -1977,6 +2162,10 @@ make_practical1_server <- function(execute_stage = run_stage) {
 
   observeEvent(input$review_evidence_pack, {
     updateNavbarPage(session, "section", selected = "Transfer")
+  })
+
+  observeEvent(input$return_to_compare, {
+    updateNavbarPage(session, "section", selected = "Compare")
   })
 
   output$run_status <- renderUI({
@@ -2217,7 +2406,7 @@ make_practical1_server <- function(execute_stage = run_stage) {
             class = "btn btn-default",
             disabled = "disabled",
             `aria-disabled` = "true",
-            "Evidence notes"
+            "Evidence notebook"
           )
         )
       )
@@ -2226,7 +2415,7 @@ make_practical1_server <- function(execute_stage = run_stage) {
     div(
       class = "export-actions evidence-downloads",
       downloadButton("download_comparison", "Comparison CSV"),
-      downloadButton("download_evidence_notes", "Evidence notes")
+      downloadButton("download_evidence_notes", "Evidence notebook")
     )
   })
 
@@ -2268,46 +2457,35 @@ make_practical1_server <- function(execute_stage = run_stage) {
     }
   )
 
-  output$transfer_checklist <- renderUI({
+  transfer_evidence_ui <- reactive({
     signature <- current_export_signature()
-    comparison_requested <- isTRUE(download_requested$comparison) &&
-      identical(download_recorded_signatures$comparison, signature)
-    notes_requested <- isTRUE(download_requested$notes) &&
-      identical(download_recorded_signatures$notes, signature)
-    complete <- comparison_requested && notes_requested
-    comparison_status <- if (comparison_requested) {
-      "Comparison CSV: Download requested"
-    } else {
-      "Comparison CSV: Not requested yet"
-    }
-    notes_status <- if (notes_requested) {
-      "Evidence notes: Download requested"
-    } else {
-      "Evidence notes: Not requested yet"
-    }
-
-    div(
-      class = "transfer-checklist",
-      h3("Transfer checklist"),
-      tags$ul(
-        tags$li(
-          class = if (comparison_requested) "is-ready" else "is-missing",
-          comparison_status
-        ),
-        tags$li(
-          class = if (notes_requested) "is-ready" else "is-missing",
-          notes_status
-        )
+    ready <- evidence_readiness_state()$ready
+    transfer_evidence_pack_ui(
+      runs = selected_evidence_runs(),
+      synthesis = input$final_synthesis,
+      observation_count = length(evidence_notebook()),
+      readiness = evidence_readiness_state(),
+      comparison_status = download_artifact_status(
+        ready,
+        download_requested$comparison,
+        download_recorded_signatures$comparison,
+        signature
       ),
-      p(
-        class = "muted",
-        if (complete) {
-          "Both evidence requests are complete. You can continue to Practical 2."
-        } else {
-          "Request both evidence downloads before closing this temporary session."
-        }
+      notes_status = download_artifact_status(
+        ready,
+        download_requested$notes,
+        download_recorded_signatures$notes,
+        signature
       )
     )
+  })
+
+  output$transfer_evidence_pack <- renderUI({
+    transfer_evidence_ui()
+  })
+
+  output$transfer_checklist <- renderUI({
+    transfer_evidence_ui()
   })
   }
 }

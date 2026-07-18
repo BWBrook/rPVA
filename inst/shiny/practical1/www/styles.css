@@ -333,6 +333,157 @@ body {
   padding-left: 20px;
 }
 
+.transfer-workspace {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.transfer-workspace-section {
+  padding: 18px 20px;
+}
+
+.transfer-workspace-section + .transfer-workspace-section {
+  border-top: 1px solid var(--line);
+}
+
+.transfer-workspace-section h2 {
+  margin-top: 0;
+}
+
+.transfer-run-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.transfer-run {
+  display: grid;
+  gap: 4px;
+  border-left: 4px solid var(--teal);
+  padding: 8px 10px;
+  background: #f5f9fa;
+}
+
+.transfer-run > span:last-child {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.transfer-pack-summary {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.45fr) minmax(0, 1.55fr);
+  gap: 10px;
+  margin: 10px 0;
+}
+
+.transfer-pack-summary > div {
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+
+.transfer-summary-label {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.transfer-pack-summary p {
+  margin: 3px 0 0;
+}
+
+.transfer-download-status {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.transfer-download-status > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid var(--line);
+  padding: 9px 10px;
+}
+
+.artifact-status.current {
+  color: var(--green);
+}
+
+.artifact-status.stale,
+.artifact-status.unavailable {
+  color: var(--red);
+}
+
+.artifact-status.not {
+  color: var(--gold);
+}
+
+.transfer-completion {
+  display: grid;
+  gap: 2px;
+  margin: 10px 0;
+  border-left: 4px solid var(--gold);
+  padding: 9px 11px;
+  background: #fff8e8;
+}
+
+.transfer-completion.is-ready {
+  border-left-color: var(--green);
+  background: #f4f9f1;
+}
+
+.transfer-missing {
+  margin-top: 10px;
+}
+
+.transfer-practice-list {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.transfer-practice-list li {
+  border-top: 3px solid var(--teal);
+  padding-top: 7px;
+}
+
+.research-cycle {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+  padding: 0;
+  list-style: none;
+  counter-reset: research-step;
+}
+
+.research-cycle li {
+  counter-increment: research-step;
+  border: 1px solid var(--line);
+  padding: 9px;
+  background: #fbfdfe;
+  font-weight: 700;
+}
+
+.research-cycle li::before {
+  content: counter(research-step) ".";
+  display: block;
+  color: var(--teal);
+  font-size: 12px;
+}
+
+.transfer-final-cue {
+  display: flex;
+  gap: 8px;
+  background: #fff8e8;
+}
+
 .lab-grid > *,
 .compare-grid > * {
   min-width: 0;
@@ -1151,6 +1302,22 @@ select:focus-visible,
 
   .observation-metric-row {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .transfer-workspace-section {
+    padding: 14px;
+  }
+
+  .transfer-run-summary,
+  .transfer-pack-summary,
+  .transfer-download-status,
+  .transfer-practice-list,
+  .research-cycle {
+    grid-template-columns: 1fr;
+  }
+
+  .transfer-download-status > div {
+    align-items: flex-start;
   }
 
   .evidence-downloads {

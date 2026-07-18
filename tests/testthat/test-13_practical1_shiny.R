@@ -294,7 +294,7 @@ test_that("Start landing exposes accessible shared UI semantics", {
 
   expect_true(grepl('h2(title)', app_text, fixed = TRUE))
   expect_true(grepl('h2("Your evidence pack")', app_text, fixed = TRUE))
-  expect_true(grepl("This browser session is temporary. Before you finish, use Compare to download your evidence.", app_text, fixed = TRUE))
+  expect_true(grepl("This browser session is temporary. Before you finish, use Transfer to download your current evidence pack.", app_text, fixed = TRUE))
 
   expected_script_hooks <- c(
     "lastModalTrigger",
@@ -1176,10 +1176,10 @@ test_that("Practical 1 gates selected evidence downloads and records each reques
   expect_true(grepl("download_requested <- reactiveValues(comparison = FALSE, notes = FALSE)", app_text, fixed = TRUE))
   expect_true(grepl('uiOutput("evidence_downloads")', app_text, fixed = TRUE))
   expect_true(grepl('`aria-disabled` = "true"', app_text, fixed = TRUE))
-  expect_true(grepl('uiOutput("transfer_checklist")', app_text, fixed = TRUE))
-  expect_true(grepl("Comparison CSV: Download requested", app_text, fixed = TRUE))
-  expect_true(grepl("Evidence notes: Download requested", app_text, fixed = TRUE))
-  expect_true(grepl("Download requested", app_text, fixed = TRUE))
+  expect_true(grepl('uiOutput("transfer_evidence_pack")', app_text, fixed = TRUE))
+  expect_true(grepl("download_artifact_status", app_text, fixed = TRUE))
+  expect_true(grepl("Evidence pack complete", app_text, fixed = TRUE))
+  expect_true(grepl("Stale - download again", app_text, fixed = TRUE))
   expect_false(grepl("Evidence saved", app_text, fixed = TRUE))
 
   old <- setwd(app_dir)
@@ -1321,6 +1321,64 @@ test_that("Practical 1 Compare prioritises concise evidence roles and outcomes",
   expect_match(matrix_html, "evidence-matrix-desktop", fixed = TRUE)
   expect_match(matrix_html, "evidence-matrix-mobile", fixed = TRUE)
   expect_false(grepl("min-width: 960px", style_text, fixed = TRUE))
+})
+
+test_that("Practical 1 Transfer presents the evidence handoff and research bridge", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  old <- setwd(app_dir)
+  on.exit(setwd(old), add = TRUE)
+  env <- new.env(parent = globalenv())
+  sys.source("app.R", envir = env)
+  content_paths <- file.path(
+    "content",
+    c(
+      "compare-selection-help.md",
+      "compare-outcomes-help.md",
+      "compare-notebook-help.md",
+      "transfer-evidence-help.md"
+    )
+  )
+  runs <- list(
+    env$attach_session_run_id(env$run_stage("deterministic_baseline"), 1L),
+    env$attach_session_run_id(
+      env$run_stage("environmental_stochasticity", list(reps = 10L)),
+      2L
+    ),
+    env$attach_session_run_id(env$run_stage("intervention", list(reps = 10L)), 3L)
+  )
+
+  expect_true(all(file.exists(content_paths)))
+  content_text <- paste(unlist(lapply(content_paths, readLines, warn = FALSE)), collapse = "\n")
+  expect_match(content_text, "baseline, risk mechanism, and intervention or vortex", fixed = TRUE)
+  expect_match(content_text, "final synthesis", fixed = TRUE)
+  expect_match(content_text, "temporary browser session", fixed = TRUE)
+
+  transfer_html <- paste(as.character(env$transfer_evidence_pack_ui(
+    runs = runs,
+    synthesis = "The intervention improves abundance while uncertainty remains.",
+    observation_count = 2L,
+    readiness = list(ready = TRUE, checks = logical(), messages = character()),
+    comparison_status = "Current",
+    notes_status = "Stale - download again"
+  )), collapse = "\n")
+  expect_match(transfer_html, "Your evidence pack", fixed = TRUE)
+  expect_match(transfer_html, "2 notebook observations", fixed = TRUE)
+  expect_match(transfer_html, "The intervention improves abundance", fixed = TRUE)
+  expect_match(transfer_html, "Comparison CSV", fixed = TRUE)
+  expect_match(transfer_html, "Evidence notebook", fixed = TRUE)
+  expect_match(transfer_html, "Stale - download again", fixed = TRUE)
+  expect_match(transfer_html, "Evidence pack needs a fresh download", fixed = TRUE)
+
+  app_text <- paste(readLines("app.R", warn = FALSE), collapse = "\n")
+  for (label in c(
+    "What you practised",
+    "From guided comparison to independent investigation",
+    "Question", "Scenario", "Simulation", "Comparison", "Evidence note", "Synthesis"
+  )) {
+    expect_true(grepl(label, app_text, fixed = TRUE))
+  }
+  expect_true(grepl("report worth 25% of the unit", app_text, fixed = TRUE))
+  expect_false(grepl("Future concepts", app_text, fixed = TRUE))
 })
 
 test_that("failed Practical 1 runs do not enter history or progress", {
@@ -1672,28 +1730,32 @@ test_that("Practical 1 download requests stay bound to the current export identi
 
     session$setInputs(selected_risk_run_id = "4")
     expect_equal(selected_evidence_ids(), c(1L, 4L, 3L))
-    expect_false(download_requested$comparison)
-    expect_false(download_requested$notes)
+    expect_true(download_requested$comparison)
+    expect_true(download_requested$notes)
     expect_identical(download_recorded_signatures$comparison, "")
     expect_identical(download_recorded_signatures$notes, "")
     transfer <- paste(as.character(output$transfer_checklist), collapse = "\n")
-    expect_match(transfer, "Not requested yet", all = TRUE)
-    expect_false(grepl("Both evidence requests are complete", transfer, fixed = TRUE))
+    expect_match(transfer, "Stale - download again", all = TRUE)
+    expect_false(grepl("Evidence pack complete", transfer, fixed = TRUE))
 
     expect_true(evidence_readiness_state()$ready)
-    expect_false(download_requested$comparison)
-    expect_false(download_requested$notes)
 
     comparison_generator$content(tempfile(fileext = ".csv"))
     expect_true(download_requested$comparison)
-    expect_false(download_requested$notes)
+    expect_identical(download_recorded_signatures$comparison, current_export_signature())
+    expect_identical(download_recorded_signatures$notes, "")
     notes_generator$content(tempfile(fileext = ".md"))
     expect_true(download_requested$comparison)
     expect_true(download_requested$notes)
+    expect_identical(download_recorded_signatures$comparison, current_export_signature())
+    expect_identical(download_recorded_signatures$notes, current_export_signature())
+    session$flushReact()
+    transfer <- paste(as.character(output$transfer_checklist), collapse = "\n")
+    expect_match(transfer, "Evidence pack complete", fixed = TRUE)
 
     session$setInputs(final_synthesis = paste0(input$final_synthesis, " Revised."))
-    expect_false(download_requested$comparison)
-    expect_false(download_requested$notes)
+    expect_true(download_requested$comparison)
+    expect_true(download_requested$notes)
     expect_identical(download_recorded_signatures$comparison, "")
     expect_identical(download_recorded_signatures$notes, "")
   })
@@ -1756,8 +1818,8 @@ test_that("Practical 1 declares temporary state and guarded recovery", {
   js_text <- paste(readLines(js_path, warn = FALSE), collapse = "\n")
 
   notice <- paste(
-    "This browser session is temporary. Before you finish, use Compare to",
-    "download your evidence."
+    "This browser session is temporary. Before you finish, use Transfer to",
+    "download your current evidence pack."
   )
   count_fixed <- function(pattern, text) {
     hits <- gregexpr(pattern, text, fixed = TRUE)[[1]]
