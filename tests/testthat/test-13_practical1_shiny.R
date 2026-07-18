@@ -269,9 +269,10 @@ test_that("landing cards expose Markdown-backed deep-dives", {
   expect_true(grepl("Compare", content_text$mission, fixed = TRUE))
 
   expect_true(grepl("comparison CSV", content_text$evidence, fixed = TRUE))
-  expect_true(grepl("evidence-notes file", content_text$evidence, fixed = TRUE))
+  expect_true(grepl("evidence notebook", content_text$evidence, fixed = TRUE))
   expect_true(grepl("Markdown", content_text$evidence, fixed = TRUE))
-  expect_true(grepl("one-sentence interpretation", content_text$evidence, fixed = TRUE))
+  expect_true(grepl("notebook observation", content_text$evidence, fixed = TRUE))
+  expect_true(grepl("final synthesis", content_text$evidence, fixed = TRUE))
   expect_true(grepl("support your explanation", content_text$evidence, fixed = TRUE))
   expect_true(grepl("trade-offs", content_text$evidence, fixed = TRUE))
 
@@ -1908,10 +1909,10 @@ test_that("Practical 1 Week 1 documents use the same route and session language"
     "genetic pressure, catastrophes, the extinction vortex, advanced controls,",
     "alternative comparisons, and optional plot downloads.",
     "",
-    "This browser session is temporary. Before closing the tab, request both your",
-    "comparison CSV and your evidence-notes Markdown file. Refreshing, closing the",
-    "tab, or allowing the session to expire clears the in-app run history,",
-    "selection, progress, and interpretation.",
+    "This browser session is temporary. Before closing the tab, use **Transfer** to",
+    "download both Current files: the comparison CSV and the evidence notebook",
+    "Markdown file. Refreshing, closing the tab, or allowing the session to expire",
+    "clears in-app run history, selection, notebook observations, and synthesis.",
     sep = "\n"
   )
 
@@ -1919,8 +1920,21 @@ test_that("Practical 1 Week 1 documents use the same route and session language"
   expect_true(all(vapply(texts, grepl, logical(1), pattern = "Explore Further", fixed = TRUE)))
   expect_true(all(vapply(texts, grepl, logical(1), pattern = "temporary", fixed = TRUE)))
   expect_true(all(vapply(texts, grepl, logical(1), pattern = "comparison CSV", fixed = TRUE)))
-  expect_true(all(vapply(texts, grepl, logical(1), pattern = "evidence notes", fixed = TRUE)))
+  expect_true(all(vapply(texts, grepl, logical(1), pattern = "evidence notebook", fixed = TRUE)))
+  expect_true(all(vapply(texts, grepl, logical(1), pattern = "Add to notebook", fixed = TRUE)))
+  expect_true(all(vapply(texts, grepl, logical(1), pattern = "final synthesis", fixed = TRUE)))
+  expect_true(all(vapply(texts, grepl, logical(1), pattern = "Transfer", fixed = TRUE)))
   expect_true(all(vapply(texts, grepl, logical(1), pattern = route_block, fixed = TRUE)))
+  expect_false(any(vapply(texts, grepl, logical(1), pattern = "one-sentence interpretation", fixed = TRUE)))
+  expect_false(any(vapply(texts, grepl, logical(1), pattern = "evidence-notes", fixed = TRUE)))
+
+  bridge_docs <- c(
+    file.path(repo_root(), "inst", "shiny", "practical1", "README.md"),
+    docs[c(1, 2, 5)]
+  )
+  bridge_texts <- lapply(bridge_docs, function(path) paste(readLines(path, warn = FALSE), collapse = "\n"))
+  expect_true(all(vapply(bridge_texts, grepl, logical(1), pattern = "unassessed", fixed = TRUE)))
+  expect_true(all(vapply(bridge_texts, grepl, logical(1), pattern = "25%", fixed = TRUE)))
 
   timing <- paste(
     "The three-hour class uses approximately one hour for PVA teaching and a guided",

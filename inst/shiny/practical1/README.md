@@ -20,9 +20,11 @@ The five **Core** missions are:
 4. Environmental variability; and
 5. Rescue attempt.
 
-**Compare** is the Core completion destination. It keeps the full successful
-session history visible while selecting exactly three evidence runs: baseline,
-one eligible risk mechanism, and one intervention or vortex run.
+**Compare** is the Core completion destination. Students select exactly three
+evidence runs: the locked baseline, one eligible risk mechanism, and one
+intervention or vortex run. The full successful session history is available
+in a collapsed audit panel. Students can change the selected trio, use `Add to
+notebook` to preserve multiple observations, and write a final synthesis.
 
 After the Core route, **Explore Further** remains available for genetic
 pressure, catastrophes, the extinction vortex, advanced controls, alternative
@@ -31,14 +33,19 @@ and every existing deep-dive action remain available.
 
 ## Evidence and temporary sessions
 
-The browser session is temporary. Before closing the app, request both the
-comparison CSV and the evidence notes Markdown file (the evidence-notes file).
-Refreshing, closing the
-tab, or allowing the session to expire clears in-app run history, selection,
-progress, and interpretation.
+The browser session is temporary. Before closing the app, students use
+**Transfer** to download both Current files: the comparison CSV and the
+evidence notebook Markdown file. Refreshing, closing the tab, or allowing the
+session to expire clears in-app run history, selection, notebook observations,
+and synthesis. Changing any of that evidence makes an earlier download Stale.
 
-The app reports `Download requested` when a download handler receives a
-request; it does not claim where the browser saved the file.
+The comparison CSV records the final selected trio. The evidence notebook
+collects the final synthesis, all saved observations and their metric
+snapshots, the final comparison, and settings provenance.
+
+Practical 1 is unassessed practice in evidence reasoning. Transfer explicitly
+bridges those habits to the more independent Practical 2 Woodhen investigation
+and its report worth 25% of the unit.
 
 The Concept Lab settings record is student-facing. It shows plain-English
 parameter labels, the baseline value, the currently selected mission value,
@@ -54,7 +61,11 @@ Markdown-backed help lives in `content/`:
 - `parameter-help.md` for `Control help`;
 - `output-reading-help.md` for `Read outputs`;
 - `diagnostics-help.md` for `Read diagnostics`; and
-- `plot-reading-help.md` for `Read plots`.
+- `plot-reading-help.md` for `Read plots`;
+- `compare-selection-help.md` for choosing a focused three-run comparison;
+- `compare-outcomes-help.md` for reading the outcome matrix;
+- `compare-notebook-help.md` for observations and synthesis; and
+- `transfer-evidence-help.md` for current and stale evidence downloads.
 
 The app intentionally excludes persistent student workspaces, authentication,
 deployment configuration, and arbitrary YAML editing. Those belong to later,

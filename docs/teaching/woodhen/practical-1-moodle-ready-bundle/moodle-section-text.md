@@ -15,10 +15,10 @@ When the Core route is complete, **Explore Further** remains available for
 genetic pressure, catastrophes, the extinction vortex, advanced controls,
 alternative comparisons, and optional plot downloads.
 
-This browser session is temporary. Before closing the tab, request both your
-comparison CSV and your evidence-notes Markdown file. Refreshing, closing the
-tab, or allowing the session to expire clears the in-app run history,
-selection, progress, and interpretation.
+This browser session is temporary. Before closing the tab, use **Transfer** to
+download both Current files: the comparison CSV and the evidence notebook
+Markdown file. Refreshing, closing the tab, or allowing the session to expire
+clears in-app run history, selection, notebook observations, and synthesis.
 
 The three-hour class uses approximately one hour for PVA teaching and GUI
 introduction, followed by approximately two hours of guided, self-paced app
@@ -26,6 +26,7 @@ work while the instructor and demonstrators circulate. Change one visible
 setting at a time and keep notes on the changed assumption, moved output, and
 caveat.
 
-Before you leave Compare, request both the comparison CSV and the evidence notes
-Markdown file. If a download fails after one retry, tell your demonstrator
-and follow the fallback instructions for the same three-run evidence target.
+In Compare, use `Add to notebook` after useful three-run comparisons and write
+a final synthesis. Then move to Transfer and download both Current files. If a
+download fails after one retry, tell your demonstrator and follow the fallback
+instructions for the same three-run evidence target.

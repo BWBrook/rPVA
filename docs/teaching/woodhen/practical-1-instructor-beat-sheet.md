@@ -22,10 +22,10 @@ When the Core route is complete, **Explore Further** remains available for
 genetic pressure, catastrophes, the extinction vortex, advanced controls,
 alternative comparisons, and optional plot downloads.
 
-This browser session is temporary. Before closing the tab, request both your
-comparison CSV and your evidence-notes Markdown file. Refreshing, closing the
-tab, or allowing the session to expire clears the in-app run history,
-selection, progress, and interpretation.
+This browser session is temporary. Before closing the tab, use **Transfer** to
+download both Current files: the comparison CSV and the evidence notebook
+Markdown file. Refreshing, closing the tab, or allowing the session to expire
+clears in-app run history, selection, notebook observations, and synthesis.
 
 ## Beats
 
@@ -40,7 +40,8 @@ selection, progress, and interpretation.
 - Prompt students through the five Core missions in order.
 - Ask after each run: what changed, which output moved, and what caveat remains?
 - At Compare, verify exactly baseline plus one risk plus one intervention or
-  vortex and an interpretation before both downloads.
+  vortex. Ask students to select `Add to notebook`, try another useful trio,
+  and write a final synthesis before moving to Transfer.
 - Offer Explore Further only after the Core destination is clear.
 
 ## Roaming prompts
@@ -69,7 +70,14 @@ to retry once, then record the visible comparison as fallback evidence.
 
 ## Endpoint check
 
-Before students leave, confirm that they have the comparison CSV and evidence notes
-Markdown file, or labelled fallback equivalents, plus a short
-interpretation and caveat. Remind them that refreshing, closing the tab, or
-session expiry clears in-app history, selection, progress, and interpretation.
+Before students leave, confirm that both the comparison CSV and evidence
+notebook are marked `Current` on Transfer, or that students have labelled
+fallback equivalents. The notebook should contain saved observations, a final
+synthesis, and a caveat. Remind students that refreshing, closing the tab, or
+session expiry clears in-app history, selection, notebook observations, and
+synthesis.
+
+Practical 1 is unassessed rehearsal of the reasoning workflow. Use the Transfer
+bridge to name how question, scenario, simulation, comparison, evidence note,
+and synthesis carry into the independent Practical 2 Woodhen investigation and
+its report worth 25% of the unit.

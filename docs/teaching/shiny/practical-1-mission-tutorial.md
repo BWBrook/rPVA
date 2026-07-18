@@ -4,8 +4,8 @@
 
 Practical 1 is an app-led introduction to population viability analysis (PVA).
 Change one ecological assumption at a time, inspect what changed, compare
-possible futures, and write a short evidence-based interpretation. The app is
-the main teaching surface; the worksheet is a light observation log.
+possible futures, save evidence observations, and write a final synthesis. The
+app is the main teaching surface; the worksheet is a light backup prompt.
 
 ## Class shape
 
@@ -29,10 +29,10 @@ When the Core route is complete, **Explore Further** remains available for
 genetic pressure, catastrophes, the extinction vortex, advanced controls,
 alternative comparisons, and optional plot downloads.
 
-This browser session is temporary. Before closing the tab, request both your
-comparison CSV and your evidence-notes Markdown file. Refreshing, closing the
-tab, or allowing the session to expire clears the in-app run history,
-selection, progress, and interpretation.
+This browser session is temporary. Before closing the tab, use **Transfer** to
+download both Current files: the comparison CSV and the evidence notebook
+Markdown file. Refreshing, closing the tab, or allowing the session to expire
+clears in-app run history, selection, notebook observations, and synthesis.
 
 ## Core mission guide
 
@@ -52,8 +52,8 @@ change and one comparison with the evidence already collected.
 
 After the fifth mission, go to Compare. The Core completion destination is a
 three-run evidence set: baseline, one eligible risk mechanism, and one
-intervention or vortex run. The full session history remains visible, but the
-minimum evidence pack contains exactly those three selected runs.
+intervention or vortex run. The full session history remains available in a
+collapsed audit panel, while the outcome matrix keeps those three runs central.
 
 ## Explore Further
 
@@ -71,15 +71,22 @@ Compare. They do not replace the five Core missions for the minimum route.
 
 ## Evidence and session recovery
 
-In Compare, write an interpretation that names the changed assumption, the
-output that moved, and a caveat. Request both the comparison CSV and the
-evidence notes Markdown file before closing the app. The app reports
-`Download requested` when the handler receives a request; it cannot guarantee
-where the browser saves the file.
+In Compare, choose a focused three-run set. Write what that comparison shows
+and select `Add to notebook`. Change the risk or action selection and save more
+observations when they add useful evidence. Then write a final synthesis across
+your strongest observations.
+
+Move to Transfer and download the comparison CSV and evidence notebook. Both
+must say `Current`; changing a selection, observation, or synthesis makes an
+earlier download stale.
 
 The session is temporary. Refreshing the page, closing the tab, or allowing
-the session to expire clears in-app history, selected evidence, progress, and
-interpretation. Keep downloaded files and worksheet notes locally.
+the session to expire clears in-app history, selected evidence, notebook
+observations, and synthesis. Keep both downloaded files locally.
+
+Practical 1 is unassessed practice. The same question-to-synthesis workflow
+prepares you for the independent Practical 2 Woodhen investigation and its
+report worth 25% of the unit.
 
 ## Instructor prompts
 

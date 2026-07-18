@@ -18,10 +18,10 @@ When the Core route is complete, **Explore Further** remains available for
 genetic pressure, catastrophes, the extinction vortex, advanced controls,
 alternative comparisons, and optional plot downloads.
 
-This browser session is temporary. Before closing the tab, request both your
-comparison CSV and your evidence-notes Markdown file. Refreshing, closing the
-tab, or allowing the session to expire clears the in-app run history,
-selection, progress, and interpretation.
+This browser session is temporary. Before closing the tab, use **Transfer** to
+download both Current files: the comparison CSV and the evidence notebook
+Markdown file. Refreshing, closing the tab, or allowing the session to expire
+clears in-app run history, selection, notebook observations, and synthesis.
 
 ## Pre-class setup
 
@@ -47,9 +47,11 @@ run_practical1_shiny(host = "127.0.0.1", port = 3898, launch.browser = FALSE)
 2. During the two-hour self-paced app period, students complete the five Core
    missions in order while staff circulate and answer questions.
 3. Students go to Compare, select exactly baseline plus one risk plus one
-   intervention or vortex, write an interpretation, and request both downloads.
+   intervention or vortex, select `Add to notebook` after useful comparisons,
+   and write a final synthesis.
 4. Students may use Explore Further for genetics, catastrophes, vortex,
    advanced controls, alternative comparisons, and optional plot downloads.
+5. Students use Transfer and confirm both evidence downloads are `Current`.
 
 ## Student evidence target
 
@@ -57,14 +59,13 @@ Each student or group should leave with:
 
 - exactly three selected evidence runs: baseline, one risk mechanism, and one
   intervention or vortex run;
-- a short interpretation and caveat;
+- saved notebook observations and a final synthesis with a caveat;
 - the comparison CSV; and
-- the evidence notes Markdown file.
+- the evidence notebook Markdown file.
 
-The app says `Download requested` when each handler receives a request. It does
-not guarantee the browser save location. If downloads fail, students should
-copy the visible selected comparison into the worksheet and label it fallback
-evidence.
+Transfer says `Current` only when each downloaded file matches the selected
+runs, observations, and synthesis. If downloads fail, students should copy the
+visible selected comparison into the worksheet and label it fallback evidence.
 
 ## Prompts while circulating
 
@@ -87,11 +88,11 @@ Say:
 > uncertainty.
 
 The fallback must preserve the same three-run evidence target and temporary
-session reminder: save the comparison CSV equivalent and evidence notes before
-closing the work session.
+session reminder: save the comparison CSV equivalent, observation notes, and
+final synthesis before closing the work session.
 
 ## End-of-class check
 
 Confirm that students know that refreshing, closing the tab, or session expiry
-clears in-app history, selection, progress, and interpretation. Their local
-comparison CSV, evidence notes, and worksheet are the durable record.
+clears in-app history, selection, notebook observations, and synthesis. Their
+local comparison CSV, evidence notebook, and worksheet are the durable record.

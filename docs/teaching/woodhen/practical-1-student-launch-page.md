@@ -21,10 +21,10 @@ When the Core route is complete, **Explore Further** remains available for
 genetic pressure, catastrophes, the extinction vortex, advanced controls,
 alternative comparisons, and optional plot downloads.
 
-This browser session is temporary. Before closing the tab, request both your
-comparison CSV and your evidence-notes Markdown file. Refreshing, closing the
-tab, or allowing the session to expire clears the in-app run history,
-selection, progress, and interpretation.
+This browser session is temporary. Before closing the tab, use **Transfer** to
+download both Current files: the comparison CSV and the evidence notebook
+Markdown file. Refreshing, closing the tab, or allowing the session to expire
+clears in-app run history, selection, notebook observations, and synthesis.
 
 ## Class workflow
 
@@ -38,9 +38,11 @@ Core missions in order:
    changing one visible control at a time.
 3. In Compare, select exactly baseline plus one risk mechanism plus one
    intervention or vortex run.
-4. Write an interpretation that names the changed assumption, moved output, and
-   caveat.
-5. Request both the comparison CSV and evidence notes before closing.
+4. Write what the comparison shows and select `Add to notebook`. Save another
+   observation after changing the evidence trio when it answers a useful question.
+5. Write a final synthesis across your strongest observations.
+6. In Transfer, download the comparison CSV and evidence notebook; confirm that
+   both are `Current` before closing.
 
 ## Explore Further
 
@@ -61,7 +63,11 @@ Check that you have:
 
 - exactly three selected comparison runs: baseline, one risk mechanism, and one
   intervention or vortex run;
-- a short interpretation and one caveat;
-- the comparison CSV and evidence notes Markdown file, or clearly labelled
+- at least one saved observation and a final synthesis with one caveat;
+- the comparison CSV and evidence notebook Markdown file, or clearly labelled
   fallback evidence; and
 - your worksheet notes.
+
+This Practical 1 notebook is unassessed practice. Its evidence habits prepare
+you for the independent Practical 2 Woodhen investigation and its report worth
+25% of the unit.

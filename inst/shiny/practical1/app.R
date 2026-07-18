@@ -1499,9 +1499,9 @@ ui <- navbarPage(
             span(class = "landing-eyebrow", "Evidence to save"),
             h2("Your evidence pack"),
             tags$ul(
-              tags$li("a three-run comparison table;"),
-              tags$li("plain-text evidence notes;"),
-              tags$li("your one-sentence interpretation.")
+              tags$li("a final three-run comparison;"),
+              tags$li("saved notebook observations;"),
+              tags$li("your final synthesis and provenance.")
             ),
             actionButton(
               "open_evidence_deep_dive",

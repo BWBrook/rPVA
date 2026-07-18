@@ -18,10 +18,10 @@ When the Core route is complete, **Explore Further** remains available for
 genetic pressure, catastrophes, the extinction vortex, advanced controls,
 alternative comparisons, and optional plot downloads.
 
-This browser session is temporary. Before closing the tab, request both your
-comparison CSV and your evidence-notes Markdown file. Refreshing, closing the
-tab, or allowing the session to expire clears the in-app run history,
-selection, progress, and interpretation.
+This browser session is temporary. Before closing the tab, use **Transfer** to
+download both Current files: the comparison CSV and the evidence notebook
+Markdown file. Refreshing, closing the tab, or allowing the session to expire
+clears in-app run history, selection, notebook observations, and synthesis.
 
 ## Core mission log
 
@@ -70,24 +70,27 @@ route and do not change the three-run minimum evidence target.
 
 Optional observation: ______________________________________________________
 
-## Evidence notes and download checklist
+## Evidence notebook and download checklist
 
 In Compare, select exactly baseline plus one risk mechanism plus one
-intervention or vortex run. Write an interpretation before requesting both
-downloads:
+intervention or vortex run. Write a short evidence observation, then select
+`Add to notebook`. Change the selected trio and repeat when another comparison
+adds useful evidence. Finish with a final synthesis.
 
-Interpretation: ____________________________________________________________
+Observation: ______________________________________________________________
 
 Caveat: ____________________________________________________________________
+
+Final synthesis: __________________________________________________________
 
 | Evidence item | Filename or fallback location |
 | --- | --- |
 | Comparison CSV |  |
-| Evidence notes Markdown file |  |
+| Evidence notebook Markdown file |  |
 
-Before closing the temporary session, confirm both the comparison CSV and the
-evidence notes were requested. Refreshing, closing the tab, or session expiry
-clears in-app history, selection, progress, and interpretation.
+Before closing the temporary session, use Transfer and confirm both files are
+`Current`. Refreshing, closing the tab, or session expiry clears in-app history,
+selection, notebook observations, and synthesis.
 
 ## Transfer reflection
 
