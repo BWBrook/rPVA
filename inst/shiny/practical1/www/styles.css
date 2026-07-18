@@ -221,6 +221,118 @@ body {
   color: var(--muted);
 }
 
+.observation-composer {
+  max-width: 860px;
+  margin: 12px 0 16px;
+}
+
+.observation-composer textarea,
+.evidence-synthesis-section textarea {
+  resize: vertical;
+}
+
+.draft-selection-warning {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  border-left: 4px solid var(--gold);
+  margin: 8px 0;
+  padding: 9px 11px;
+  background: #fff8e8;
+}
+
+.notebook-empty-state {
+  border-left: 4px solid var(--line);
+  padding: 8px 12px;
+  color: var(--muted);
+}
+
+.notebook-empty-state h4,
+.notebook-empty-state p {
+  margin: 0 0 4px;
+}
+
+.observation-list {
+  display: grid;
+  gap: 10px;
+}
+
+.observation-entry {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #fbfdfe;
+}
+
+.observation-entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.observation-entry-header h4 {
+  margin: 3px 0 0;
+  font-size: 16px;
+}
+
+.observation-number {
+  color: var(--teal);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.observation-run-labels {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 6px 0;
+}
+
+.observation-note {
+  margin: 8px 0 10px;
+  font-weight: 600;
+}
+
+.observation-metrics {
+  display: grid;
+  gap: 4px;
+}
+
+.observation-metric-row {
+  display: grid;
+  grid-template-columns: minmax(72px, 0.5fr) repeat(3, minmax(120px, 1fr));
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 5px;
+  font-size: 13px;
+}
+
+.evidence-readiness {
+  margin: 12px 0;
+  padding: 10px 12px;
+}
+
+.evidence-readiness.is-ready {
+  border-left: 4px solid var(--green);
+  background: #f4f9f1;
+}
+
+.evidence-readiness.is-incomplete {
+  border-left: 4px solid var(--gold);
+  background: #fff8e8;
+}
+
+.evidence-readiness > strong,
+.evidence-readiness > span {
+  display: block;
+}
+
+.evidence-readiness ul {
+  margin: 6px 0 0;
+  padding-left: 20px;
+}
+
 .lab-grid > *,
 .compare-grid > * {
   min-width: 0;
@@ -1031,6 +1143,14 @@ select:focus-visible,
   .session-run-row .run-settings,
   .session-run-row .run-selection-status {
     grid-column: 2;
+  }
+
+  .observation-entry-header {
+    display: grid;
+  }
+
+  .observation-metric-row {
+    grid-template-columns: 1fr 1fr;
   }
 
   .evidence-downloads {

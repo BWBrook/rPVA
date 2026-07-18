@@ -129,7 +129,7 @@ test_that("comparison view exposes compact evidence downloads", {
   expect_true(grepl("output$download_comparison <- downloadHandler", app_text, fixed = TRUE))
   expect_true(grepl("output$download_evidence_notes <- downloadHandler", app_text, fixed = TRUE))
   expect_true(grepl("build_teaching_evidence_export", app_text, fixed = TRUE))
-  expect_true(grepl("evidence for your interpretation", app_text, fixed = TRUE))
+  expect_true(grepl("Your selected runs, notebook, and synthesis are complete.", app_text, fixed = TRUE))
 })
 
 test_that("app exposes mission-mode classroom guidance", {
@@ -504,13 +504,15 @@ test_that("Compare view exposes an evidence workspace and baseline deltas", {
   expect_true(grepl('uiOutput("evidence_selection")', app_text, fixed = TRUE))
   expect_true(grepl('uiOutput("comparison_matrix")', app_text, fixed = TRUE))
   expect_true(grepl("compare_teaching_runs(runs, include_deltas = TRUE)", app_text, fixed = TRUE))
-  expect_true(grepl('textAreaInput("interpretation_note"', app_text, fixed = TRUE))
-  expect_true(grepl("interpretation = input$interpretation_note", app_text, fixed = TRUE))
+  expect_true(grepl('textAreaInput("observation_draft"', app_text, fixed = TRUE))
+  expect_true(grepl('textAreaInput(\n            "final_synthesis"', app_text, fixed = TRUE))
+  expect_true(grepl("observations = evidence_notebook()", app_text, fixed = TRUE))
+  expect_true(grepl("synthesis = input$final_synthesis", app_text, fixed = TRUE))
   expect_true(grepl("Change in extinction probability", app_text, fixed = TRUE))
   expect_true(grepl("Change in median abundance", app_text, fixed = TRUE))
   expect_match(style_text, "\\.evidence-selection-grid")
   expect_match(style_text, "\\.evidence-matrix")
-  expect_match(style_text, "\\.interpretation-capture")
+  expect_match(style_text, "\\.observation-composer")
 })
 
 test_that("landing screen uses local accessible bitmap assets", {
@@ -973,7 +975,7 @@ test_that("Practical 1 notebook readiness requires an observation and final synt
   )
 })
 
-test_that("Practical 1 selects three runs and invalidates stale interpretation", {
+test_that("Practical 1 readiness follows notebook observations and synthesis", {
   app_dir <- rPVA:::practical1_shiny_app_dir()
   old <- setwd(app_dir)
   on.exit(setwd(old), add = TRUE)
@@ -986,27 +988,108 @@ test_that("Practical 1 selects three runs and invalidates stale interpretation",
     session$setInputs(run_stage = 1)
     selected_stage("intervention")
     session$setInputs(run_stage = 2)
-    session$setInputs(
-      interpretation_note = paste(
-        "Risk increased under shared bad years; intervention improved final abundance,",
-        "while uncertainty remained."
-      )
-    )
-
     expect_equal(length(selected_evidence_ids()), 3L)
     expect_equal(
       vapply(selected_evidence_runs(), `[[`, character(1), "stage"),
       c("deterministic_baseline", "environmental_stochasticity", "intervention")
+    )
+    expect_false(evidence_readiness_state()$ready)
+    session$setInputs(
+      observation_draft = "Risk increased while the intervention improved final abundance.",
+      add_observation = 1,
+      final_synthesis = "The comparisons support an intervention, with uncertainty remaining."
     )
     expect_true(evidence_readiness_state()$ready)
 
     selected_stage("catastrophe")
     session$setInputs(run_stage = 3)
     expect_equal(selected_risk_run_id(), 4L)
-    expect_false(evidence_readiness_state()$checks[["interpretation_current"]])
-    expect_true(evidence_readiness_state()$checks[["interpretation"]])
-    session$setInputs(confirm_interpretation = 1)
-    expect_true(evidence_readiness_state()$checks[["interpretation_current"]])
+    expect_true(evidence_readiness_state()$ready)
+    expect_equal(evidence_notebook()[[1]]$run_ids, c(1L, 2L, 3L))
+  })
+})
+
+test_that("Practical 1 accumulates comparison-linked observations and confirms removal", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  old <- setwd(app_dir)
+  on.exit(setwd(old), add = TRUE)
+  env <- new.env(parent = globalenv())
+  sys.source("app.R", envir = env)
+
+  shiny::testServer(env$make_practical1_server(), {
+    session$setInputs(run_baseline = 1)
+    selected_stage("environmental_stochasticity")
+    session$setInputs(env_sd = 0.25, K = 20, run_stage = 1)
+    selected_stage("intervention")
+    session$setInputs(K = 70, K_sd = 5, run_stage = 2)
+
+    first_ids <- selected_evidence_ids()
+    session$setInputs(
+      observation_draft = "Environmental variability increased risk and widened uncertainty.",
+      add_observation = 1
+    )
+    expect_length(evidence_notebook(), 1L)
+    expect_equal(evidence_notebook()[[1]]$run_ids, first_ids)
+    expect_identical(draft_selection_signature(), "")
+
+    selected_stage("catastrophe")
+    session$setInputs(cat_freq = 0.10, cat_surv = 0.60, run_stage = 3)
+    second_ids <- selected_evidence_ids()
+    session$setInputs(
+      observation_draft = "Rare bad years changed the risk profile in a different way.",
+      add_observation = 2
+    )
+    expect_length(evidence_notebook(), 2L)
+    expect_false(identical(first_ids, second_ids))
+    expect_equal(evidence_notebook()[[1]]$run_ids, first_ids)
+    expect_equal(evidence_notebook()[[2]]$run_ids, second_ids)
+
+    session$setInputs(remove_observation_id = 1L)
+    expect_equal(pending_remove_observation_id(), 1L)
+    session$setInputs(confirm_remove_observation = 1)
+    expect_equal(vapply(evidence_notebook(), `[[`, integer(1), "id"), 2L)
+  })
+})
+
+test_that("Practical 1 preserves changed drafts and resets the complete evidence pack", {
+  app_dir <- rPVA:::practical1_shiny_app_dir()
+  old <- setwd(app_dir)
+  on.exit(setwd(old), add = TRUE)
+  env <- new.env(parent = globalenv())
+  sys.source("app.R", envir = env)
+
+  shiny::testServer(env$make_practical1_server(), {
+    session$setInputs(run_baseline = 1)
+    selected_stage("environmental_stochasticity")
+    session$setInputs(env_sd = 0.15, K = 20, run_stage = 1)
+    selected_stage("environmental_stochasticity")
+    session$setInputs(env_sd = 0.35, K = 20, run_stage = 2)
+    selected_stage("intervention")
+    session$setInputs(K = 70, K_sd = 5, run_stage = 3)
+    session$setInputs(selected_risk_run_id = "2")
+    session$setInputs(observation_draft = "This draft belongs to the first risk selection.")
+    expect_identical(
+      draft_selection_signature(),
+      env$evidence_selection_signature(selected_evidence_ids())
+    )
+
+    session$setInputs(selected_risk_run_id = "3")
+    expect_true(draft_selection_changed())
+    expect_identical(input$observation_draft, "This draft belongs to the first risk selection.")
+
+    session$setInputs(add_observation = 1)
+    session$setInputs(final_synthesis = "Risk changed across mechanisms; recommendations retain uncertainty.")
+    expect_true(evidence_readiness_state()$ready)
+    expect_length(evidence_notebook(), 1L)
+    expect_equal(next_observation_id(), 2L)
+
+    session$setInputs(confirm_clear_runs = 1)
+    expect_length(evidence_notebook(), 0L)
+    expect_equal(next_observation_id(), 1L)
+    expect_identical(draft_selection_signature(), "")
+    expect_true(is.na(pending_remove_observation_id()))
+    expect_false(download_requested$comparison)
+    expect_false(download_requested$notes)
   })
 })
 
@@ -1066,9 +1149,11 @@ test_that("Practical 1 preserves duplicate evidence attempts and stale selection
     expect_true(all(vapply(c("Run 1", "Run 2", "Run 4"), grepl, logical(1), cards, fixed = TRUE)))
     expect_false(grepl("Run 3", cards, fixed = TRUE))
 
-    interpretation <- "Risk increased under shared bad years; intervention improved abundance, with uncertainty remaining."
-    session$setInputs(interpretation_note = interpretation)
-    expect_identical(input$interpretation_note, interpretation)
+    session$setInputs(
+      observation_draft = "Risk increased under environmental variability; intervention improved abundance.",
+      add_observation = 1,
+      final_synthesis = "The final recommendation improves abundance but retains uncertainty."
+    )
     expect_true(evidence_readiness_state()$ready)
 
     selected_export <- evidence_export()
@@ -1077,13 +1162,8 @@ test_that("Practical 1 preserves duplicate evidence attempts and stale selection
 
     session$setInputs(selected_risk_run_id = "3")
     expect_equal(selected_evidence_ids(), c(1L, 3L, 4L))
-    expect_identical(input$interpretation_note, interpretation)
-    expect_true(evidence_readiness_state()$checks[["interpretation"]])
-    expect_false(evidence_readiness_state()$checks[["interpretation_current"]])
-
-    session$setInputs(confirm_interpretation = 1)
-    expect_true(evidence_readiness_state()$checks[["interpretation_current"]])
     expect_true(evidence_readiness_state()$ready)
+    expect_equal(evidence_notebook()[[1]]$run_ids, c(1L, 2L, 4L))
   })
 })
 
@@ -1116,7 +1196,9 @@ test_that("Practical 1 gates selected evidence downloads and records each reques
     selected_stage("intervention")
     session$setInputs(K = 70, K_sd = 5, run_stage = 3)
     session$setInputs(
-      interpretation_note = "Risk increased under shared bad years; intervention improved abundance; uncertainty remained."
+      observation_draft = "Risk increased under environmental variability; intervention improved abundance.",
+      add_observation = 1,
+      final_synthesis = "The comparison supports action while uncertainty remains."
     )
 
     expect_gt(length(run_history()), 3L)
@@ -1161,7 +1243,11 @@ test_that("confirmed Practical 1 reset clears all in-memory student state", {
     session$setInputs(env_sd = 0.15, K = 15, run_stage = 1)
     selected_stage("intervention")
     session$setInputs(run_stage = 2)
-    session$setInputs(interpretation_note = "Risk changed; intervention improved abundance; uncertainty remained.")
+    session$setInputs(
+      observation_draft = "Risk changed; intervention improved abundance.",
+      add_observation = 1,
+      final_synthesis = "The comparison supports action while uncertainty remains."
+    )
     download_requested$comparison <- TRUE
     download_requested$notes <- TRUE
     download_recorded_signatures$comparison <- "1:2:3|stale comparison"
@@ -1174,7 +1260,8 @@ test_that("confirmed Practical 1 reset clears all in-memory student state", {
     expect_equal(next_run_id(), 1L)
     expect_true(is.na(selected_risk_run_id()))
     expect_true(is.na(selected_action_run_id()))
-    expect_identical(interpretation_signature(), "")
+    expect_length(evidence_notebook(), 0L)
+    expect_equal(next_observation_id(), 1L)
     expect_false(download_requested$comparison)
     expect_false(download_requested$notes)
     expect_identical(download_recorded_signatures$comparison, "")
@@ -1190,13 +1277,13 @@ test_that("Practical 1 Compare collapses session history behind selected evidenc
   expect_true(grepl("Session history", app_text, fixed = TRUE))
   expect_true(grepl("Choose evidence", app_text, fixed = TRUE))
   expect_true(grepl("Compare outcomes", app_text, fixed = TRUE))
-  expect_true(grepl("Review required", app_text, fixed = TRUE))
+  expect_true(grepl("Evidence pack in progress", app_text, fixed = TRUE))
   expect_true(grepl("Baseline reference", app_text, fixed = TRUE))
   expect_true(grepl("session_history_disclosure_ui", app_text, fixed = TRUE))
   expect_true(grepl("tags$details", app_text, fixed = TRUE))
   expect_true(grepl("compare-workspace", app_text, fixed = TRUE))
   expect_true(grepl("selected_evidence_runs()", app_text, fixed = TRUE))
-  expect_true(grepl("interpretation_signature <- reactiveVal(\"\")", app_text, fixed = TRUE))
+  expect_true(grepl("evidence_notebook <- reactiveVal(list())", app_text, fixed = TRUE))
 })
 
 test_that("Practical 1 Compare prioritises concise evidence roles and outcomes", {
@@ -1489,9 +1576,11 @@ test_that("Practical 1 repeated Start baseline is non-destructive after evidence
     session$setInputs(env_sd = 0.15, K = 15, run_stage = 1)
     selected_stage("intervention")
     session$setInputs(K = 70, K_sd = 5, run_stage = 2)
-    interpretation <- "Risk increased; intervention improved abundance; uncertainty remained."
-    session$setInputs(interpretation_note = interpretation)
-    session$setInputs(confirm_interpretation = 1)
+    session$setInputs(
+      observation_draft = "Risk increased; intervention improved abundance.",
+      add_observation = 1,
+      final_synthesis = "The comparison supports action while uncertainty remains."
+    )
 
     output$download_comparison
     output$download_evidence_notes
@@ -1507,7 +1596,9 @@ test_that("Practical 1 repeated Start baseline is non-destructive after evidence
     history_before <- run_history()
     history_ids_before <- vapply(history_before, session_run_id, integer(1))
     selected_ids_before <- selected_evidence_ids()
-    signature_before <- interpretation_signature()
+    signature_before <- current_export_signature()
+    notebook_before <- evidence_notebook()
+    synthesis_before <- input$final_synthesis
     current_baseline <- baseline_run()
 
     session$setInputs(run_baseline = 2)
@@ -1515,8 +1606,9 @@ test_that("Practical 1 repeated Start baseline is non-destructive after evidence
     expect_identical(vapply(run_history(), session_run_id, integer(1)), history_ids_before)
     expect_identical(run_history(), history_before)
     expect_identical(selected_evidence_ids(), selected_ids_before)
-    expect_identical(input$interpretation_note, interpretation)
-    expect_identical(interpretation_signature(), signature_before)
+    expect_identical(evidence_notebook(), notebook_before)
+    expect_identical(input$final_synthesis, synthesis_before)
+    expect_identical(current_export_signature(), signature_before)
     expect_true(download_requested$comparison)
     expect_true(download_requested$notes)
     expect_identical(current_run(), current_baseline)
@@ -1553,9 +1645,11 @@ test_that("Practical 1 download requests stay bound to the current export identi
     session$setInputs(cat_freq = 0.10, cat_surv = 0.50, run_stage = 3)
     session$setInputs(selected_risk_run_id = "2")
 
-    interpretation <- "Risk increased; intervention improved abundance; uncertainty remained."
-    session$setInputs(interpretation_note = interpretation)
-    session$setInputs(confirm_interpretation = 1)
+    session$setInputs(
+      observation_draft = "Risk increased; intervention improved abundance.",
+      add_observation = 1,
+      final_synthesis = "The comparison supports action while uncertainty remains."
+    )
     expect_equal(selected_evidence_ids(), c(1L, 2L, 3L))
     expect_true(evidence_readiness_state()$ready)
 
@@ -1570,7 +1664,7 @@ test_that("Practical 1 download requests stay bound to the current export identi
     comparison_generator$content(tempfile(fileext = ".csv"))
     notes_generator$content(tempfile(fileext = ".md"))
 
-    expected_signature <- paste("1:2:3", trimws(interpretation), sep = "|")
+    expected_signature <- current_export_signature()
     expect_true(download_requested$comparison)
     expect_true(download_requested$notes)
     expect_identical(download_recorded_signatures$comparison, expected_signature)
@@ -1586,8 +1680,7 @@ test_that("Practical 1 download requests stay bound to the current export identi
     expect_match(transfer, "Not requested yet", all = TRUE)
     expect_false(grepl("Both evidence requests are complete", transfer, fixed = TRUE))
 
-    session$setInputs(confirm_interpretation = 2)
-    expect_true(evidence_readiness_state()$checks[["interpretation_current"]])
+    expect_true(evidence_readiness_state()$ready)
     expect_false(download_requested$comparison)
     expect_false(download_requested$notes)
 
@@ -1598,7 +1691,7 @@ test_that("Practical 1 download requests stay bound to the current export identi
     expect_true(download_requested$comparison)
     expect_true(download_requested$notes)
 
-    session$setInputs(interpretation_note = paste0("  ", interpretation, " revised  "))
+    session$setInputs(final_synthesis = paste0(input$final_synthesis, " Revised."))
     expect_false(download_requested$comparison)
     expect_false(download_requested$notes)
     expect_identical(download_recorded_signatures$comparison, "")
@@ -1637,7 +1730,7 @@ test_that("Practical 1 reset waits for confirmation and clears session state", {
     selected_stage("carrying_capacity")
     session$setInputs(run_stage = 1)
     expect_length(run_history(), 2L)
-    session$setInputs(interpretation_note = "temporary interpretation")
+    session$setInputs(observation_draft = "temporary observation")
 
     session$setInputs(clear_runs = 1)
     expect_length(run_history(), 2L)
@@ -1676,7 +1769,8 @@ test_that("Practical 1 declares temporary state and guarded recovery", {
   expect_true(grepl('tags$script(src = "practical1.js")', app_text, fixed = TRUE))
   expect_true(grepl("showModal(modalDialog(", app_text, fixed = TRUE))
   expect_true(grepl("observeEvent(input$confirm_clear_runs", app_text, fixed = TRUE))
-  expect_true(grepl('updateTextAreaInput(session, "interpretation_note", value = "")', app_text, fixed = TRUE))
+  expect_true(grepl('updateTextAreaInput(session, "observation_draft", value = "")', app_text, fixed = TRUE))
+  expect_true(grepl('updateTextAreaInput(session, "final_synthesis", value = "")', app_text, fixed = TRUE))
   expect_true(grepl('role = "alert"', app_text, fixed = TRUE))
   expect_true(grepl('$(document).on("shiny:busy"', js_text, fixed = TRUE))
   expect_true(grepl('$(document).on("shiny:idle"', js_text, fixed = TRUE))

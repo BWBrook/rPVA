@@ -1073,34 +1073,96 @@ comparison_matrix_ui <- function(runs) {
   tagList(desktop, mobile)
 }
 
+observation_notebook_ui <- function(observations) {
+  if (!length(observations)) {
+    return(div(
+      class = "notebook-empty-state",
+      h4("No observations saved yet"),
+      p("Choose three runs above, write what the comparison shows, then add it to the notebook.")
+    ))
+  }
+
+  div(
+    class = "observation-list",
+    lapply(observations, function(observation) {
+      comparison <- observation$comparison
+      div(
+        class = "observation-entry",
+        div(
+          class = "observation-entry-header",
+          div(
+            span(class = "observation-number", paste("Observation", observation$id)),
+            h4(paste0(
+              "Runs ", paste(observation$run_ids, collapse = ", ")
+            ))
+          ),
+          tags$button(
+            type = "button",
+            class = "btn btn-default btn-sm remove-observation",
+            onclick = sprintf(
+              "Shiny.setInputValue('remove_observation_id', %d, {priority: 'event'});",
+              observation$id
+            ),
+            icon("trash"),
+            "Remove observation",
+            `aria-label` = paste("Remove observation", observation$id)
+          )
+        ),
+        p(class = "observation-run-labels", paste(observation$run_labels, collapse = " | ")),
+        p(class = "observation-note", observation$note),
+        div(
+          class = "observation-metrics",
+          lapply(seq_len(nrow(comparison)), function(i) {
+            row <- comparison[i, , drop = FALSE]
+            div(
+              class = "observation-metric-row",
+              strong(paste("Run", row$run_id)),
+              span(paste0("PE ", sprintf("%.1f%%", 100 * row$PE))),
+              span(paste0("Nmed ", row$Nmed)),
+              span(paste0("95% interval ", row$Nlo95, " to ", row$Nhi95))
+            )
+          })
+        )
+      )
+    })
+  )
+}
+
 evidence_readiness_ui <- function(state) {
   labels <- c(
     baseline = "Baseline",
     risk = "Risk mechanism",
     action = "Intervention or vortex",
     exactly_three = "Exactly three runs",
+    observation = "Notebook observation",
+    synthesis = "Final synthesis",
     interpretation = "Interpretation",
     interpretation_current = "Current interpretation"
   )
 
+  if (isTRUE(state$ready)) {
+    return(div(
+      class = "evidence-readiness is-ready",
+      strong("Evidence pack ready"),
+      span("Your selected runs, notebook, and synthesis are complete.")
+    ))
+  }
+
+  missing <- names(state$checks)[!state$checks]
+
   div(
-    class = "readiness-checklist evidence-readiness",
-    h4("Evidence readiness"),
+    class = "evidence-readiness is-incomplete",
+    strong("Evidence pack in progress"),
+    p(class = "muted", paste(length(missing), "requirement(s) still need attention.")),
     tags$ul(
-      lapply(names(state$checks), function(name) {
-        ready <- isTRUE(state$checks[[name]])
+      lapply(missing, function(name) {
         tags$li(
-          class = if (ready) "readiness-check is-ready" else "readiness-check is-missing",
-          strong(labels[[name]], ": "),
-          if (ready) "Ready. " else "Missing. ",
+          class = "readiness-check is-missing",
+          strong(labels[[name]], ": Missing. "),
           state$messages[[name]]
         )
       })
-    ),
-    if (isTRUE(state$checks[["interpretation"]]) &&
-        !isTRUE(state$checks[["interpretation_current"]])) {
-      p(class = "review-required", strong("Review required"), ": edit or reconfirm this interpretation for the selected evidence.")
-    }
+    )
   )
 }
 
@@ -1233,15 +1295,6 @@ session_notice_ui <- function() {
     icon("clock"),
     span("This browser session is temporary. Before you finish, use Compare to download your evidence.")
   )
-}
-
-export_identity_signature <- function(selected_ids, interpretation) {
-  interpretation <- if (length(interpretation) && !is.na(interpretation[[1]])) {
-    trimws(as.character(interpretation[[1]]))
-  } else {
-    ""
-  }
-  paste(evidence_selection_signature(selected_ids), interpretation, sep = "|")
 }
 
 ui <- navbarPage(
@@ -1466,23 +1519,43 @@ ui <- navbarPage(
           uiOutput("comparison_matrix")
         ),
         div(
-          class = "evidence-workspace-section evidence-interpretation-legacy",
-          h3("3. Record your interpretation"),
-          uiOutput("evidence_readiness"),
+          class = "evidence-workspace-section evidence-notebook-section",
+          h3("3. Build your notebook"),
+          p(class = "muted", "Save a short observation against the three runs currently selected. Later selections do not rewrite earlier observations."),
           div(
-            class = "interpretation-capture",
-            textAreaInput("interpretation_note",
-              "One-sentence interpretation",
+            class = "observation-composer",
+            textAreaInput("observation_draft",
+              "Evidence observation",
               value = "",
-              placeholder = "I changed... The output that moved was... My caveat is...",
+              placeholder = "The risk mechanism changed... The evidence is... A caveat is...",
               rows = 3
             ),
-            actionButton("confirm_interpretation", "Use this interpretation", class = "btn-default")
+            uiOutput("draft_selection_warning"),
+            actionButton(
+              "add_observation",
+              label = tagList(icon("plus"), "Add to notebook"),
+              class = "btn-primary"
+            )
           ),
-          h4("Save evidence"),
-          p(class = "muted", "Download a compact comparison table and notes for your own report. These files are evidence for your interpretation."),
-          uiOutput("evidence_downloads"),
-          div(class = "prompt", "What changed between runs, and which output supports your explanation?")
+          uiOutput("evidence_notebook")
+        ),
+        div(
+          class = "evidence-workspace-section evidence-synthesis-section",
+          h3("4. Write a final synthesis"),
+          p(class = "muted", "In two or three sentences, state the pattern across your strongest comparisons and one important limit on the recommendation."),
+          textAreaInput(
+            "final_synthesis",
+            "Final synthesis",
+            value = "",
+            placeholder = "Across these comparisons... This supports... However...",
+            rows = 4
+          ),
+          uiOutput("evidence_readiness"),
+          actionButton(
+            "review_evidence_pack",
+            label = tagList(icon("arrow-right"), "Review evidence pack"),
+            class = "btn-primary"
+          )
         ),
         div(
           class = "evidence-workspace-section evidence-history-section",
@@ -1502,6 +1575,7 @@ ui <- navbarPage(
       div(
         class = "panel-block",
         uiOutput("transfer_checklist"),
+        uiOutput("evidence_downloads"),
         h2("Transfer to the Woodhen practical"),
         p("Use the evidence habits from Practical 1 as a short bridge to later work."),
         tags$ol(
@@ -1537,7 +1611,10 @@ make_practical1_server <- function(execute_stage = run_stage) {
   selected_stage <- reactiveVal(default_stage)
   selected_risk_run_id <- reactiveVal(NA_integer_)
   selected_action_run_id <- reactiveVal(NA_integer_)
-  interpretation_signature <- reactiveVal("")
+  evidence_notebook <- reactiveVal(list())
+  next_observation_id <- reactiveVal(1L)
+  draft_selection_signature <- reactiveVal("")
+  pending_remove_observation_id <- reactiveVal(NA_integer_)
   run_error <- reactiveVal(NULL)
   last_completed_stage <- reactiveVal(NULL)
   last_completed_run_id <- reactiveVal(NA_integer_)
@@ -1582,8 +1659,9 @@ make_practical1_server <- function(execute_stage = run_stage) {
     req(evidence_readiness_state()$ready)
     rPVA:::build_teaching_evidence_export(
       selected_evidence_runs(),
-      interpretation = input$interpretation_note,
-      session_run_count = length(run_history())
+      session_run_count = length(run_history()),
+      observations = evidence_notebook(),
+      synthesis = input$final_synthesis
     )
   })
 
@@ -1601,16 +1679,31 @@ make_practical1_server <- function(execute_stage = run_stage) {
   })
 
   current_export_signature <- reactive({
-    export_identity_signature(selected_evidence_ids(), input$interpretation_note)
+    evidence_pack_signature(
+      selected_evidence_ids(),
+      evidence_notebook(),
+      input$final_synthesis
+    )
   })
 
   evidence_readiness_state <- reactive({
     evidence_readiness(
       run_history(),
       selected_evidence_ids(),
-      input$interpretation_note,
-      interpretation_signature(),
-      baseline_started()
+      baseline_started = baseline_started(),
+      observations = evidence_notebook(),
+      synthesis = input$final_synthesis
+    )
+  })
+
+  draft_selection_changed <- reactive({
+    draft <- input$observation_draft
+    if (is.null(draft) || !nzchar(trimws(draft)) || !nzchar(draft_selection_signature())) {
+      return(FALSE)
+    }
+    !identical(
+      draft_selection_signature(),
+      evidence_selection_signature(selected_evidence_ids())
     )
   })
 
@@ -1633,22 +1726,68 @@ make_practical1_server <- function(execute_stage = run_stage) {
     }
   }, ignoreInit = TRUE)
 
-  observeEvent(input$interpretation_note, {
-    if (nzchar(trimws(input$interpretation_note))) {
-      interpretation_signature(evidence_selection_signature(selected_evidence_ids()))
+  observeEvent(input$observation_draft, {
+    draft <- input$observation_draft
+    if (is.null(draft) || !nzchar(trimws(draft))) {
+      draft_selection_signature("")
+    } else if (!nzchar(draft_selection_signature())) {
+      draft_selection_signature(evidence_selection_signature(selected_evidence_ids()))
     }
   }, ignoreInit = TRUE)
 
-  observeEvent(list(selected_evidence_ids(), input$interpretation_note), {
+  observeEvent(list(selected_evidence_ids(), evidence_notebook(), input$final_synthesis), {
     download_requested$comparison <- FALSE
     download_requested$notes <- FALSE
     download_recorded_signatures$comparison <- ""
     download_recorded_signatures$notes <- ""
   }, ignoreInit = TRUE)
 
-  observeEvent(input$confirm_interpretation, {
-    req(nzchar(trimws(input$interpretation_note)))
-    interpretation_signature(evidence_selection_signature(selected_evidence_ids()))
+  observeEvent(input$add_observation, {
+    note <- input$observation_draft
+    if (is.null(note) || !nzchar(trimws(note))) {
+      showNotification("Write an evidence observation before adding it.", type = "warning")
+      return()
+    }
+    runs <- tryCatch(selected_evidence_runs(), error = function(...) list())
+    if (length(runs) != 3L) {
+      showNotification("Select all three evidence roles before adding an observation.", type = "warning")
+      return()
+    }
+    observation <- rPVA:::build_teaching_observation(
+      runs,
+      observation_id = next_observation_id(),
+      note = note
+    )
+    evidence_notebook(c(evidence_notebook(), list(observation)))
+    next_observation_id(next_observation_id() + 1L)
+    draft_selection_signature("")
+    updateTextAreaInput(session, "observation_draft", value = "")
+  })
+
+  observeEvent(input$remove_observation_id, {
+    observation_id <- suppressWarnings(as.integer(input$remove_observation_id))
+    ids <- vapply(evidence_notebook(), `[[`, integer(1), "id")
+    if (is.na(observation_id) || !observation_id %in% ids) {
+      return()
+    }
+    pending_remove_observation_id(observation_id)
+    showModal(modalDialog(
+      title = paste("Remove observation", observation_id, "?"),
+      p("This removes the saved note and its metric snapshot. Run history is unchanged."),
+      footer = tagList(
+        modalButton("Keep observation"),
+        actionButton("confirm_remove_observation", "Remove observation", class = "btn-danger")
+      ),
+      easyClose = TRUE
+    ))
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$confirm_remove_observation, {
+    observation_id <- pending_remove_observation_id()
+    req(!is.na(observation_id))
+    evidence_notebook(remove_evidence_observation(evidence_notebook(), observation_id))
+    pending_remove_observation_id(NA_integer_)
+    removeModal()
   })
 
   observeEvent(input$run_baseline, {
@@ -1798,7 +1937,7 @@ make_practical1_server <- function(execute_stage = run_stage) {
   observeEvent(input$clear_runs, {
     showModal(modalDialog(
       title = "Reset this session?",
-      p("Run history, evidence selection, interpretation, and in-session progress will be cleared."),
+      p("Run history, evidence selection, notebook observations, synthesis, and in-session progress will be cleared."),
       footer = tagList(
         modalButton("Keep my work"),
         actionButton("confirm_clear_runs", "Reset session", class = "btn-danger")
@@ -1819,7 +1958,10 @@ make_practical1_server <- function(execute_stage = run_stage) {
     baseline_started(FALSE)
     selected_risk_run_id(NA_integer_)
     selected_action_run_id(NA_integer_)
-    interpretation_signature("")
+    evidence_notebook(list())
+    next_observation_id(1L)
+    draft_selection_signature("")
+    pending_remove_observation_id(NA_integer_)
     download_requested$comparison <- FALSE
     download_requested$notes <- FALSE
     download_recorded_signatures$comparison <- ""
@@ -1828,8 +1970,13 @@ make_practical1_server <- function(execute_stage = run_stage) {
     run_error(NULL)
     last_completed_stage(NULL)
     last_completed_run_id(NA_integer_)
-    updateTextAreaInput(session, "interpretation_note", value = "")
+    updateTextAreaInput(session, "observation_draft", value = "")
+    updateTextAreaInput(session, "final_synthesis", value = "")
     updateNavbarPage(session, "section", selected = "Start")
+  })
+
+  observeEvent(input$review_evidence_pack, {
+    updateNavbarPage(session, "section", selected = "Transfer")
   })
 
   output$run_status <- renderUI({
@@ -2029,6 +2176,22 @@ make_practical1_server <- function(execute_stage = run_stage) {
 
   output$comparison_matrix <- renderUI({
     comparison_matrix_ui(selected_evidence_runs())
+  })
+
+  output$draft_selection_warning <- renderUI({
+    if (!isTRUE(draft_selection_changed())) {
+      return(NULL)
+    }
+    div(
+      class = "draft-selection-warning",
+      role = "alert",
+      icon("triangle-exclamation"),
+      span("Your evidence selection changed. Review this draft before adding it to the notebook.")
+    )
+  })
+
+  output$evidence_notebook <- renderUI({
+    observation_notebook_ui(evidence_notebook())
   })
 
   output$evidence_readiness <- renderUI({
