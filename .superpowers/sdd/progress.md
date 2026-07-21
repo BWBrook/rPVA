@@ -44,6 +44,23 @@ Execution mode: subagent-driven in isolated worktree on codex/practical2-impleme
 Baseline: full pre-change test suite passed on 2026-07-21
 
 Gate 1:
-- Task 1: pending
-- Task 2: pending
-- Task 3: pending
+- Task 1: complete (commit f1132b1, focused/core/validation tests and scalar result hash passed; review approved with field-aware bounds clarification)
+- Task 2: complete (commit 3d3c872, focused tests and real-engine smoke passed, review approved; minor plot-test hardening carried to Gate 1 closeout)
+- Task 3: complete (commits 8ecc328, dc96287, and 30064ab; focused/legacy tests and scientific audit passed; two review-repair rounds resolved all Important and Minor findings)
+- Package boundary: complete (commit 2eedf7c; `digest` declared, 12 Gate 1 interfaces exported, isolated source install passed)
+- Shared-engine regression: complete on final code (all tests passed in 368 seconds on 2026-07-21)
+- Scientific audit: complete (72 CSV rows and 87 Markdown lines; Act 2 uses 75 years, 1,000 futures, seed 123, and strictly fewer than 50 stage-2+ breeding pairs)
+
+Gate 1 scientific decisions:
+- Supplementation releases 5/10/15 stage-2 female-equivalent breeding pairs annually for three years.
+- Cyclone presets alter catastrophe frequency only; emergency response recovers catastrophe survival toward 1; cat reproduction is advanced explicit only.
+- Practical habitat capacity is bounded to K >= 150 and K >= 3*K_sd, with locked K_sd = 50 in ordinary Act 2 comparisons.
+
+Gate 1 review dispositions:
+- Generic build_temporal_profile() must support both probability and unbounded K/fecundity endpoints; field-specific [0,1] checks belong in validate_annual_profiles().
+- Task 3 family construction preflights every resolved surv/env_sd annual pair before simulation.
+- Scientific identities include the intervention definition as well as final executable values; same-result but biologically different interventions remain distinct.
+- Plot fixtures do not exhaustively pin every threshold-curve probability/annotation combination; current focused and full-suite coverage is sufficient for Gate 1.
+- Shared profile allowlist and additional simulation-level vital-rate tests are optional hardening, not current blockers.
+
+Gate 1 status: closed. Next tranche is Gate 2 compact evidence and portable project state; no browser checkpoint is required for Gate 1.
