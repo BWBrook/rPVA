@@ -50,6 +50,13 @@ practical2_status_envelope <- function(request_id, status, record) {
   )
 }
 
+practical2_action_button_value <- function(value) {
+  structure(
+    as.integer(value),
+    class = c("shinyActionButtonValue", "integer")
+  )
+}
+
 test_that("installed Practical 2 shell contains its complete Task 6 asset inventory", {
   app_dir <- practical2_app_dir()
   expected <- c(
@@ -334,13 +341,69 @@ test_that("Start returns validated create and failed import events to the root",
   })
 })
 
+test_that("the first root Create click activates a live project", {
+  env <- source_practical2_app()
+
+  shiny::testServer(env$make_practical2_server(), {
+    session$setInputs(
+      `start-create_project` = practical2_action_button_value(0),
+      `start-resume_project` = practical2_action_button_value(0)
+    )
+    session$flushReact()
+    expect_null(project())
+
+    session$setInputs(
+      `start-project_title` = "First click create",
+      `start-create_project` = practical2_action_button_value(1)
+    )
+    session$flushReact()
+
+    expect_s3_class(project(), "woodhen_project")
+    expect_identical(project()$title, "First click create")
+  })
+})
+
+test_that("the first root Resume click requests browser restoration", {
+  env <- source_practical2_app()
+  stored <- practical2_store_fixture(env, "First click resume")
+
+  shiny::testServer(env$make_practical2_server(), {
+    session$setInputs(
+      `start-create_project` = practical2_action_button_value(0),
+      `start-resume_project` = practical2_action_button_value(0)
+    )
+    session$flushReact()
+    inventory(list(stored$metadata))
+    session$setInputs(`start-resume_key` = stored$record$key)
+    session$flushReact()
+    expect_null(pending_restore())
+
+    session$setInputs(
+      `start-resume_project` = practical2_action_button_value(1)
+    )
+    session$flushReact()
+
+    pending <- pending_restore()
+    expect_match(pending$request_id, "^restore-")
+    expect_identical(pending$key, stored$record$key)
+    expect_identical(pending$project_id, stored$record$project_id)
+    expect_identical(
+      pending$project_fingerprint,
+      stored$record$project_fingerprint
+    )
+  })
+})
+
 test_that("only the latest Resume response may replace the live project", {
   env <- source_practical2_app()
   first <- practical2_store_fixture(env, "Resume A")
   second <- practical2_store_fixture(env, "Resume B")
 
   shiny::testServer(env$make_practical2_server(), {
-    session$setInputs(`start-resume_project` = 0, `start-create_project` = 0)
+    session$setInputs(
+      `start-resume_project` = practical2_action_button_value(0),
+      `start-create_project` = practical2_action_button_value(0)
+    )
     session$flushReact()
     inventory(list(first$metadata, second$metadata))
 
@@ -386,7 +449,10 @@ test_that("Create and Import invalidate a pending Resume response", {
   on.exit(unlink(import_path), add = TRUE)
 
   shiny::testServer(env$make_practical2_server(), {
-    session$setInputs(`start-resume_project` = 0, `start-create_project` = 0)
+    session$setInputs(
+      `start-resume_project` = practical2_action_button_value(0),
+      `start-create_project` = practical2_action_button_value(0)
+    )
     session$flushReact()
     inventory(list(resumed$metadata))
     session$setInputs(
@@ -414,7 +480,10 @@ test_that("Create and Import invalidate a pending Resume response", {
   })
 
   shiny::testServer(env$make_practical2_server(), {
-    session$setInputs(`start-resume_project` = 0, `start-create_project` = 0)
+    session$setInputs(
+      `start-resume_project` = practical2_action_button_value(0),
+      `start-create_project` = practical2_action_button_value(0)
+    )
     session$flushReact()
     inventory(list(resumed$metadata))
     session$setInputs(

@@ -215,7 +215,7 @@ make_practical2_server <- function() {
       pending_restore(NULL)
       activate_project(event$candidate, portable_request_fingerprint = NULL)
       showNotification("New Woodhen investigation project created.", type = "message")
-    }, ignoreInit = TRUE)
+    })
 
     observeEvent(events$resume(), {
       event <- events$resume()
@@ -243,7 +243,7 @@ make_practical2_server <- function() {
           project_fingerprint = record$project_fingerprint
         )
       )
-    }, ignoreInit = TRUE)
+    })
 
     observeEvent(input$project_store_restore, {
       pending <- pending_restore()
