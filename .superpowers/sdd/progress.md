@@ -81,6 +81,7 @@ Gate 2 status: closed. Next tranche is Gate 3's student-facing three-hour core r
 
 Gate 3:
 - Task 6: complete (commits 02d4ba9, 727eb18, and d678e42; 113-expectation Shiny, 56-expectation project-store, and 209-expectation project compatibility suites passed; cold namespace-only Create/Import/restore and first-click Create/Resume passed; two review-repair rounds resolved all Critical and Important findings)
+- Task 7: complete (commits d3db69e and 937dca8; 158-expectation Calibrate and 127-expectation Shiny suites passed after repair, evidence/project compatibility suites passed, cold installed-namespace construction passed, and independent review approved)
 
 Gate 3 review dispositions:
 - Browser snapshots remain strict typed project documents; IndexedDB inventory carries metadata only and explicit restore is the sole activation path.
@@ -88,5 +89,9 @@ Gate 3 review dispositions:
 - Restore and storage acknowledgements are correlated by request identity, operation kind, project identity, and fingerprint before pending state is consumed.
 - Real Shiny action-button `0 -> 1` semantics are covered so Create and Resume work on the first click.
 - Real IndexedDB durability, browser download behavior, and rendered responsive acceptance remain assigned to the Gate 3 browser checkpoint after Tasks 7-8.
+- Historical reference evidence uses three compatible 40-year 1980 cases, a separately labelled 2019-2024 recovery check, and the exact 2025-2100 locked future anchor; ordinary Act 2 preflight remains unchanged.
+- The observed historical statement is over 1,600 birds by 2024; 1,654 birds and about 330 breeding pairs are labelled as the supplied 2024 model state.
+- Anchor readiness requires the actual current `05_future_baseline` scenario and run with exact library/model metadata, seed, futures, horizon, and fingerprints.
+- Calibrate state reconstructs from the root project after Create/Import/Restore, and the real root event path is behaviorally tested through validation, activation, dirty state, and autosave request.
 
-Gate 3 status: in progress. Next tranche is Task 7 historical calibration.
+Gate 3 status: in progress. Next tranche is Task 8 compulsory sensitivity and future advice.
