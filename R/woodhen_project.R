@@ -1539,6 +1539,44 @@ woodhen_project_document <- function(project) {
   )
 }
 
+woodhen_project_browser_snapshot <- function(project) {
+  validate_woodhen_project(project)
+  bytes <- woodhen_json_bytes(woodhen_project_document(project))
+  snapshot <- rawToChar(bytes)
+  Encoding(snapshot) <- "UTF-8"
+  snapshot
+}
+
+read_woodhen_project_browser_snapshot <- function(
+    snapshot_json,
+    max_bytes = 50 * 1024^2
+) {
+  max_bytes <- woodhen_project_limit(max_bytes, "max_bytes")
+  if (!is.character(snapshot_json) || length(snapshot_json) != 1L ||
+      is.na(snapshot_json)) {
+    stop("`snapshot_json` must be one non-missing character scalar.", call. = FALSE)
+  }
+  if (!validUTF8(snapshot_json)) {
+    stop("`snapshot_json` is not valid UTF-8.", call. = FALSE)
+  }
+  bytes <- charToRaw(enc2utf8(snapshot_json))
+  if (length(bytes) > max_bytes) {
+    stop("The browser snapshot exceeds the `max_bytes` size limit.", call. = FALSE)
+  }
+
+  document <- woodhen_json_parse(bytes, "browser snapshot")
+  woodhen_validate_project_document(document)
+  candidate <- woodhen_typed_decode(document$payload, "browser snapshot$payload")
+  candidate <- woodhen_project_restore_schema_order(candidate)
+  validate_woodhen_project(candidate)
+  for (field in c("project_schema_version", "project_id", "project_fingerprint")) {
+    if (!identical(candidate[[field]], document[[field]])) {
+      stop("Browser snapshot metadata mismatch for `", field, "`.", call. = FALSE)
+    }
+  }
+  candidate
+}
+
 woodhen_project_export_candidate <- function(project, now) {
   candidate <- project
   candidate$provenance$exports[[length(candidate$provenance$exports) + 1L]] <- list(

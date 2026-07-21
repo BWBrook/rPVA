@@ -1,452 +1,367 @@
 library(shiny)
 
-catalog <- rPVA::woodhen_management_catalog()
-core_scenario_ids <- c("01_no_mgmt", "02_pig_control", "03_captive_pig", "04_rodent_eradication", "05_future_baseline")
-sensitivity_scenario_ids <- c(
-  "sensitivity_default",
-  "survival_minus_10pct",
-  "K_250",
-  "K_350",
-  "cat_freq_0.10",
-  "cat_surv_0.40",
-  "fecund_minus_20pct",
-  "juvenile_survival_minus_15pct",
-  "env_sd_0.15"
+practical2_app_dir <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)
+
+source("ui_helpers.R", local = TRUE)
+source("project_helpers.R", local = TRUE)
+source(file.path("modules", "mod_start.R"), local = TRUE)
+
+status_value <- function(value, state = "neutral", icon = "circle-info") {
+  list(value = value, state = state, icon = icon)
+}
+
+ui <- navbarPage(
+  title = "Practical 2 Woodhen Lab",
+  id = "section",
+  header = tags$head(
+    tags$meta(name = "viewport", content = "width=device-width, initial-scale=1"),
+    tags$link(rel = "stylesheet", type = "text/css", href = "styles.css"),
+    tags$script(src = "project-store.js")
+  ),
+  tabPanel("Start", value = "start", start_ui("start")),
+  tabPanel(
+    "Calibrate",
+    value = "calibrate",
+    pending_tab_ui(
+      "Calibrate against history",
+      "The historical reference runs and recovery check will be added here."
+    )
+  ),
+  tabPanel(
+    "Investigate",
+    value = "investigate",
+    pending_tab_ui(
+      "Investigate future choices",
+      "Sensitivity, threat, and intervention workspaces will be added here."
+    )
+  ),
+  tabPanel(
+    "Compare",
+    value = "compare",
+    pending_tab_ui(
+      "Compare project evidence",
+      "The persistent comparison workspace will be added here."
+    )
+  ),
+  tabPanel(
+    "Evidence Studio",
+    value = "evidence",
+    pending_tab_ui(
+      "Build an evidence dossier",
+      "Evidence selection and deliberate exports will be added here."
+    )
+  )
 )
-sensitivity_default_ids <- c("sensitivity_default", "survival_minus_10pct", "K_250", "cat_freq_0.10")
 
-core_catalog <- catalog[catalog$scenario_id %in% core_scenario_ids, , drop = FALSE]
-sensitivity_catalog <- catalog[catalog$scenario_id %in% sensitivity_scenario_ids, , drop = FALSE]
+make_practical2_server <- function() {
+  function(input, output, session) {
+    project <- reactiveVal(NULL)
+    inventory <- reactiveVal(list())
+    saved_fingerprint <- reactiveVal(NULL)
+    portable_fingerprint <- reactiveVal(NULL)
+    pending_restore <- reactiveVal(NULL)
+    pending_requests <- reactiveVal(list())
+    request_counter <- reactiveVal(0L)
 
-core_choices <- stats::setNames(core_catalog$scenario_id, core_catalog$label)
-sensitivity_choices <- stats::setNames(sensitivity_catalog$scenario_id, sensitivity_catalog$label)
-student_sensitivity_choices <- stats::setNames(
-  sensitivity_catalog$scenario_id[sensitivity_catalog$scenario_id != "sensitivity_default"],
-  sensitivity_catalog$label[sensitivity_catalog$scenario_id != "sensitivity_default"]
-)
+    browser_status <- reactiveVal(status_value(
+      "No active project yet.", "neutral", "circle-info"
+    ))
+    portable_status <- reactiveVal(status_value(
+      "No portable project download requested.", "neutral", "download"
+    ))
+    dirty_status <- reactiveVal(status_value(
+      "No active project yet.", "neutral", "circle-info"
+    ))
 
-scenario_intro_ui <- function() {
-  div(
-    class = "lab-hero",
-    div(
-      class = "lab-hero-copy",
-      span(class = "lab-kicker", "Practical 2"),
-      h1("Woodhen Management Lab"),
-      p("Use PVA evidence to compare management options for the Lord Howe Island woodhen. Your task is to turn scenario output into clear conservation advice."),
-      tags$ul(
-        tags$li("Run a core set of management scenarios."),
-        tags$li("Check one bounded sensitivity question at a time."),
-        tags$li("Save evidence and translate it into report-ready claims.")
-      )
-    ),
-    div(
-      class = "lab-hero-panel",
-      h2("Your management question"),
-      p("Which action gives the strongest support for reducing extinction risk while keeping abundance and uncertainty in view?"),
-      p(class = "muted", "Use model results as evidence. Keep assumptions visible when you make a recommendation.")
-    )
-  )
-}
+    next_request_id <- function(kind) {
+      next_value <- request_counter() + 1L
+      request_counter(next_value)
+      paste0(kind, "-", next_value)
+    }
 
-scenario_card_grid <- function(comparison) {
-  if (is.null(comparison) || !nrow(comparison)) {
-    return(tags$p(class = "muted", "Run a scenario set to create comparison cards."))
-  }
+    track_request <- function(request_id, request) {
+      requests <- pending_requests()
+      requests[[request_id]] <- request
+      pending_requests(requests)
+      invisible(request_id)
+    }
 
-  horizon_warning <- NULL
-  if (length(unique(comparison$years)) > 1) {
-    horizon_warning <- div(
-      class = "horizon-warning",
-      strong("Compare horizons before ranking scenarios. "),
-      "These rows use different time spans, so cite each horizon with its result."
-    )
-  }
+    forget_request <- function(request_id) {
+      requests <- pending_requests()
+      requests[[request_id]] <- NULL
+      pending_requests(requests)
+      invisible(NULL)
+    }
 
-  tagList(
-    horizon_warning,
-    div(
-      class = "scenario-card-grid",
-      lapply(seq_len(nrow(comparison)), function(i) {
-        row <- comparison[i, , drop = FALSE]
-        pe_note <- NULL
-        if (isTRUE(row$PE == 0)) {
-          pe_note <- p(
-            class = "pe-note",
-            "PE = 0 means zero observed extinctions in this simulation, with this seed and replicate count."
-          )
-        }
-        div(
-          class = "scenario-card",
-          span(class = "scenario-card-kicker", row$section),
-          h3(row$label),
-          p(class = "muted", row$change_label),
-          p(class = "muted", row$horizon_note),
-          div(
-            class = "scenario-card-metrics",
-            span(strong("PE"), ": ", sprintf("%.3f", row$PE)),
-            span(strong("Nmed"), ": ", row$Nmed),
-            span(strong("95% interval"), ": ", paste0(row$Nlo95, "-", row$Nhi95))
-          ),
-          pe_note,
-          div(
-            class = "evidence-prompt",
-            strong("Use this as evidence: "),
-            row$evidence_prompt
-          )
-        )
-      })
-    )
-  )
-}
-
-scenario_help_panel <- function(rows, title) {
-  div(
-    class = "scenario-help-list",
-    h4(title),
-    lapply(seq_len(nrow(rows)), function(i) {
-      row <- rows[i, , drop = FALSE]
-      div(
-        class = "scenario-help",
-        strong(if (identical(row$section, "core_management")) "What changed?" else "Why test this?"),
-        span(" ", row$label),
-        p(row$teaching_note),
-        p(class = "muted", row$choice_prompt)
-      )
-    })
-  )
-}
-
-diagnostic_panel <- function(run_set) {
-  if (is.null(run_set) || !length(run_set$runs)) {
-    return(tags$p(class = "muted", "Scenario diagnostics will appear after a run."))
-  }
-
-  rows <- do.call(
-    rbind,
-    lapply(run_set$runs, function(run) {
-      diagnostics <- run$diagnostics
-      if (!nrow(diagnostics)) {
-        return(data.frame(
-          Scenario = run$label,
-          Message = "No major diagnostic warning for this scenario. Keep assumptions visible.",
-          stringsAsFactors = FALSE
+    refresh_portable_status <- function(candidate = project()) {
+      if (is.null(candidate)) {
+        portable_status(status_value(
+          "No portable project download requested.", "neutral", "download"
+        ))
+      } else if (is.null(portable_fingerprint())) {
+        portable_status(status_value(
+          "No portable project download requested.", "neutral", "download"
+        ))
+      } else if (identical(portable_fingerprint(), candidate$project_fingerprint)) {
+        portable_status(status_value(
+          "Portable project download requested for current content.",
+          "current",
+          "circle-check"
+        ))
+      } else {
+        portable_status(status_value(
+          "Portable project download is out of date.",
+          "warning",
+          "triangle-exclamation"
         ))
       }
-      data.frame(
-        Scenario = diagnostics$scenario,
-        Message = diagnostics$message,
-        stringsAsFactors = FALSE
-      )
-    })
-  )
-  rownames(rows) <- NULL
-  tableOutput("diagnostic_table")
-}
-
-comparison_table_for_display <- function(run_set) {
-  if (is.null(run_set)) {
-    return(data.frame())
-  }
-
-  out <- run_set$comparison
-  out[, c("scenario_id", "label", "years", "reps", "PE", "Nmed", "Nlo95", "Nhi95", "changed_parameter", "change_label", "horizon_note"), drop = FALSE]
-}
-
-comparison_table_for_export <- function(run_set) {
-  if (is.null(run_set)) {
-    return(data.frame())
-  }
-
-  out <- run_set$comparison
-  out[, c("scenario_id", "section", "label", "years", "reps", "PE", "Nmed", "Nlo95", "Nhi95", "changed_parameter", "change_label"), drop = FALSE]
-}
-
-report_bridge_ui <- function() {
-  div(
-    class = "report-bridge",
-    h2("Turn evidence into advice"),
-    p("Your report needs a claim, the evidence supporting it, and a caveat that explains the limits of the model."),
-    tags$ol(
-      tags$li(strong("Claim: "), "name the management option or assumption that matters most."),
-      tags$li(strong("Evidence: "), "quote PE, median final abundance, and the uncertainty interval from your saved comparison."),
-      tags$li(strong("Interpretation: "), "explain why the result matters biologically."),
-      tags$li(strong("Caveat: "), "state one assumption, missing process, or data limit that affects confidence.")
-    ),
-    div(
-      class = "sentence-frame",
-      "A strong sentence can follow this pattern: The strongest support for [action] is [evidence], because [biological interpretation], with [caveat] limiting confidence."
-    ),
-    uiOutput("active_report_bridge")
-  )
-}
-
-run_status <- function(run_set) {
-  if (is.null(run_set)) {
-    return("No scenarios have been run in this browser session.")
-  }
-  paste0(nrow(run_set$comparison), " scenarios ready for comparison and export.")
-}
-
-ui <- fluidPage(
-  tags$head(tags$link(rel = "stylesheet", type = "text/css", href = "styles.css")),
-  titlePanel("Woodhen Management Lab"),
-  tabsetPanel(
-    id = "practical2_tabs",
-    tabPanel(
-      "Overview",
-      scenario_intro_ui()
-    ),
-    tabPanel(
-      "Management scenarios",
-      sidebarLayout(
-        sidebarPanel(
-          h3("Core scenario set"),
-          checkboxGroupInput(
-            "core_scenarios",
-            "Choose scenarios",
-            choices = core_choices,
-            selected = core_scenario_ids
-          ),
-          actionButton("run_core_scenarios", "Run management scenarios", class = "btn-primary"),
-          p(class = "muted", "Run the full set first, then rerun a smaller set if your comparison needs focus."),
-          scenario_help_panel(core_catalog, "Scenario guide")
-        ),
-        mainPanel(
-          h2("Scenario comparison"),
-          textOutput("core_status"),
-          div(class = "compare-table", tableOutput("core_comparison_table")),
-          uiOutput("core_scenario_cards")
-        )
-      )
-    ),
-    tabPanel(
-      "Bounded sensitivity",
-      sidebarLayout(
-        sidebarPanel(
-          h3("One-factor checks"),
-          checkboxGroupInput(
-            "sensitivity_scenarios",
-            "Choose sensitivity presets",
-            choices = sensitivity_choices,
-            selected = sensitivity_default_ids
-          ),
-          h3("Your sensitivity choice"),
-          selectInput(
-            "chosen_sensitivity_focus",
-            "Chosen sensitivity ID",
-            choices = student_sensitivity_choices
-          ),
-          selectInput(
-            "decision_lens",
-            "Decision lens",
-            choices = c(
-              "reduce near-term extinction risk",
-              "maximise long-term abundance",
-              "test robustness to future uncertainty",
-              "identify monitoring priorities",
-              "balance model support with implementation constraints"
-            )
-          ),
-          textAreaInput("sensitivity_reason", "Biological reason", value = "", rows = 3, width = "100%"),
-          textAreaInput("expected_direction", "Expected direction before reading the result", value = "", rows = 3, width = "100%"),
-          textAreaInput("observed_result", "Observed result", value = "", rows = 3, width = "100%"),
-          textAreaInput("confidence_change", "How this changed confidence", value = "", rows = 3, width = "100%"),
-          textAreaInput("choice_caveat", "Choice caveat", value = "", rows = 3, width = "100%"),
-          actionButton("run_sensitivity_scenarios", "Run sensitivity scenarios", class = "btn-primary"),
-          p(class = "muted", "Each preset changes one factor so the result remains interpretable."),
-          scenario_help_panel(sensitivity_catalog, "Sensitivity guide")
-        ),
-        mainPanel(
-          h2("Sensitivity comparison"),
-          textOutput("sensitivity_status"),
-          div(class = "compare-table", tableOutput("sensitivity_comparison_table")),
-          uiOutput("sensitivity_scenario_cards")
-        )
-      )
-    ),
-    tabPanel(
-      "Evidence pack",
-      h2("Save your evidence"),
-      p("Save the core comparison CSV, sensitivity comparison CSV, and evidence-notes Markdown after you have run both scenario sets."),
-      p(class = "muted", "This export contains core management results and bounded sensitivity results. Check both sections before writing your report."),
-      textAreaInput("woodhen_interpretation", "Draft interpretation note", value = "", rows = 5, width = "100%"),
-      div(
-        class = "download-row",
-        downloadButton("download_woodhen_core_comparison", "Download core comparison CSV"),
-        downloadButton("download_woodhen_sensitivity_comparison", "Download sensitivity comparison CSV"),
-        downloadButton("download_woodhen_evidence", "Download evidence notes")
-      ),
-      h3("Diagnostics"),
-      div(class = "compare-table", tableOutput("diagnostic_table"))
-    ),
-    tabPanel(
-      "Report bridge",
-      report_bridge_ui()
-    )
-  )
-)
-
-server <- function(input, output, session) {
-  active_run_set <- reactiveVal(NULL)
-  core_run_set <- reactiveVal(NULL)
-  sensitivity_run_set <- reactiveVal(NULL)
-
-  observeEvent(input$run_core_scenarios, {
-    req(input$core_scenarios)
-    withProgress(message = "Running Woodhen management scenarios", value = 0.2, {
-      run_set <- rPVA::run_woodhen_management_set(input$core_scenarios, keep_traj = FALSE, seed = 123, verbose = FALSE)
-      incProgress(0.8)
-      core_run_set(run_set)
-      active_run_set(run_set)
-    })
-  })
-
-  observeEvent(input$run_sensitivity_scenarios, {
-    req(input$sensitivity_scenarios)
-    withProgress(message = "Running bounded sensitivity scenarios", value = 0.2, {
-      selected <- unique(c("sensitivity_default", input$sensitivity_scenarios, input$chosen_sensitivity_focus))
-      run_set <- rPVA::run_woodhen_management_set(selected, keep_traj = FALSE, seed = 123, verbose = FALSE)
-      incProgress(0.8)
-      sensitivity_run_set(run_set)
-      active_run_set(run_set)
-    })
-  })
-
-  output$core_status <- renderText(run_status(core_run_set()))
-  output$sensitivity_status <- renderText(run_status(sensitivity_run_set()))
-
-  output$core_comparison_table <- renderTable({
-    comparison_table_for_display(core_run_set())
-  }, striped = TRUE, bordered = TRUE, spacing = "s")
-
-  output$sensitivity_comparison_table <- renderTable({
-    comparison_table_for_display(sensitivity_run_set())
-  }, striped = TRUE, bordered = TRUE, spacing = "s")
-
-  output$core_scenario_cards <- renderUI({
-    run_set <- core_run_set()
-    scenario_card_grid(if (is.null(run_set)) NULL else run_set$comparison)
-  })
-
-  output$sensitivity_scenario_cards <- renderUI({
-    run_set <- sensitivity_run_set()
-    scenario_card_grid(if (is.null(run_set)) NULL else run_set$comparison)
-  })
-
-  output$diagnostic_table <- renderTable({
-    run_set <- active_run_set()
-    if (is.null(run_set)) {
-      return(data.frame(Scenario = character(), Message = character()))
-    }
-    rows <- do.call(
-      rbind,
-      lapply(run_set$runs, function(run) {
-        diagnostics <- run$diagnostics
-        if (!nrow(diagnostics)) {
-          return(data.frame(
-            Scenario = run$label,
-            Message = "No major diagnostic warning for this scenario. Keep assumptions visible.",
-            stringsAsFactors = FALSE
-          ))
-        }
-        data.frame(
-          Scenario = diagnostics$scenario,
-          Message = diagnostics$message,
-          stringsAsFactors = FALSE
-        )
-      })
-    )
-    rownames(rows) <- NULL
-    rows
-  }, striped = TRUE, bordered = TRUE, spacing = "s")
-
-  choice_note <- reactive({
-    list(
-      decision_lens = input$decision_lens,
-      chosen_sensitivity = input$chosen_sensitivity_focus,
-      biological_reason = input$sensitivity_reason,
-      expected_direction = input$expected_direction,
-      observed_result = input$observed_result,
-      confidence_change = input$confidence_change,
-      caveat = input$choice_caveat
-    )
-  })
-
-  available_run_sets <- reactive({
-    Filter(Negate(is.null), list(core_run_set(), sensitivity_run_set()))
-  })
-
-  combined_comparison <- reactive({
-    run_sets <- available_run_sets()
-    if (!length(run_sets)) {
-      return(data.frame())
-    }
-    out <- do.call(rbind, lapply(run_sets, `[[`, "comparison"))
-    rownames(out) <- NULL
-    out
-  })
-
-  evidence_export <- reactive({
-    req(length(available_run_sets()) > 0)
-    rPVA::build_woodhen_management_evidence_export(
-      available_run_sets(),
-      seed = 123,
-      interpretation = input$woodhen_interpretation,
-      choice_note = choice_note()
-    )
-  })
-
-  output$download_woodhen_core_comparison <- downloadHandler(
-    filename = function() paste0("woodhen-core-management-comparison-", Sys.Date(), ".csv"),
-    content = function(file) {
-      req(core_run_set())
-      utils::write.csv(comparison_table_for_export(core_run_set()), file, row.names = FALSE)
-    }
-  )
-
-  output$download_woodhen_sensitivity_comparison <- downloadHandler(
-    filename = function() paste0("woodhen-sensitivity-comparison-", Sys.Date(), ".csv"),
-    content = function(file) {
-      req(sensitivity_run_set())
-      utils::write.csv(comparison_table_for_export(sensitivity_run_set()), file, row.names = FALSE)
-    }
-  )
-
-  output$download_woodhen_evidence <- downloadHandler(
-    filename = function() paste0("woodhen-management-evidence-notes-", Sys.Date(), ".md"),
-    content = function(file) {
-      writeLines(evidence_export()$notes, file)
-    }
-  )
-
-  output$active_report_bridge <- renderUI({
-    comparison <- combined_comparison()
-    if (!nrow(comparison)) {
-      return(p(class = "muted", "Run the core and sensitivity scenarios before using this bridge."))
     }
 
-    chosen <- comparison[comparison$scenario_id == input$chosen_sensitivity_focus, , drop = FALSE]
-    tagList(
-      h3("Active evidence bridge"),
-      p("Use one row as evidence: quote PE, Nmed, the 95% interval, and the horizon."),
-      if (nrow(chosen)) {
-        div(
-          class = "active-evidence-row",
-          strong(chosen$label[[1]]),
-          p(paste0(
-            "PE ", sprintf("%.3f", chosen$PE[[1]]),
-            "; Nmed ", chosen$Nmed[[1]],
-            "; 95% interval ", chosen$Nlo95[[1]], "-",
-            chosen$Nhi95[[1]],
-            "; horizon ", chosen$years[[1]], " years."
-          )),
-          p("Name the result that changed your confidence. Then state the caveat that limits that confidence.")
-        )
+    refresh_dirty_status <- function(candidate = project()) {
+      if (is.null(candidate)) {
+        dirty_status(status_value("No active project yet.", "neutral", "circle-info"))
+      } else if (identical(saved_fingerprint(), candidate$project_fingerprint)) {
+        dirty_status(status_value(
+          "No material changes are waiting for browser autosave.",
+          "current",
+          "circle-check"
+        ))
       } else {
-        p(class = "muted", "Run the chosen sensitivity preset to populate this evidence row.")
+        dirty_status(status_value(
+          "Material changes are waiting for browser autosave.",
+          "warning",
+          "triangle-exclamation"
+        ))
       }
+    }
+
+    queue_project_save <- function(candidate) {
+      snapshot_json <- rPVA:::woodhen_project_browser_snapshot(candidate)
+      saved_at <- format(
+        as.POSIXct(Sys.time(), tz = "UTC"),
+        "%Y-%m-%dT%H:%M:%SZ",
+        tz = "UTC"
+      )
+      record <- project_store_record(
+        candidate,
+        snapshot_json,
+        saved_at,
+        portable_request_fingerprint = portable_fingerprint()
+      )
+      request_id <- next_request_id("save")
+      track_request(request_id, list(kind = "save", record = record))
+      browser_status(status_value(
+        "Browser autosave is pending.", "pending", "clock"
+      ))
+      refresh_dirty_status(candidate)
+      session$sendCustomMessage(
+        "woodhen-project-store-save",
+        list(
+          contract_version = project_store_contract_version(),
+          request_id = request_id,
+          key = record$key,
+          record = record
+        )
+      )
+      invisible(request_id)
+    }
+
+    activate_project <- function(
+        candidate,
+        portable_request_fingerprint = portable_fingerprint()
+    ) {
+      validate_woodhen_project(candidate)
+      replace_live_project(project, candidate)
+      saved_fingerprint(NULL)
+      portable_fingerprint(portable_request_fingerprint)
+      refresh_portable_status(candidate)
+      refresh_dirty_status(candidate)
+      queue_project_save(candidate)
+      invisible(candidate)
+    }
+
+    events <- start_server(
+      "start",
+      project = reactive(project()),
+      inventory = reactive(inventory()),
+      browser_status = reactive(browser_status()),
+      portable_status = reactive(portable_status()),
+      dirty_status = reactive(dirty_status())
     )
-  })
+
+    observeEvent(input$project_store_inventory, {
+      records <- tryCatch(
+        validate_project_store_inventory(input$project_store_inventory),
+        error = function(error) {
+          showNotification(
+            paste("Browser project inventory could not be read:", conditionMessage(error)),
+            type = "warning"
+          )
+          NULL
+        }
+      )
+      if (!is.null(records)) {
+        inventory(records)
+      }
+    }, ignoreInit = TRUE)
+
+    observeEvent(events$create(), {
+      event <- events$create()
+      if (!isTRUE(event$ok)) {
+        showNotification(event$message, type = "error")
+        return()
+      }
+      activate_project(event$candidate, portable_request_fingerprint = NULL)
+      showNotification("New Woodhen investigation project created.", type = "message")
+    }, ignoreInit = TRUE)
+
+    observeEvent(events$resume(), {
+      event <- events$resume()
+      if (!isTRUE(event$ok)) {
+        showNotification(event$message, type = "warning")
+        return()
+      }
+      record <- event$record
+      request_id <- next_request_id("restore")
+      pending <- list(
+        request_id = request_id,
+        key = record$key,
+        project_id = record$project_id,
+        project_fingerprint = record$project_fingerprint
+      )
+      pending_restore(pending)
+      session$sendCustomMessage(
+        "woodhen-project-store-restore",
+        list(
+          contract_version = project_store_contract_version(),
+          request_id = request_id,
+          key = record$key,
+          schema_version = record$schema_version,
+          project_id = record$project_id,
+          project_fingerprint = record$project_fingerprint
+        )
+      )
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$project_store_restore, {
+      pending <- pending_restore()
+      if (is.null(pending)) {
+        showNotification("An unsolicited browser restore response was ignored.", type = "warning")
+        return()
+      }
+      candidate <- tryCatch(
+        validate_project_store_restore(input$project_store_restore, pending),
+        error = function(error) error
+      )
+      pending_restore(NULL)
+      if (inherits(candidate, "error")) {
+        showNotification(
+          paste("Browser project was not restored:", conditionMessage(candidate)),
+          type = "error"
+        )
+        return()
+      }
+      portable_request_fingerprint <- input$project_store_restore$record$portable_request_fingerprint
+      activate_project(candidate, portable_request_fingerprint)
+      showNotification("Browser project restored after validation.", type = "message")
+    }, ignoreInit = TRUE)
+
+    observeEvent(events$import(), {
+      event <- events$import()
+      if (!isTRUE(event$ok)) {
+        showNotification(
+          paste("Portable project was not imported:", event$message),
+          type = "error"
+        )
+        return()
+      }
+      activate_project(event$candidate, portable_request_fingerprint = NULL)
+      showNotification("Portable project imported after validation.", type = "message")
+    }, ignoreInit = TRUE)
+
+    observeEvent(events$download_requested(), {
+      event <- events$download_requested()
+      candidate <- project()
+      if (is.null(event) || is.null(candidate) ||
+          !identical(event$project_id, candidate$project_id) ||
+          !identical(event$project_fingerprint, candidate$project_fingerprint)) {
+        return()
+      }
+      portable_fingerprint(candidate$project_fingerprint)
+      refresh_portable_status(candidate)
+      request_id <- next_request_id("portable")
+      record_key <- project_store_key(candidate$project_schema_version, candidate$project_id)
+      track_request(request_id, list(
+        kind = "portable",
+        record = list(
+          key = record_key,
+          project_id = candidate$project_id,
+          project_fingerprint = candidate$project_fingerprint
+        )
+      ))
+      session$sendCustomMessage(
+        "woodhen-project-store-mark-portable",
+        list(
+          contract_version = project_store_contract_version(),
+          request_id = request_id,
+          key = record_key,
+          schema_version = candidate$project_schema_version,
+          project_id = candidate$project_id,
+          project_fingerprint = candidate$project_fingerprint
+        )
+      )
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$project_store_status, {
+      request_id <- input$project_store_status$request_id
+      request <- pending_requests()[[request_id]]
+      if (is.null(request)) {
+        return()
+      }
+      status <- tryCatch(
+        validate_project_store_status(input$project_store_status, request_id),
+        error = function(error) error
+      )
+      forget_request(request_id)
+      if (inherits(status, "error")) {
+        showNotification(
+          paste("Browser storage acknowledgement was rejected:", conditionMessage(status)),
+          type = "warning"
+        )
+        return()
+      }
+      expected <- request$record
+      if (!identical(status$key, expected$key) ||
+          !identical(status$project_id, expected$project_id) ||
+          !identical(status$project_fingerprint, expected$project_fingerprint)) {
+        showNotification("Browser storage acknowledgement did not match its request.", type = "warning")
+        return()
+      }
+
+      if (identical(status$status, "saved")) {
+        saved_fingerprint(status$project_fingerprint)
+        browser_status(status_value(
+          "Autosaved in this browser.", "current", "circle-check"
+        ))
+        refresh_dirty_status()
+      } else if (identical(status$status, "superseded")) {
+        browser_status(status_value(
+          "A newer browser autosave is pending.", "pending", "clock"
+        ))
+      } else if (identical(status$status, "portable_marked")) {
+        refresh_portable_status()
+      } else {
+        browser_status(status_value(
+          "Browser autosave is unavailable; download a portable project.",
+          "warning",
+          "triangle-exclamation"
+        ))
+        refresh_dirty_status()
+      }
+    }, ignoreInit = TRUE)
+  }
 }
+
+server <- make_practical2_server()
 
 shinyApp(ui, server)
