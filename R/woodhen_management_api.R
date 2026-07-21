@@ -169,7 +169,7 @@ build_woodhen_management_spec <- function(scenario_id) {
   row <- resolve_woodhen_management_scenario(scenario_id)
 
   if (identical(row$section[[1]], "core_management")) {
-    return(set_scenario(row$scenario_id[[1]], "woodhen"))
+    return(woodhen_reference_spec(row$scenario_id[[1]]))
   }
 
   base <- set_scenario("sensitivity_analysis", "woodhen")
