@@ -82,6 +82,7 @@ Gate 2 status: closed. Next tranche is Gate 3's student-facing three-hour core r
 Gate 3:
 - Task 6: complete (commits 02d4ba9, 727eb18, and d678e42; 113-expectation Shiny, 56-expectation project-store, and 209-expectation project compatibility suites passed; cold namespace-only Create/Import/restore and first-click Create/Resume passed; two review-repair rounds resolved all Critical and Important findings)
 - Task 7: complete (commits d3db69e and 937dca8; 158-expectation Calibrate and 127-expectation Shiny suites passed after repair, evidence/project compatibility suites passed, cold installed-namespace construction passed, and independent review approved)
+- Task 8: complete (commits ed7cf5f, 4983322, and 62a5609; focused core/evidence/shell/calibrate/project suites, 612.6-second full tests 00-24, and cold installed-namespace probes passed; two review-repair rounds resolved all Important findings and final review approved)
 
 Gate 3 review dispositions:
 - Browser snapshots remain strict typed project documents; IndexedDB inventory carries metadata only and explicit restore is the sole activation path.
@@ -93,5 +94,8 @@ Gate 3 review dispositions:
 - The observed historical statement is over 1,600 birds by 2024; 1,654 birds and about 330 breeding pairs are labelled as the supplied 2024 model state.
 - Anchor readiness requires the actual current `05_future_baseline` scenario and run with exact library/model metadata, seed, futures, horizon, and fingerprints.
 - Calibrate state reconstructs from the root project after Create/Import/Restore, and the real root event path is behaviorally tested through validation, activation, dirty state, and autosave request.
+- Investigate supports all eight sensitivity factors and all six threat seeds, with compatible interventions, a labelled linear sea-level pathway, atomic family insertion, strict fewer-than-50 breeding-pair evidence, and duplicate-safe prompt observations.
+- Family restore uses exact component metadata (including `K_sd`), exact reruns report truthful completed progress without rerunning, and restored controls/results/completion reconstruct from project evidence.
+- Deferred batches and root activation are guarded by the accepted project fingerprint; mutual client disabling and busy state span the work/activation flush so queued cross-route actions cannot overwrite newer work.
 
-Gate 3 status: in progress. Next tranche is Task 8 compulsory sensitivity and future advice.
+Gate 3 implementation status: complete. Next tranche is the local browser checkpoint and Barry's core-route review.
