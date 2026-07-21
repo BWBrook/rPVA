@@ -56,6 +56,21 @@ compact_object_types <- function(x) {
   c(typeof(x), if (is.list(x)) unlist(lapply(x, compact_object_types), use.names = FALSE))
 }
 
+test_that("Task 4 evidence interfaces are exported", {
+  expected <- c(
+    "compact_woodhen_run",
+    "run_woodhen_investigation_scenario",
+    "compare_woodhen_run_family",
+    "plot_woodhen_trajectories",
+    "plot_woodhen_final_abundance",
+    "plot_woodhen_risk_evidence",
+    "plot_woodhen_sensitivity_response",
+    "plot_woodhen_family_comparison"
+  )
+  namespace_file <- readLines(testthat::test_path("..", "..", "NAMESPACE"), warn = FALSE)
+  expect_true(all(paste0("export(", expected, ")") %in% namespace_file))
+})
+
 test_that("a seeded locked baseline becomes reproducible compact evidence", {
   baseline <- build_woodhen_sensitivity_family(
     "K", c(350, 250), seed = 9401L

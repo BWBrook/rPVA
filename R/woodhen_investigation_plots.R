@@ -201,6 +201,7 @@ woodhen_compact_plot_subtitle <- function(run, units = "total birds") {
 #'
 #' @param run A `woodhen_compact_run`.
 #' @return A ggplot object.
+#' @export
 plot_woodhen_trajectories <- function(run) {
   run <- validate_woodhen_plot_run(run)
   ggplot2::ggplot(
@@ -244,6 +245,7 @@ plot_woodhen_trajectories <- function(run) {
 #'
 #' @param run A `woodhen_compact_run`.
 #' @return A ggplot object.
+#' @export
 plot_woodhen_final_abundance <- function(run) {
   run <- validate_woodhen_plot_run(run)
   plot_data <- data.frame(abundance = run$final_abundance$values)
@@ -273,6 +275,7 @@ plot_woodhen_final_abundance <- function(run) {
 #'
 #' @param run A `woodhen_compact_run`.
 #' @return A ggplot object.
+#' @export
 plot_woodhen_risk_evidence <- function(run) {
   run <- validate_woodhen_plot_run(run)
   extinction <- run$extinction_evidence$cumulative
@@ -332,6 +335,7 @@ woodhen_comparison_caption <- function(comparison, normal_caption) {
 #'
 #' @param comparison A sensitivity `woodhen_run_family_comparison`.
 #' @return A ggplot object.
+#' @export
 plot_woodhen_sensitivity_response <- function(comparison) {
   comparison <- validate_woodhen_plot_comparison(comparison, "sensitivity")
   plot_data <- comparison$table
@@ -374,6 +378,7 @@ plot_woodhen_sensitivity_response <- function(comparison) {
 #'
 #' @param comparison A prospective `woodhen_run_family_comparison`.
 #' @return A ggplot object.
+#' @export
 plot_woodhen_family_comparison <- function(comparison) {
   comparison <- validate_woodhen_plot_comparison(comparison, "prospective")
   table <- comparison$table

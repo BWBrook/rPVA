@@ -636,6 +636,7 @@ woodhen_result_provenance <- function(result, scenario) {
 #' @param scenario A validated Woodhen investigation scenario record.
 #' @param sample_trajectories Maximum number of deterministic trajectories to retain.
 #' @return A compact, serialisable `woodhen_compact_run`.
+#' @export
 compact_woodhen_run <- function(result, scenario, sample_trajectories = 100L) {
   woodhen_validate_scenario_record(scenario)
   provenance <- woodhen_result_provenance(result, scenario)
@@ -733,6 +734,7 @@ compact_woodhen_run <- function(result, scenario, sample_trajectories = 100L) {
 #' @param sample_trajectories Maximum number of deterministic trajectories to retain.
 #' @param progress Optional progress callback passed to `run_pva_core()`.
 #' @return A compact, serialisable `woodhen_compact_run`.
+#' @export
 run_woodhen_investigation_scenario <- function(
     scenario,
     seed = scenario$seed,
@@ -875,6 +877,7 @@ woodhen_add_parent_differences <- function(table, runs) {
 #' @param allow_awkward Permit an incompatible comparison when explicitly annotated.
 #' @param awkward_annotation Required explanation for an incompatible comparison.
 #' @return A `woodhen_run_family_comparison` with parent-relative outcomes.
+#' @export
 compare_woodhen_run_family <- function(runs,
                                        family_id,
                                        allow_awkward = FALSE,

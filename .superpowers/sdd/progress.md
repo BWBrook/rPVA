@@ -64,3 +64,17 @@ Gate 1 review dispositions:
 - Shared profile allowlist and additional simulation-level vital-rate tests are optional hardening, not current blockers.
 
 Gate 1 status: closed. Next tranche is Gate 2 compact evidence and portable project state; no browser checkpoint is required for Gate 1.
+
+Gate 2:
+- Task 4: complete (commits 262b5d4, 1dcf93d, and 0fb4701; focused tests and all-catalogue compact-record audit passed; two review-repair rounds resolved all Critical and Important findings)
+
+Gate 2 review dispositions:
+- Compact evidence validates exact scenario/result provenance, common comparison seed and futures, and bounded path-aware payload schemas.
+- Legitimate `75 x 7` annual vital-rate matrices are retained; arbitrary trajectory-shaped matrices and flattened payloads are rejected.
+- The ignored Task 4 execution report still describes its repair commits as uncommitted; this is stale operational wording only and does not affect code or evidence.
+- Task 5: complete (commits 723d25b, ffadd41, and ecc4ec4; typed project-package round trips and hostile import tests passed; two review-repair rounds resolved all Critical, Important, and Minor findings)
+- Package boundary: complete (Task 4's 8 evidence/comparison interfaces and Task 5's 9 project interfaces exported; isolated source install and installed-namespace probe passed)
+- Shared regression: complete on final Gate 2 code (all tests through Task 21 passed in 477 seconds on 2026-07-21)
+- Portable package audit: complete (5 scenarios, 3 compact runs, 1 observation; 15,794 bytes compressed and 405,544 bytes expanded; exact IDs, typed scientific content, notes, selections, comparison outcomes, and stable fingerprint survived re-export)
+
+Gate 2 status: closed. Next tranche is Gate 3's student-facing three-hour core route; the first browser checkpoint follows Tasks 6-8.
