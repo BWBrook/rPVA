@@ -572,7 +572,7 @@ investigate_server <- function(
     ))
 
     publish <- function(target, value) {
-      next_event <- event_counter() + 1L
+      next_event <- shiny::isolate(event_counter()) + 1L
       event_counter(next_event)
       value$event_id <- next_event
       target(value)
@@ -580,7 +580,7 @@ investigate_server <- function(
     }
 
     set_status <- function(route, value) {
-      status <- status_state()
+      status <- shiny::isolate(status_state())
       status[[route]] <- value
       status_state(status)
     }
@@ -593,13 +593,13 @@ investigate_server <- function(
     }
 
     set_progress <- function(route, scenario, scenarios, completed, total) {
-      progress <- progress_state()
+      progress <- shiny::isolate(progress_state())
       progress[[route]] <- c(
         scenario = as.integer(scenario), scenarios = as.integer(scenarios),
         completed = as.integer(completed), total = as.integer(total)
       )
       progress_state(progress)
-      history <- progress_history_state()
+      history <- shiny::isolate(progress_history_state())
       history[[route]][[length(history[[route]]) + 1L]] <- progress[[route]]
       progress_history_state(history)
       set_status(route, paste0(
@@ -819,6 +819,7 @@ investigate_server <- function(
     })
 
     run_route <- function(route, family, prompt, batch_started = FALSE) {
+      prompt <- force(prompt)
       if (!batch_started && !investigate_begin_batch(busy)) {
         set_status(route, "A family is already running; the repeated submission was ignored.")
         return(NULL)

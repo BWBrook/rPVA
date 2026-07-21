@@ -327,6 +327,40 @@ test_that("family actions are atomic, immutable, duplicate-free, and prompt-awar
   expect_identical(second$project, before)
 })
 
+test_that("future investigation projects satisfy the strict browser-store boundary", {
+  env <- source_investigate_app()
+  project <- investigate_ready_project()
+  family <- env$investigate_build_future_family(
+    "novel_disease", "moderate", 0.9,
+    "targeted_vital_rate_improvement", "moderate", 0.5
+  )
+  action <- rPVA:::woodhen_run_investigation_family_project(
+    project,
+    family,
+    prompt = list(
+      research_question = "",
+      biological_reason = "Test a plausible future pressure.",
+      expected_direction = "Management should partly recover outcomes."
+    ),
+    runner = investigate_test_runner,
+    sample_trajectories = 3L,
+    now = as.POSIXct("2026-07-22 02:00:00", tz = "UTC")
+  )
+  snapshot <- rPVA:::woodhen_project_browser_snapshot(action$project)
+  restored <- rPVA:::read_woodhen_project_browser_snapshot(snapshot)
+
+  expect_identical(
+    restored,
+    rPVA:::woodhen_project_restore_schema_order(action$project)
+  )
+  expect_silent(env$project_store_record(
+    action$project,
+    snapshot,
+    "2026-07-22T02:01:00Z",
+    portable_request_fingerprint = NULL
+  ))
+})
+
 test_that("Investigation module guards busy clicks and restores completed evidence", {
   env <- source_investigate_app()
   busy <- shiny::reactiveVal(FALSE)
@@ -572,6 +606,11 @@ test_that("Investigate UI and root integration are accessible and honest", {
   expect_match(css, "investigate-workspaces")
   expect_match(css, "@media \\(max-width: 780px\\)")
   expect_match(module_text, "session$onFlushed(", fixed = TRUE)
+  expect_match(module_text, "prompt <- force(prompt)", fixed = TRUE)
+  expect_match(module_text, "shiny::isolate(event_counter())", fixed = TRUE)
+  expect_match(module_text, "shiny::isolate(status_state())", fixed = TRUE)
+  expect_match(module_text, "shiny::isolate(progress_state())", fixed = TRUE)
+  expect_match(module_text, "shiny::isolate(progress_history_state())", fixed = TRUE)
   expect_match(module_text, 'aria-disabled` = if (busy)', fixed = TRUE)
   expect_match(module_text, "base_project_fingerprint", fixed = TRUE)
   expect_match(app_text, 'source(file.path("modules", "mod_investigate.R")', fixed = TRUE)

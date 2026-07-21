@@ -756,7 +756,15 @@ compact_woodhen_run <- function(result, scenario, sample_trajectories = 100L) {
     holder_stages = seq.int(2L, dim(result$traj)[[2L]])
   )
   quasi_extinction$breeding_pair_trajectories <- NULL
+  final_abundance <- woodhen_final_abundance_evidence(result$Nend)
+  extinction_evidence <- woodhen_extinction_evidence(total_trajectories)
   summary <- summarize_pva_result(result, scenario = scenario$student_label)
+  summary$PE <- extinction_evidence$probability_by_horizon
+  summary$Nmed <- final_abundance$median
+  summary$Nlo95 <- final_abundance$q025
+  summary$Nhi95 <- final_abundance$q975
+  summary$extinct_reps <- extinction_evidence$extinct_reps
+  summary$surviving_reps <- reps - extinction_evidence$extinct_reps
   diagnostics <- diagnose_pva_result(result, scenario = scenario$student_label)
   baseline_spec_fingerprint <- woodhen_spec_fingerprint(woodhen_locked_future_spec())
   run_id <- paste0(
@@ -770,7 +778,7 @@ compact_woodhen_run <- function(result, scenario, sample_trajectories = 100L) {
   )
   difference_status <- if (is.na(scenario$parent_id)) "not_applicable" else "pending_comparison"
 
-  structure(
+  run <- structure(
     list(
       run_schema_version = "woodhen-compact-run-v1",
       run_id = run_id,
@@ -789,11 +797,11 @@ compact_woodhen_run <- function(result, scenario, sample_trajectories = 100L) {
       horizon = horizon,
       summary = summary,
       diagnostics = diagnostics,
-      final_abundance = woodhen_final_abundance_evidence(result$Nend),
+      final_abundance = final_abundance,
       annual_quantiles = woodhen_annual_quantiles(total_trajectories),
       sampled_replicate_indices = indices,
       trajectory_sample = woodhen_sample_trajectory_data(total_trajectories, indices),
-      extinction_evidence = woodhen_extinction_evidence(total_trajectories),
+      extinction_evidence = extinction_evidence,
       quasi_extinction_50_pairs = quasi_extinction,
       difference_from_parent = list(
         parent_id = scenario$parent_id,
@@ -811,6 +819,8 @@ compact_woodhen_run <- function(result, scenario, sample_trajectories = 100L) {
     ),
     class = c("woodhen_compact_run", "list")
   )
+  woodhen_project_validate_run(run)
+  run
 }
 
 #' Run one Woodhen investigation and immediately discard raw simulation arrays

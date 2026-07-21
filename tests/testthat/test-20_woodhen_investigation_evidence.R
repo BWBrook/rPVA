@@ -338,6 +338,59 @@ test_that("compact extinction evidence preserves exact timing and probability", 
   expect_true(is.na(evidence$overall_median_year))
 })
 
+test_that("compact summaries match the retained all-replicate evidence", {
+  baseline <- build_woodhen_sensitivity_family(
+    "K", c(350, 250), seed = 607L
+  )$scenarios[[1L]]
+  result <- synthetic_woodhen_investigation_result(baseline)
+  result$traj[3:76, , seq_len(600L)] <- 0
+  result$raw$traj <- result$traj
+  totals <- apply(result$traj, c(1L, 3L), sum)
+  result$Nend <- totals[76L, ]
+  result$raw$Nend <- result$Nend
+  result$ext_prob <- rowMeans(totals == 0)
+  survivors <- result$Nend[result$Nend > 0]
+  result$Nend_summary <- list(
+    median = as.numeric(round(stats::quantile(survivors, 0.50, names = FALSE))),
+    lo95 = as.numeric(round(stats::quantile(survivors, 0.025, names = FALSE))),
+    hi95 = as.numeric(round(stats::quantile(survivors, 0.975, names = FALSE)))
+  )
+
+  compact <- compact_woodhen_run(result, baseline, sample_trajectories = 4L)
+
+  expect_identical(compact$summary$PE, compact$extinction_evidence$probability_by_horizon)
+  expect_identical(compact$summary$Nmed, compact$final_abundance$median)
+  expect_identical(compact$summary$Nlo95, compact$final_abundance$q025)
+  expect_identical(compact$summary$Nhi95, compact$final_abundance$q975)
+  expect_silent(rPVA:::woodhen_project_validate_run(compact))
+})
+
+test_that("compact summaries preserve exact fractional quantiles without extinction", {
+  baseline <- build_woodhen_sensitivity_family(
+    "K", c(350, 250), seed = 608L
+  )$scenarios[[1L]]
+  result <- synthetic_woodhen_investigation_result(baseline)
+  final_values <- as.numeric(seq_len(baseline$spec$reps))
+  result$traj[76L, , ] <- 0
+  result$traj[76L, 2L, ] <- final_values
+  result$raw$traj <- result$traj
+  result$Nend <- final_values
+  result$raw$Nend <- final_values
+  result$ext_prob <- rowMeans(apply(result$traj, c(1L, 3L), sum) == 0)
+  result$Nend_summary <- list(
+    median = as.numeric(round(stats::quantile(final_values, 0.50, names = FALSE))),
+    lo95 = as.numeric(round(stats::quantile(final_values, 0.025, names = FALSE))),
+    hi95 = as.numeric(round(stats::quantile(final_values, 0.975, names = FALSE)))
+  )
+
+  compact <- compact_woodhen_run(result, baseline, sample_trajectories = 4L)
+
+  expect_identical(compact$summary$Nmed, 500.5)
+  expect_identical(compact$summary$Nlo95, 25.975)
+  expect_identical(compact$summary$Nhi95, 975.025)
+  expect_silent(rPVA:::woodhen_project_validate_run(compact))
+})
+
 test_that("sensitivity comparison derives response and parent differences", {
   family <- build_woodhen_sensitivity_family("K", c(350, 250), seed = 81L)
   shifts <- c(0, -100, -220)

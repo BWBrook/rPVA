@@ -781,6 +781,8 @@ test_that("Practical 2 static styles carry the approved responsive and focus bou
   expect_match(css, "@media \\(max-width: 780px\\)")
   expect_match(css, "grid-template-columns:\\s*repeat\\(2, minmax\\(0, 1fr\\)\\)")
   expect_match(css, "overflow-wrap:\\s*anywhere")
+  expect_match(css, "\\.project-action \\.input-group-btn \\.btn-file")
+  expect_match(css, "min-width:\\s*9rem")
   expect_false(grepl("font-size:\\s*[^;]*(vw|vh)", css))
   expect_false(grepl("letter-spacing:\\s*-", css))
 })

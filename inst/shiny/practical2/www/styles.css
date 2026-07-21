@@ -209,6 +209,18 @@ textarea:focus-visible,
   overflow-wrap: anywhere;
 }
 
+.project-action .input-group-btn {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.project-action .input-group-btn .btn-file {
+  min-width: 9rem;
+  max-width: none;
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+
 .project-status-band {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

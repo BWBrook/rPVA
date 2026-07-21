@@ -1815,6 +1815,12 @@ woodhen_project_restore_scenario_order <- function(scenario) {
     scenario,
     woodhen_scenario_record_fields(scenario$scenario_type)
   )
+  for (field in c("components", "changes", "temporal_profile")) {
+    value <- scenario[[field]]
+    if (is.list(value) && !is.null(names(value))) {
+      scenario[[field]] <- value[order(names(value), method = "radix")]
+    }
+  }
   spec_fields <- c(
     "name", "years", "reps", "surv", "stasis", "fecund", "sex_ratio_init",
     "monogamy", "n0", "demographic_stochasticity", "env_sd", "K", "K_sd",
