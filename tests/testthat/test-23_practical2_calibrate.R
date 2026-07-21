@@ -312,6 +312,129 @@ test_that("Calibrate module handles no project, progress, recovery, failure, and
   })
 })
 
+test_that("Calibrate state reconciles exactly when the authoritative project changes", {
+  env <- source_calibrate_app()
+  project_a <- new_woodhen_project("Failed project A")
+  project_b <- new_woodhen_project("Empty project B")
+  live <- shiny::reactiveVal(project_a)
+  failing_after_progress <- function(scenario, progress = NULL, ...) {
+    progress(400L, as.integer(scenario$spec$reps))
+    stop("deliberate project A failure")
+  }
+
+  shiny::testServer(env$calibrate_server, args = list(
+    project = shiny::reactive(live()), scenario_runner = failing_after_progress
+  ), {
+    session$flushReact()
+    session$setInputs(run_04_rodent_eradication = 1)
+    session$flushReact()
+    expect_identical(
+      progress_state()[["04_rodent_eradication"]],
+      c(completed = 400L, total = 1000L)
+    )
+    expect_match(status_state()[["04_rodent_eradication"]], "project A failure")
+
+    live(project_b)
+    session$flushReact()
+    expect_true(all(vapply(
+      progress_state(),
+      function(value) identical(value, c(completed = 0L, total = 1000L)),
+      logical(1)
+    )))
+    expect_identical(
+      unname(status_state()),
+      rep("Not run in this project.", 5L)
+    )
+    expect_length(progress_history(), 0L)
+  })
+
+  completed_a <- rPVA:::run_woodhen_reference_project(
+    new_woodhen_project("Completed project A"),
+    "05_future_baseline",
+    runner = calibrate_test_runner,
+    sample_trajectories = 2L
+  )$project
+  live <- shiny::reactiveVal(completed_a)
+  shiny::testServer(env$calibrate_server, args = list(
+    project = shiny::reactive(live()), scenario_runner = calibrate_test_runner
+  ), {
+    session$flushReact()
+    expect_identical(
+      progress_state()[["05_future_baseline"]],
+      c(completed = 1000L, total = 1000L)
+    )
+    expect_match(status_state()[["05_future_baseline"]], "restored")
+
+    live(new_woodhen_project("Replacement project B"))
+    session$flushReact()
+    expect_true(all(vapply(
+      progress_state(),
+      function(value) identical(value, c(completed = 0L, total = 1000L)),
+      logical(1)
+    )))
+    expect_false(any(grepl("restored|failed|complete", status_state(), ignore.case = TRUE)))
+  })
+
+  partial <- rPVA:::run_woodhen_reference_project(
+    new_woodhen_project("Restored partial project"),
+    "02_pig_control",
+    runner = calibrate_test_runner,
+    sample_trajectories = 2L
+  )$project
+  live <- shiny::reactiveVal(NULL)
+  shiny::testServer(env$calibrate_server, args = list(
+    project = shiny::reactive(live()), scenario_runner = calibrate_test_runner
+  ), {
+    session$flushReact()
+    live(partial)
+    session$flushReact()
+    completed <- vapply(progress_state(), `[[`, integer(1), "completed")
+    expect_identical(
+      completed,
+      c(
+        `01_no_mgmt` = 0L,
+        `02_pig_control` = 1000L,
+        `03_captive_pig` = 0L,
+        `04_rodent_eradication` = 0L,
+        `05_future_baseline` = 0L
+      )
+    )
+    expect_match(status_state()[["02_pig_control"]], "restored")
+    expect_true(all(status_state()[setdiff(names(status_state()), "02_pig_control")] ==
+      "Not run in this project."))
+  })
+})
+
+test_that("rendered progress semantics track actual completed futures", {
+  env <- source_calibrate_app()
+  live <- shiny::reactiveVal(new_woodhen_project("Accessible progress"))
+
+  shiny::testServer(env$calibrate_server, args = list(
+    project = shiny::reactive(live()), scenario_runner = calibrate_test_runner
+  ), {
+    session$flushReact()
+    initial <- output$progress_01_no_mgmt$html
+    expect_match(initial, 'role="progressbar"', fixed = TRUE)
+    expect_match(initial, 'aria-valuemin="0"', fixed = TRUE)
+    expect_match(initial, 'aria-valuemax="1000"', fixed = TRUE)
+    expect_match(initial, 'aria-valuenow="0"', fixed = TRUE)
+    expect_match(initial, 'aria-live="polite"', fixed = TRUE)
+    expect_match(initial, "0 of 1,000 futures completed", fixed = TRUE)
+
+    session$setInputs(run_01_no_mgmt = 1)
+    session$flushReact()
+    completed <- output$progress_01_no_mgmt$html
+    expect_match(completed, 'aria-valuenow="1000"', fixed = TRUE)
+    expect_match(completed, "1,000 of 1,000 futures completed", fixed = TRUE)
+
+    live(new_woodhen_project("Accessible replacement"))
+    session$flushReact()
+    reset <- output$progress_01_no_mgmt$html
+    expect_match(reset, 'aria-valuenow="0"', fixed = TRUE)
+    expect_match(reset, "0 of 1,000 futures completed", fixed = TRUE)
+  })
+})
+
 test_that("each Calibrate run action returns the corresponding project update", {
   env <- source_calibrate_app()
   live <- shiny::reactiveVal(new_woodhen_project("Five reference actions"))
@@ -392,7 +515,7 @@ test_that("Calibrate UI is chronological, accessible, responsive, and historical
     expect_match(html, paste0('id="calibrate-save_notes_', id, '"'), fixed = TRUE)
   }
   expect_match(html, 'aria-live="polite"', fixed = TRUE)
-  expect_match(html, 'role="progressbar"', fixed = TRUE)
+  expect_match(html, 'id="calibrate-progress_01_no_mgmt"', fixed = TRUE)
   expect_match(html, "Short-horizon warning", fixed = TRUE)
   expect_match(html, "over 1,600 birds by 2024", fixed = TRUE)
   expect_match(html, "supplied 2024 model state", fixed = TRUE)

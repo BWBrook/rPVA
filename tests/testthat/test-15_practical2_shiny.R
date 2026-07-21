@@ -57,6 +57,54 @@ practical2_action_button_value <- function(value) {
   )
 }
 
+practical2_calibrate_runner <- function(
+    scenario,
+    seed = scenario$seed,
+    sample_trajectories = 2L,
+    progress = NULL
+) {
+  years <- as.integer(scenario$spec$years)
+  reps <- as.integer(scenario$spec$reps)
+  totals <- matrix(
+    rep(seq.int(2 * sum(scenario$spec$n0), length.out = years + 1L), reps),
+    nrow = years + 1L,
+    ncol = reps
+  )
+  traj <- array(0, dim = c(years + 1L, length(scenario$spec$n0), reps))
+  traj[, 1L, ] <- round(totals * 0.2)
+  traj[, 2L, ] <- totals - traj[, 1L, ]
+  normalized <- normalize_pva_spec(scenario$spec, stasis = NULL)
+  if (!is.null(progress)) {
+    progress(500L, reps)
+    progress(reps, reps)
+  }
+  result <- list(
+    Nend = as.numeric(totals[years + 1L, ]),
+    traj = traj,
+    sr_traj = matrix(0.5, nrow = years + 1L, ncol = reps),
+    F_traj = matrix(0, nrow = years + 1L, ncol = reps),
+    LE_traj = matrix(0, nrow = years + 1L, ncol = reps),
+    ext_prob = rowMeans(totals == 0),
+    Nend_summary = list(
+      median = as.numeric(stats::median(totals[years + 1L, ])),
+      lo95 = as.numeric(stats::quantile(totals[years + 1L, ], 0.025, names = FALSE)),
+      hi95 = as.numeric(stats::quantile(totals[years + 1L, ], 0.975, names = FALSE))
+    ),
+    params = c(
+      normalized$spec,
+      list(years = years, reps = reps, stasis = normalized$stasis, seed = seed)
+    ),
+    raw = list(
+      Nend = as.numeric(totals[years + 1L, ]),
+      traj = traj,
+      sr_traj = matrix(0.5, nrow = years + 1L, ncol = reps),
+      F_traj = matrix(0, nrow = years + 1L, ncol = reps),
+      LE_traj = matrix(0, nrow = years + 1L, ncol = reps)
+    )
+  )
+  compact_woodhen_run(result, scenario, sample_trajectories = sample_trajectories)
+}
+
 test_that("installed Practical 2 shell contains its implemented module assets", {
   app_dir <- practical2_app_dir()
   expected <- c(
@@ -368,6 +416,48 @@ test_that("the first root Create click activates a live project", {
 
     expect_s3_class(project(), "woodhen_project")
     expect_identical(project()$title, "First click create")
+  })
+})
+
+test_that("root activates Calibrate updates and queues authoritative autosave", {
+  env <- source_practical2_app()
+
+  shiny::testServer(env$make_practical2_server(
+    calibrate_scenario_runner = practical2_calibrate_runner
+  ), {
+    session$setInputs(
+      `start-create_project` = practical2_action_button_value(0),
+      `start-resume_project` = practical2_action_button_value(0)
+    )
+    session$flushReact()
+    session$setInputs(
+      `start-project_title` = "Root Calibrate integration",
+      `start-create_project` = practical2_action_button_value(1)
+    )
+    session$flushReact()
+    before <- project()
+    requests_before <- length(pending_requests())
+
+    session$setInputs(
+      `calibrate-run_01_no_mgmt` = practical2_action_button_value(1)
+    )
+    session$flushReact()
+
+    activated <- project()
+    expect_silent(validate_woodhen_project(activated))
+    expect_identical(activated$project_id, before$project_id)
+    expect_identical(
+      vapply(activated$runs, `[[`, character(1), "scenario_id"),
+      "01_no_mgmt"
+    )
+    expect_false(identical(activated$project_fingerprint, before$project_fingerprint))
+    expect_identical(dirty_status()$state, "warning")
+    expect_identical(browser_status()$state, "pending")
+    expect_identical(length(pending_requests()), requests_before + 1L)
+    latest <- pending_requests()[[tail(names(pending_requests()), 1L)]]
+    expect_identical(latest$kind, "save")
+    expect_identical(latest$record$project_id, activated$project_id)
+    expect_identical(latest$record$project_fingerprint, activated$project_fingerprint)
   })
 })
 

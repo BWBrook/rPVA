@@ -51,7 +51,9 @@ ui <- navbarPage(
   )
 )
 
-make_practical2_server <- function() {
+make_practical2_server <- function(
+    calibrate_scenario_runner = rPVA::run_woodhen_investigation_scenario
+) {
   function(input, output, session) {
     project <- reactiveVal(NULL)
     inventory <- reactiveVal(list())
@@ -189,7 +191,8 @@ make_practical2_server <- function() {
     )
     calibrate_events <- calibrate_server(
       "calibrate",
-      project = reactive(project())
+      project = reactive(project()),
+      scenario_runner = calibrate_scenario_runner
     )
 
     observeEvent(calibrate_events$project_update(), {

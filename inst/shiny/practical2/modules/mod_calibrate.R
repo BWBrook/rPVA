@@ -25,15 +25,7 @@ calibrate_reference_case_ui <- function(ns, reference_id) {
     ),
     p(class = "reference-meaning", row$biological_meaning[[1L]]),
     p(class = "reference-settings", settings),
-    div(
-      id = ns(paste0("progress_bar_", reference_id)),
-      class = "reference-progress",
-      role = "progressbar",
-      `aria-valuemin` = "0",
-      `aria-valuemax` = "1000",
-      `aria-label` = paste(row$label[[1L]], "simulation progress"),
-      textOutput(ns(paste0("progress_", reference_id)), inline = TRUE)
-    ),
+    uiOutput(ns(paste0("progress_", reference_id))),
     uiOutput(
       ns(paste0("status_", reference_id)),
       `aria-live` = "polite",
@@ -192,6 +184,37 @@ calibrate_server <- function(
       )
     }
 
+    project_fingerprint <- reactive({
+      candidate <- project()
+      if (is.null(candidate)) "no-active-project" else candidate$project_fingerprint
+    })
+
+    reconcile_project_state <- function(candidate) {
+      progress <- setNames(lapply(reference_ids, function(reference_id) {
+        run <- completed_run(reference_id, candidate)
+        if (is.null(run)) {
+          c(completed = 0L, total = 1000L)
+        } else {
+          c(completed = as.integer(run$reps), total = as.integer(run$reps))
+        }
+      }), reference_ids)
+      statuses <- setNames(vapply(reference_ids, function(reference_id) {
+        if (is.null(completed_run(reference_id, candidate))) {
+          "Not run in this project."
+        } else {
+          "Completed reference evidence restored from this project."
+        }
+      }, character(1)), reference_ids)
+      progress_state(progress)
+      status_state(statuses)
+      progress_history(list())
+      invisible(NULL)
+    }
+
+    observeEvent(project_fingerprint(), {
+      reconcile_project_state(project())
+    }, ignoreInit = FALSE)
+
     set_reference_status <- function(reference_id, message) {
       values <- status_state()
       values[[reference_id]] <- message
@@ -307,21 +330,28 @@ calibrate_server <- function(
           ))
         })
 
-        output[[paste0("progress_", reference_id)]] <- renderText({
+        output[[paste0("progress_", reference_id)]] <- renderUI({
           state <- progress_state()[[reference_id]]
-          run <- completed_run(reference_id)
-          if (!is.null(run) && state[["completed"]] == 0L) {
-            state <- c(completed = run$reps, total = run$reps)
-          }
-          paste(format(state[["completed"]], big.mark = ","), "of",
-            format(state[["total"]], big.mark = ","), "futures completed")
+          div(
+            class = "reference-progress",
+            role = "progressbar",
+            `aria-valuemin` = "0",
+            `aria-valuemax` = as.character(state[["total"]]),
+            `aria-valuenow` = as.character(state[["completed"]]),
+            `aria-live` = "polite",
+            `aria-label` = paste(
+              rPVA::woodhen_reference_catalog()$label[
+                rPVA::woodhen_reference_catalog()$id == reference_id
+              ],
+              "simulation progress"
+            ),
+            paste(format(state[["completed"]], big.mark = ","), "of",
+              format(state[["total"]], big.mark = ","), "futures completed")
+          )
         })
 
         output[[paste0("status_", reference_id)]] <- renderUI({
           message <- status_state()[[reference_id]]
-          if (!is.null(completed_run(reference_id)) && identical(message, "Not run in this project.")) {
-            message <- "Completed reference evidence restored from this project."
-          }
           div(class = "reference-state", message)
         })
 
