@@ -122,15 +122,115 @@ woodhen_sample_trajectory_data <- function(total_trajectories, indices) {
   )
 }
 
-woodhen_validate_scenario_record <- function(scenario) {
-  required <- c(
-    "scenario_id", "family_id", "student_label", "scenario_type", "parent_id",
-    "locked_baseline_id", "spec", "seed", "spec_fingerprint",
+woodhen_scenario_record_fields <- function(scenario_type) {
+  common <- c(
+    "record_schema_version", "scenario_id", "family_id", "student_label",
+    "scenario_type", "parent_id", "locked_baseline_id", "components",
+    "changes", "temporal_profile", "spec", "seed",
+    "reference_library_version", "catalog_version", "model_version",
+    "created_at", "modified_at", "notes", "spec_fingerprint",
+    "fingerprint_algorithm", "canonicalization_version",
     "scientific_identity_fingerprint"
   )
-  if (!is.list(scenario) || length(setdiff(required, names(scenario))) > 0L) {
+  if (identical(scenario_type, "intervention")) {
+    c(common, "intervention_id")
+  } else {
+    common
+  }
+}
+
+woodhen_validate_portable_value <- function(value, path = "scenario") {
+  value_type <- typeof(value)
+  allowed_types <- c("NULL", "logical", "integer", "double", "character", "list")
+  if (!value_type %in% allowed_types) {
+    stop(
+      "`", path, "` contains a forbidden non-portable ", value_type, " value.",
+      call. = FALSE
+    )
+  }
+  if (identical(value_type, "double") &&
+      any(is.nan(value) | is.infinite(value))) {
+    stop("`", path, "` contains a forbidden non-finite number.", call. = FALSE)
+  }
+  dimensions <- dim(value)
+  if (!is.null(dimensions) && length(dimensions) > 2L) {
+    stop("`", path, "` contains a forbidden raw array.", call. = FALSE)
+  }
+  value_class <- attr(value, "class", exact = TRUE)
+  allowed_classes <- c("woodhen_investigation_scenario", "pva_spec", "list")
+  if (!is.null(value_class) && any(!value_class %in% allowed_classes)) {
+    stop(
+      "`", path, "` contains a forbidden non-portable class.",
+      call. = FALSE
+    )
+  }
+  value_attributes <- attributes(value)
+  if (!is.null(value_attributes)) {
+    allowed_attributes <- c("names", "dim", "dimnames", "class")
+    unexpected_attributes <- setdiff(names(value_attributes), allowed_attributes)
+    if (length(unexpected_attributes) > 0L) {
+      stop(
+        "`", path, "` contains forbidden attribute(s): ",
+        paste(unexpected_attributes, collapse = ", "), ".",
+        call. = FALSE
+      )
+    }
+    for (attribute_name in intersect(names(value_attributes), allowed_attributes)) {
+      woodhen_validate_portable_value(
+        value_attributes[[attribute_name]],
+        paste0(path, "<", attribute_name, ">")
+      )
+    }
+  }
+  if (is.list(value)) {
+    value_names <- names(value)
+    for (index in seq_along(value)) {
+      child_name <- if (!is.null(value_names) && nzchar(value_names[[index]])) {
+        value_names[[index]]
+      } else {
+        as.character(index)
+      }
+      woodhen_validate_portable_value(
+        value[[index]],
+        paste0(path, "$", child_name)
+      )
+    }
+  }
+  invisible(value)
+}
+
+woodhen_validate_scenario_record <- function(scenario) {
+  if (!is.list(scenario) || is.null(names(scenario)) || anyDuplicated(names(scenario))) {
     stop("`scenario` must be a complete Woodhen investigation scenario record.", call. = FALSE)
   }
+  if (!is.character(scenario$scenario_type) || length(scenario$scenario_type) != 1L ||
+      is.na(scenario$scenario_type) ||
+      !scenario$scenario_type %in% c("locked_baseline", "sensitivity", "threat", "intervention")) {
+    stop("`scenario$scenario_type` is not a supported investigation type.", call. = FALSE)
+  }
+  expected_fields <- woodhen_scenario_record_fields(scenario$scenario_type)
+  missing_fields <- setdiff(expected_fields, names(scenario))
+  unexpected_fields <- setdiff(names(scenario), expected_fields)
+  if (length(missing_fields) > 0L) {
+    stop(
+      "`scenario` is missing required field(s): ",
+      paste(missing_fields, collapse = ", "), ".",
+      call. = FALSE
+    )
+  }
+  if (length(unexpected_fields) > 0L) {
+    stop(
+      "`scenario` has unexpected field(s): ",
+      paste(unexpected_fields, collapse = ", "), ".",
+      call. = FALSE
+    )
+  }
+  if (!is.null(scenario$notes) &&
+      (!is.character(scenario$notes) || length(scenario$notes) != 1L ||
+        is.na(scenario$notes))) {
+    stop("`scenario$notes` must be NULL or one portable character value.", call. = FALSE)
+  }
+  woodhen_validate_portable_value(scenario)
   if (!identical(woodhen_spec_fingerprint(scenario$spec), scenario$spec_fingerprint)) {
     stop("`scenario$spec_fingerprint` does not match its executable specification.", call. = FALSE)
   }
@@ -148,6 +248,55 @@ woodhen_validate_scenario_record <- function(scenario) {
   invisible(scenario)
 }
 
+woodhen_result_provenance <- function(result, scenario) {
+  params <- result$params
+  if (!is.list(params) || is.null(names(params))) {
+    stop("`result$params` must contain normalized executable provenance.", call. = FALSE)
+  }
+  seed_positions <- which(names(params) == "seed")
+  if (length(seed_positions) != 1L || is.null(params[[seed_positions[[1L]]]])) {
+    stop("The stored result seed is missing or ambiguous.", call. = FALSE)
+  }
+  seed <- tryCatch(
+    woodhen_validate_seed(params[[seed_positions[[1L]]]]),
+    error = function(e) {
+      stop("The stored result seed is invalid.", call. = FALSE)
+    }
+  )
+
+  normalized <- normalize_pva_spec(scenario$spec, stasis = NULL)
+  expected_spec <- normalized$spec
+  expected_param_names <- c(names(expected_spec), "years", "reps", "stasis", "seed")
+  if (!identical(names(params), expected_param_names)) {
+    stop(
+      "The result executable provenance does not match the run_pva_core structure.",
+      call. = FALSE
+    )
+  }
+
+  mismatched <- vapply(names(expected_spec), function(field) {
+    positions <- which(names(params) == field)
+    if (length(positions) == 0L) {
+      return(TRUE)
+    }
+    any(!vapply(positions, function(position) {
+      identical(
+        woodhen_canonical_value(params[[position]]),
+        woodhen_canonical_value(expected_spec[[field]])
+      )
+    }, logical(1)))
+  }, logical(1))
+  if (any(mismatched)) {
+    stop(
+      "The result normalized executable specification does not match the scenario for field(s): ",
+      paste(names(expected_spec)[mismatched], collapse = ", "), ".",
+      call. = FALSE
+    )
+  }
+
+  list(spec = expected_spec, stasis = normalized$stasis, seed = seed)
+}
+
 #' Store compact evidence from a completed Woodhen investigation
 #'
 #' @param result A retained-trajectory result from `run_pva_core()`.
@@ -156,17 +305,30 @@ woodhen_validate_scenario_record <- function(scenario) {
 #' @return A compact, serialisable `woodhen_compact_run`.
 compact_woodhen_run <- function(result, scenario, sample_trajectories = 100L) {
   woodhen_validate_scenario_record(scenario)
+  provenance <- woodhen_result_provenance(result, scenario)
   total_trajectories <- woodhen_total_trajectories(result)
   reps <- as.integer(ncol(total_trajectories))
   horizon <- as.integer(nrow(total_trajectories) - 1L)
   if (!is.numeric(result$Nend) || length(result$Nend) != reps) {
     stop("`result$Nend` must contain one final abundance per replicate.", call. = FALSE)
   }
+  final_trajectory_abundance <- as.numeric(total_trajectories[nrow(total_trajectories), ])
+  if (!isTRUE(all.equal(
+    as.numeric(result$Nend),
+    final_trajectory_abundance,
+    tolerance = 0,
+    check.attributes = FALSE
+  ))) {
+    stop(
+      "`result$Nend` does not match the final trajectory total abundance.",
+      call. = FALSE
+    )
+  }
   if (!identical(reps, as.integer(scenario$spec$reps)) ||
       !identical(horizon, as.integer(scenario$spec$years))) {
     stop("The result replicate count and horizon must match the scenario specification.", call. = FALSE)
   }
-  seed <- woodhen_validate_seed(woodhen_or(result$params$seed, scenario$seed))
+  seed <- provenance$seed
   indices <- woodhen_sample_replicate_indices(reps, sample_trajectories)
   quasi_extinction <- summarize_quasi_extinction(
     result,
@@ -281,6 +443,14 @@ woodhen_family_compatibility_issues <- function(runs, family_id) {
   baselines <- vapply(runs, `[[`, character(1), "baseline_spec_fingerprint")
   if (length(unique(baselines)) != 1L) {
     issues <- c(issues, "baseline specification differs")
+  }
+  seeds <- vapply(runs, `[[`, integer(1), "seed")
+  if (length(unique(seeds)) != 1L) {
+    issues <- c(issues, "seed differs")
+  }
+  replicate_counts <- vapply(runs, `[[`, integer(1), "reps")
+  if (length(unique(replicate_counts)) != 1L) {
+    issues <- c(issues, "replicate count differs")
   }
   unique(issues)
 }

@@ -1,4 +1,6 @@
-synthetic_woodhen_investigation_result <- function(scenario, abundance_shift = 0) {
+synthetic_woodhen_investigation_result <- function(scenario,
+                                                   abundance_shift = 0,
+                                                   seed = scenario$seed) {
   years <- scenario$spec$years
   reps <- scenario$spec$reps
   replicate_effect <- (seq_len(reps) %% 31L) - 15L
@@ -10,6 +12,7 @@ synthetic_woodhen_investigation_result <- function(scenario, abundance_shift = 0
   traj[, 2L, ] <- total - traj[, 1L, ]
   nend <- total[years + 1L, ]
   extinct <- total == 0
+  normalized <- normalize_pva_spec(scenario$spec, stasis = NULL)
 
   list(
     Nend = nend,
@@ -23,7 +26,15 @@ synthetic_woodhen_investigation_result <- function(scenario, abundance_shift = 0
       lo95 = as.numeric(stats::quantile(nend, 0.025, names = FALSE)),
       hi95 = as.numeric(stats::quantile(nend, 0.975, names = FALSE))
     ),
-    params = c(scenario$spec, list(seed = scenario$seed)),
+    params = c(
+      normalized$spec,
+      list(
+        years = years,
+        reps = reps,
+        stasis = normalized$stasis,
+        seed = seed
+      )
+    ),
     raw = list(
       Nend = nend,
       traj = traj,
@@ -135,6 +146,120 @@ test_that("the scenario runner preserves locked ordinary controls", {
   )
 })
 
+test_that("compaction verifies executable provenance, seed, and final totals", {
+  family <- build_woodhen_sensitivity_family("K", c(350, 250), seed = 405L)
+  baseline <- family$scenarios[[1L]]
+  altered <- family$scenarios[[2L]]
+  baseline_result <- synthetic_woodhen_investigation_result(baseline)
+
+  expect_error(
+    compact_woodhen_run(baseline_result, altered),
+    "executable specification"
+  )
+
+  incomplete_provenance <- baseline_result
+  runtime_year <- tail(which(names(incomplete_provenance$params) == "years"), 1L)
+  incomplete_provenance$params <- incomplete_provenance$params[-runtime_year]
+  expect_error(
+    compact_woodhen_run(incomplete_provenance, baseline),
+    "executable provenance"
+  )
+
+  missing_seed <- baseline_result
+  missing_seed$params$seed <- NULL
+  expect_error(
+    compact_woodhen_run(missing_seed, baseline),
+    "stored result seed"
+  )
+
+  invalid_seed <- baseline_result
+  invalid_seed$params$seed <- 1.5
+  expect_error(
+    compact_woodhen_run(invalid_seed, baseline),
+    "stored result seed"
+  )
+
+  inconsistent_final <- baseline_result
+  inconsistent_final$Nend[[1L]] <- inconsistent_final$Nend[[1L]] + 1
+  expect_error(
+    compact_woodhen_run(inconsistent_final, baseline),
+    "final trajectory"
+  )
+
+  alternate_seed <- synthetic_woodhen_investigation_result(baseline, seed = 999L)
+  compact <- compact_woodhen_run(alternate_seed, baseline)
+  expect_equal(compact$seed, 999L)
+  expect_equal(compact$scenario$seed, 405L)
+})
+
+test_that("retained scenarios use a strict portable schema", {
+  scenarios <- c(
+    build_woodhen_sensitivity_family("K", c(350, 250))$scenarios,
+    build_woodhen_prospective_family(
+      "increased_cyclone_pressure",
+      list(response = list(intervention_id = "emergency_response"))
+    )$scenarios
+  )
+  for (scenario in scenarios) {
+    expect_silent(compact_woodhen_run(
+      synthetic_woodhen_investigation_result(scenario),
+      scenario,
+      sample_trajectories = 2L
+    ))
+  }
+
+  baseline <- scenarios[[1L]]
+  raw <- synthetic_woodhen_investigation_result(baseline)
+  unexpected <- baseline
+  unexpected$extra_payload <- "not part of the scenario schema"
+  expect_error(compact_woodhen_run(raw, unexpected), "unexpected.*field")
+
+  forbidden_payloads <- list(
+    closure = function() NULL,
+    environment = new.env(parent = emptyenv()),
+    external_pointer = new("externalptr"),
+    language = quote(x + 1),
+    raw_vector = as.raw(1:3),
+    raw_array = array(1, dim = c(2L, 2L, 2L))
+  )
+  rejected <- vapply(names(forbidden_payloads), function(payload_name) {
+    nonportable <- baseline
+    nonportable$notes <- forbidden_payloads[[payload_name]]
+    inherits(try(
+      compact_woodhen_run(raw, nonportable),
+      silent = TRUE
+    ), "try-error")
+  }, logical(1))
+  expect_true(
+    all(rejected),
+    info = paste("not rejected:", paste(names(rejected)[!rejected], collapse = ", "))
+  )
+})
+
+test_that("compact extinction evidence preserves exact timing and probability", {
+  baseline <- build_woodhen_sensitivity_family(
+    "K", c(350, 250), seed = 606L
+  )$scenarios[[1L]]
+  result <- synthetic_woodhen_investigation_result(baseline)
+  result$traj[3:76, , 1L] <- 0
+  result$traj[4:76, , 2L] <- 0
+  result$raw$traj <- result$traj
+  totals <- apply(result$traj, c(1L, 3L), sum)
+  result$Nend <- totals[76L, ]
+  result$raw$Nend <- result$Nend
+  result$ext_prob <- rowMeans(totals == 0)
+
+  compact <- compact_woodhen_run(result, baseline, sample_trajectories = 4L)
+  evidence <- compact$extinction_evidence
+
+  expect_equal(evidence$extinct_reps, 2L)
+  expect_equal(evidence$probability_by_horizon, 0.002)
+  expect_equal(evidence$first_extinction_year[1:3], c(2L, 3L, NA_integer_))
+  expect_equal(evidence$cumulative$probability[1:5], c(0, 0, 0.001, 0.002, 0.002))
+  expect_equal(evidence$conditional_median_year, 2.5)
+  expect_true(is.na(evidence$overall_median_year))
+})
+
 test_that("sensitivity comparison derives response and parent differences", {
   family <- build_woodhen_sensitivity_family("K", c(350, 250), seed = 81L)
   shifts <- c(0, -100, -220)
@@ -192,7 +317,16 @@ test_that("prospective comparison supports compact baseline-threat-intervention 
     "delta_extinction_probability", "delta_quasi_extinction_probability",
     "delta_final_median_abundance"
   ) %in% names(comparison$table)))
+  expect_equal(comparison$table$quasi_extinction_probability, c(0, 1, 0))
+  expect_equal(comparison$table$delta_quasi_extinction_probability, c(0, 1, -1))
   expect_s3_class(plot_woodhen_family_comparison(reloaded), "ggplot")
+
+  annotated <- reloaded
+  annotated$awkward_comparison <- TRUE
+  annotated$awkward_annotation <- "The intervention uses a different validation seed."
+  annotated_plot <- plot_woodhen_family_comparison(annotated)
+  expect_match(annotated_plot$labels$caption, "Awkward comparison")
+  expect_match(annotated_plot$labels$caption, "different validation seed")
 })
 
 test_that("family comparison refuses incompatible science unless annotated", {
@@ -235,5 +369,35 @@ test_that("family comparison refuses incompatible science unless annotated", {
   expect_error(
     compare_woodhen_run_family(wrong_baseline, family$family_id),
     "incompatible.*baseline"
+  )
+
+  mixed_seed <- runs
+  mixed_seed[[2L]] <- compact_woodhen_run(
+    synthetic_woodhen_investigation_result(
+      family$scenarios[[2L]],
+      seed = 999L
+    ),
+    family$scenarios[[2L]],
+    sample_trajectories = 5L
+  )
+  expect_error(
+    compare_woodhen_run_family(mixed_seed, family$family_id),
+    "incompatible.*seed"
+  )
+  awkward_seed <- compare_woodhen_run_family(
+    mixed_seed,
+    family$family_id,
+    allow_awkward = TRUE,
+    awkward_annotation = "A different seed is shown as a robustness check."
+  )
+  awkward_plot <- plot_woodhen_sensitivity_response(awkward_seed)
+  expect_match(awkward_plot$labels$caption, "Awkward comparison")
+  expect_match(awkward_plot$labels$caption, "different seed")
+
+  mixed_reps <- runs
+  mixed_reps[[3L]]$reps <- 999L
+  expect_error(
+    compare_woodhen_run_family(mixed_reps, family$family_id),
+    "incompatible.*replicate"
   )
 })

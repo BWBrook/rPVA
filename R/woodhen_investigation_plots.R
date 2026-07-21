@@ -320,6 +320,14 @@ validate_woodhen_plot_comparison <- function(comparison, family_type = NULL) {
   comparison
 }
 
+woodhen_comparison_caption <- function(comparison, normal_caption) {
+  if (comparison$awkward_comparison) {
+    paste0("Awkward comparison: ", comparison$awkward_annotation)
+  } else {
+    normal_caption
+  }
+}
+
 #' Plot a compact one-factor sensitivity response
 #'
 #' @param comparison A sensitivity `woodhen_run_family_comparison`.
@@ -354,7 +362,10 @@ plot_woodhen_sensitivity_response <- function(comparison) {
       ),
       x = "Ecological factor setting",
       y = "Final total abundance (median and 95% interval)",
-      caption = "Each setting differs from the locked baseline in one named factor."
+      caption = woodhen_comparison_caption(
+        comparison,
+        "Each setting differs from the locked baseline in one named factor."
+      )
     ) +
     ggplot2::theme_minimal(base_size = 11)
 }
@@ -421,11 +432,10 @@ plot_woodhen_family_comparison <- function(comparison) {
       x = NULL,
       y = NULL,
       colour = "Scenario order",
-      caption = if (comparison$awkward_comparison) {
-        paste0("Awkward comparison: ", comparison$awkward_annotation)
-      } else {
+      caption = woodhen_comparison_caption(
+        comparison,
         "Risk probabilities are proportions; final abundance shows the all-future 95% interval."
-      }
+      )
     ) +
     ggplot2::theme_minimal(base_size = 11) +
     ggplot2::theme(
