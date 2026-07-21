@@ -253,24 +253,45 @@ woodhen_validate_composed_record_names <- function(components, changes) {
   invisible(TRUE)
 }
 
+woodhen_record_scientific_fingerprint <- function(scenario) {
+  descriptor <- list(
+    scenario_type = scenario$scenario_type,
+    spec_fingerprint = scenario$spec_fingerprint,
+    components = scenario$components,
+    changes = scenario$changes
+  )
+  if (!is.null(scenario$intervention_id)) {
+    descriptor$intervention_id <- scenario$intervention_id
+  }
+  woodhen_content_fingerprint(descriptor)
+}
+
 woodhen_finalize_family_identity <- function(family_type,
                                              scientific_key,
                                              scenarios,
                                              scenario_keys = NULL) {
-  fingerprints <- vapply(scenarios, `[[`, character(1), "spec_fingerprint")
+  scientific_fingerprints <- vapply(
+    scenarios,
+    woodhen_record_scientific_fingerprint,
+    character(1)
+  )
   if (identical(family_type, "sensitivity")) {
     content <- list(
       family_type = family_type,
       scientific_key = scientific_key,
-      altered_specs = sort(fingerprints[-1L])
+      altered_scenarios = sort(scientific_fingerprints[-1L])
     )
   } else {
-    managed <- if (length(fingerprints) > 2L) sort(fingerprints[-c(1L, 2L)]) else character()
+    managed <- if (length(scientific_fingerprints) > 2L) {
+      sort(scientific_fingerprints[-c(1L, 2L)])
+    } else {
+      character()
+    }
     content <- list(
       family_type = family_type,
       scientific_key = scientific_key,
-      threat_spec = fingerprints[[2L]],
-      intervention_specs = managed
+      threat_scenario = scientific_fingerprints[[2L]],
+      intervention_scenarios = managed
     )
   }
   suffix <- substr(woodhen_content_fingerprint(content), 1L, 12L)
@@ -280,23 +301,26 @@ woodhen_finalize_family_identity <- function(family_type,
   scenarios[[1L]]$scenario_id <- paste0(family_id, "__baseline")
   scenarios[[1L]]$parent_id <- NA_character_
   scenarios[[1L]]$locked_baseline_id <- scenarios[[1L]]$scenario_id
+  scenarios[[1L]]$scientific_identity_fingerprint <- scientific_fingerprints[[1L]]
 
   if (identical(family_type, "sensitivity")) {
     for (i in seq_along(scenarios)[-1L]) {
       scenarios[[i]]$family_id <- family_id
       scenarios[[i]]$scenario_id <- paste0(
-        family_id, "__setting_", substr(scenarios[[i]]$spec_fingerprint, 1L, 12L)
+        family_id, "__setting_", substr(scientific_fingerprints[[i]], 1L, 12L)
       )
       scenarios[[i]]$parent_id <- scenarios[[1L]]$scenario_id
       scenarios[[i]]$locked_baseline_id <- scenarios[[1L]]$scenario_id
+      scenarios[[i]]$scientific_identity_fingerprint <- scientific_fingerprints[[i]]
     }
   } else {
     scenarios[[2L]]$family_id <- family_id
     scenarios[[2L]]$scenario_id <- paste0(
-      family_id, "__threat_", substr(scenarios[[2L]]$spec_fingerprint, 1L, 12L)
+      family_id, "__threat_", substr(scientific_fingerprints[[2L]], 1L, 12L)
     )
     scenarios[[2L]]$parent_id <- scenarios[[1L]]$scenario_id
     scenarios[[2L]]$locked_baseline_id <- scenarios[[1L]]$scenario_id
+    scenarios[[2L]]$scientific_identity_fingerprint <- scientific_fingerprints[[2L]]
     if (length(scenarios) > 2L) {
       stopifnot(length(scenario_keys) == length(scenarios) - 2L)
       for (i in seq.int(3L, length(scenarios))) {
@@ -304,10 +328,11 @@ woodhen_finalize_family_identity <- function(family_type,
         scenarios[[i]]$family_id <- family_id
         scenarios[[i]]$scenario_id <- paste0(
           family_id, "__intervention_", key, "_",
-          substr(scenarios[[i]]$spec_fingerprint, 1L, 12L)
+          substr(scientific_fingerprints[[i]], 1L, 12L)
         )
         scenarios[[i]]$parent_id <- scenarios[[2L]]$scenario_id
         scenarios[[i]]$locked_baseline_id <- scenarios[[1L]]$scenario_id
+        scenarios[[i]]$scientific_identity_fingerprint <- scientific_fingerprints[[i]]
       }
     }
   }
@@ -1067,12 +1092,18 @@ woodhen_build_intervention_scenario <- function(config,
 
   inherited_components <- threat_scenario$components
   names(inherited_components) <- paste0("threat__", names(inherited_components))
+  for (i in seq_along(inherited_components)) {
+    inherited_components[[i]]$component_id <- names(inherited_components)[[i]]
+  }
   inherited_changes <- threat_scenario$changes
   names(inherited_changes) <- paste0("threat__", names(inherited_changes))
+  for (i in seq_along(inherited_changes)) {
+    inherited_changes[[i]]$component_id <- names(inherited_changes)[[i]]
+  }
   record_components <- c(inherited_components, components)
   record_changes <- c(inherited_changes, changes)
 
-  woodhen_new_record(
+  record <- woodhen_new_record(
     spec = spec,
     scenario_id = paste0(family_id, "_", alternative_id),
     family_id = family_id,
@@ -1087,6 +1118,8 @@ woodhen_build_intervention_scenario <- function(config,
     notes = normalized$config$notes,
     locked = locked
   )
+  record$intervention_id <- intervention_id
+  record
 }
 
 #' Build a Woodhen baseline-threat-intervention family

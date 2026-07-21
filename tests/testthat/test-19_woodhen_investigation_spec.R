@@ -195,6 +195,45 @@ test_that("scientific content gives stable unique family and scenario identities
   )
 })
 
+test_that("same-final-spec interventions retain distinct biological identities", {
+  biosecurity <- build_woodhen_prospective_family(
+    "predator_reinvasion",
+    list(management = list(
+      intervention_id = "biosecurity_eradication", intensity = "moderate"
+    ))
+  )
+  targeted <- build_woodhen_prospective_family(
+    "predator_reinvasion",
+    list(management = list(
+      intervention_id = "targeted_vital_rate_improvement", intensity = "moderate"
+    ))
+  )
+
+  expect_equal(biosecurity$scenarios[[3]]$spec, targeted$scenarios[[3]]$spec)
+  expect_equal(
+    biosecurity$scenarios[[3]]$spec_fingerprint,
+    targeted$scenarios[[3]]$spec_fingerprint
+  )
+  expect_false(identical(biosecurity$family_id, targeted$family_id))
+  expect_false(identical(
+    biosecurity$scenarios[[3]]$scenario_id,
+    targeted$scenarios[[3]]$scenario_id
+  ))
+  expect_equal(biosecurity$scenarios[[3]]$intervention_id, "biosecurity_eradication")
+  expect_equal(targeted$scenarios[[3]]$intervention_id, "targeted_vital_rate_improvement")
+
+  for (scenario in list(biosecurity$scenarios[[3]], targeted$scenarios[[3]])) {
+    expect_equal(
+      names(scenario$components),
+      unname(vapply(scenario$components, `[[`, character(1), "component_id"))
+    )
+    expect_equal(
+      names(scenario$changes),
+      unname(vapply(scenario$changes, `[[`, character(1), "component_id"))
+    )
+  }
+})
+
 test_that("all named threat and intervention families materialise explicit mappings", {
   threat_catalog <- woodhen_threat_catalog()
   for (threat_id in threat_catalog$id) {
