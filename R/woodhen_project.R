@@ -81,6 +81,30 @@ woodhen_stop_unsupported_version <- function(discovered, field, supported) {
   ))
 }
 
+woodhen_project_validate_version <- function(value, field, supported) {
+  if (!is.character(value) || length(value) != 1L || is.na(value) ||
+      !identical(value, supported)) {
+    discovered <- if (length(value) == 0L) {
+      "<missing>"
+    } else {
+      paste(as.character(value), collapse = ",")
+    }
+    woodhen_stop_unsupported_version(discovered, field, supported)
+  }
+  invisible(value)
+}
+
+woodhen_project_validate_scenario_record <- function(scenario) {
+  if (is.list(scenario) && "record_schema_version" %in% names(scenario)) {
+    woodhen_project_validate_version(
+      scenario$record_schema_version,
+      "record_schema_version",
+      "woodhen-scenario-record-v1"
+    )
+  }
+  woodhen_validate_scenario_record(scenario)
+}
+
 woodhen_project_fields <- function() {
   c(
     "project_schema_version", "project_id", "title", "owner_label",
@@ -254,7 +278,35 @@ woodhen_project_validate_probability_evidence <- function(value,
     0, horizon,
     allow_na = TRUE
   )
-  invisible(value)
+  observed <- first[!is.na(first)]
+  expected_count <- as.integer(length(observed))
+  expected_cumulative <- vapply(0:horizon, function(year) {
+    mean(!is.na(first) & first <= year)
+  }, numeric(1))
+  expected_probability <- as.numeric(tail(expected_cumulative, 1L))
+  expected_conditional <- if (length(observed)) {
+    as.numeric(stats::median(observed))
+  } else {
+    NA_real_
+  }
+  expected_overall <- if (expected_probability >= 0.5) {
+    as.numeric(which(expected_cumulative >= 0.5)[[1L]] - 1L)
+  } else {
+    NA_real_
+  }
+  if (!identical(value[[crossed_field]], expected_count) ||
+      !identical(value$probability_by_horizon, expected_probability) ||
+      !identical(as.numeric(value$cumulative$probability), expected_cumulative) ||
+      !identical(value$conditional_median_year, expected_conditional) ||
+      !identical(value$overall_median_year, expected_overall)) {
+    stop("`", path, "` does not match its retained first-passage evidence.", call. = FALSE)
+  }
+  invisible(list(
+    first = first,
+    crossed = !is.na(first),
+    count = expected_count,
+    probability = expected_probability
+  ))
 }
 
 woodhen_project_run_fields <- function() {
@@ -274,15 +326,13 @@ woodhen_project_validate_run <- function(run) {
     stop("Every `runs` entry must inherit from `woodhen_compact_run`.", call. = FALSE)
   }
   woodhen_require_exact_fields(run, woodhen_project_run_fields(), "run")
-  if (!identical(run$run_schema_version, "woodhen-compact-run-v1")) {
-    woodhen_stop_unsupported_version(
-      as.character(run$run_schema_version),
-      "run_schema_version",
-      "woodhen-compact-run-v1"
-    )
-  }
+  woodhen_project_validate_version(
+    run$run_schema_version,
+    "run_schema_version",
+    "woodhen-compact-run-v1"
+  )
   woodhen_project_validate_id(run$run_id, "^woodhen_run_[0-9a-f]{16}$", "run$run_id")
-  woodhen_validate_scenario_record(run$scenario)
+  woodhen_project_validate_scenario_record(run$scenario)
   woodhen_project_integer(run$seed, "run$seed", 0L, .Machine$integer.max)
   woodhen_project_integer(run$reps, "run$reps", 1L, 1000000L)
   woodhen_project_integer(run$horizon, "run$horizon", 1L, 10000L)
@@ -398,6 +448,16 @@ woodhen_project_validate_run <- function(run) {
       }, logical(1)))) {
     stop("`run$annual_quantiles` is not horizon-matched.", call. = FALSE)
   }
+  annual_values <- as.matrix(run$annual_quantiles[-1L])
+  if (any(apply(annual_values, 1L, function(value) any(diff(value) < 0)))) {
+    stop("`run$annual_quantiles` has out-of-order quantiles.", call. = FALSE)
+  }
+  expected_final_row <- as.numeric(unlist(run$final_abundance[c(
+    "q025", "q25", "median", "q75", "q975"
+  )]))
+  if (!identical(as.numeric(annual_values[nrow(annual_values), ]), expected_final_row)) {
+    stop("The final `run$annual_quantiles` row does not match final abundance.", call. = FALSE)
+  }
 
   indices <- run$sampled_replicate_indices
   if (!is.integer(indices) || length(indices) < 1L || anyNA(indices) ||
@@ -410,14 +470,36 @@ woodhen_project_validate_run <- function(run) {
     "run$trajectory_sample"
   )
   expected_rows <- length(indices) * (run$horizon + 1L)
+  sample_keys <- paste(
+    run$trajectory_sample$replicate_index,
+    run$trajectory_sample$year,
+    sep = ":"
+  )
+  expected_keys <- paste(
+    rep(indices, each = run$horizon + 1L),
+    rep(0:run$horizon, times = length(indices)),
+    sep = ":"
+  )
   if (nrow(run$trajectory_sample) != expected_rows ||
       !is.integer(run$trajectory_sample$year) ||
       !is.integer(run$trajectory_sample$replicate_index) ||
       !is.double(run$trajectory_sample$abundance) ||
       any(!is.finite(run$trajectory_sample$abundance)) ||
       any(run$trajectory_sample$abundance < 0) ||
-      !identical(sort(unique(run$trajectory_sample$replicate_index)), indices)) {
+      !identical(sort(unique(run$trajectory_sample$replicate_index)), indices) ||
+      anyDuplicated(sample_keys) || !setequal(sample_keys, expected_keys)) {
     stop("`run$trajectory_sample` is not sample-matched.", call. = FALSE)
+  }
+  horizon_sample <- run$trajectory_sample[
+    run$trajectory_sample$year == run$horizon,
+    c("replicate_index", "abundance")
+  ]
+  horizon_sample <- horizon_sample[match(indices, horizon_sample$replicate_index), ]
+  if (!identical(
+    as.numeric(horizon_sample$abundance),
+    as.numeric(run$final_abundance$values[indices])
+  )) {
+    stop("The sampled horizon trajectory does not match final abundance.", call. = FALSE)
   }
 
   woodhen_project_validate_probability_evidence(
@@ -474,15 +556,24 @@ woodhen_project_validate_run <- function(run) {
       any(!is.finite(minimum_pairs)) || any(minimum_pairs < 0)) {
     stop("`run$quasi_extinction_50_pairs$minimum_breeding_pairs` is invalid.", call. = FALSE)
   }
+  minimum_crossed <- minimum_pairs < run$quasi_extinction_50_pairs$threshold_pairs
+  first_crossed <- !is.na(run$quasi_extinction_50_pairs$first_crossing_year)
+  if (!identical(minimum_crossed, first_crossed) ||
+      !identical(as.integer(sum(minimum_crossed)),
+        run$quasi_extinction_50_pairs$crossed_reps)) {
+    stop("Quasi-extinction minima do not match the retained first-passage evidence.", call. = FALSE)
+  }
 
   woodhen_require_exact_fields(
     run$difference_from_parent,
     c("parent_id", "status", "specification_changes", "outcomes"),
     "run$difference_from_parent"
   )
+  status <- run$difference_from_parent$status
   if (!identical(run$difference_from_parent$parent_id, run$parent_id) ||
       !identical(run$difference_from_parent$specification_changes, run$scenario$changes) ||
-      !run$difference_from_parent$status %in% c("not_applicable", "pending_comparison", "computed")) {
+      !is.character(status) || length(status) != 1L || is.na(status) ||
+      !status %in% c("not_applicable", "pending_comparison", "computed")) {
     stop("`run$difference_from_parent` is inconsistent.", call. = FALSE)
   }
   outcomes <- run$difference_from_parent$outcomes
@@ -497,6 +588,20 @@ woodhen_project_validate_run <- function(run) {
     }, logical(1)))) {
       stop("`run$difference_from_parent$outcomes` must contain finite scalars.", call. = FALSE)
     }
+  }
+  if (is.na(run$parent_id)) {
+    zero_outcomes <- is.null(outcomes) || all(vapply(outcomes, function(value) {
+      identical(as.numeric(value), 0)
+    }, logical(1)))
+    if (!identical(status, "not_applicable") || !zero_outcomes) {
+      stop("A parentless run must have a not-applicable zero comparison.", call. = FALSE)
+    }
+  } else if (identical(status, "pending_comparison")) {
+    if (!is.null(outcomes)) {
+      stop("A pending parent comparison cannot contain outcomes.", call. = FALSE)
+    }
+  } else if (!identical(status, "computed") || is.null(outcomes)) {
+    stop("A child run must have pending or computed parent comparison evidence.", call. = FALSE)
   }
 
   woodhen_require_exact_fields(
@@ -522,6 +627,45 @@ woodhen_project_validate_run <- function(run) {
   invisible(run)
 }
 
+woodhen_project_validate_parent_differences <- function(runs) {
+  for (run in runs) {
+    difference <- run$difference_from_parent
+    if (is.na(run$parent_id) || !identical(difference$status, "computed")) {
+      next
+    }
+    parent_matches <- vapply(runs, function(parent) {
+      identical(parent$scenario_id, run$parent_id) &&
+        identical(parent$family_id, run$family_id) &&
+        identical(parent$seed, run$seed) &&
+        identical(parent$reps, run$reps) &&
+        identical(parent$horizon, run$horizon) &&
+        identical(parent$baseline_spec_fingerprint, run$baseline_spec_fingerprint)
+    }, logical(1))
+    parents <- runs[parent_matches]
+    if (length(parents) == 0L) {
+      next
+    }
+    if (length(parents) != 1L) {
+      stop("A computed parent comparison has ambiguous parent evidence.", call. = FALSE)
+    }
+    parent <- parents[[1L]]
+    expected <- list(
+      extinction_probability =
+        run$extinction_evidence$probability_by_horizon -
+        parent$extinction_evidence$probability_by_horizon,
+      quasi_extinction_probability =
+        run$quasi_extinction_50_pairs$probability_by_horizon -
+        parent$quasi_extinction_50_pairs$probability_by_horizon,
+      final_median_abundance =
+        run$final_abundance$median - parent$final_abundance$median
+    )
+    if (!identical(difference$outcomes, expected)) {
+      stop("Computed difference-from-parent outcomes do not match retained evidence.", call. = FALSE)
+    }
+  }
+  invisible(runs)
+}
+
 woodhen_project_validate_scenario_version <- function(value, scenario_ids, versions, index) {
   path <- paste0("project$scenario_versions[[", index, "]]")
   woodhen_require_exact_fields(
@@ -532,13 +676,11 @@ woodhen_project_validate_scenario_version <- function(value, scenario_ids, versi
     ),
     path
   )
-  if (!identical(value$scenario_version_schema, "woodhen-project-scenario-version-v1")) {
-    woodhen_stop_unsupported_version(
-      as.character(value$scenario_version_schema),
-      "scenario_version_schema",
-      "woodhen-project-scenario-version-v1"
-    )
-  }
+  woodhen_project_validate_version(
+    value$scenario_version_schema,
+    "scenario_version_schema",
+    "woodhen-project-scenario-version-v1"
+  )
   if (!identical(value$scenario_id, scenario_ids[[index]])) {
     stop("Scenario-version records must align one-to-one with scenarios.", call. = FALSE)
   }
@@ -571,13 +713,11 @@ woodhen_project_validate_observation <- function(value, run_ids) {
     ),
     "observation"
   )
-  if (!identical(value$observation_schema_version, "woodhen-observation-v1")) {
-    woodhen_stop_unsupported_version(
-      as.character(value$observation_schema_version),
-      "observation_schema_version",
-      "woodhen-observation-v1"
-    )
-  }
+  woodhen_project_validate_version(
+    value$observation_schema_version,
+    "observation_schema_version",
+    "woodhen-observation-v1"
+  )
   woodhen_project_validate_id(
     value$observation_id,
     "^woodhen_observation_[0-9a-f]{16}$",
@@ -612,10 +752,16 @@ woodhen_project_validate_provenance <- function(provenance) {
       ),
       "project$provenance$imports event"
     )
-    if (!identical(event$event_schema_version, "woodhen-import-event-v1") ||
-        !identical(event$package_format_version, woodhen_project_package_format_version())) {
-      stop("Unsupported import provenance event.", call. = FALSE)
-    }
+    woodhen_project_validate_version(
+      event$event_schema_version,
+      "event_schema_version",
+      "woodhen-import-event-v1"
+    )
+    woodhen_project_validate_version(
+      event$package_format_version,
+      "package_format_version",
+      woodhen_project_package_format_version()
+    )
     woodhen_project_time(event$imported_at, "imported_at")
     woodhen_project_validate_id(event$source_project_id, "^woodhen_project_[0-9a-f]{16}$", "source_project_id")
     woodhen_project_validate_id(event$source_project_fingerprint, "^[0-9a-f]{64}$", "source_project_fingerprint")
@@ -626,10 +772,16 @@ woodhen_project_validate_provenance <- function(provenance) {
       c("event_schema_version", "exported_at", "package_format_version", "app_version"),
       "project$provenance$exports event"
     )
-    if (!identical(event$event_schema_version, "woodhen-export-event-v1") ||
-        !identical(event$package_format_version, woodhen_project_package_format_version())) {
-      stop("Unsupported export provenance event.", call. = FALSE)
-    }
+    woodhen_project_validate_version(
+      event$event_schema_version,
+      "event_schema_version",
+      "woodhen-export-event-v1"
+    )
+    woodhen_project_validate_version(
+      event$package_format_version,
+      "package_format_version",
+      woodhen_project_package_format_version()
+    )
     woodhen_project_time(event$exported_at, "exported_at")
     woodhen_project_scalar_text(event$app_version, "app_version")
   }
@@ -646,15 +798,11 @@ validate_woodhen_project <- function(project) {
     stop("`project` must inherit from `woodhen_project`.", call. = FALSE)
   }
   woodhen_require_exact_fields(project, woodhen_project_fields(), "project")
-  if (!is.character(project$project_schema_version) ||
-      length(project$project_schema_version) != 1L ||
-      !identical(project$project_schema_version, woodhen_project_schema_version())) {
-    woodhen_stop_unsupported_version(
-      as.character(project$project_schema_version),
-      "project_schema_version",
-      woodhen_project_schema_version()
-    )
-  }
+  woodhen_project_validate_version(
+    project$project_schema_version,
+    "project_schema_version",
+    woodhen_project_schema_version()
+  )
   woodhen_project_validate_id(project$project_id, "^woodhen_project_[0-9a-f]{16}$", "project$project_id")
   woodhen_project_scalar_text(project$title, "project$title", optional = TRUE)
   woodhen_project_scalar_text(project$owner_label, "project$owner_label", optional = TRUE)
@@ -681,7 +829,7 @@ validate_woodhen_project <- function(project) {
     stop("Scenarios and scenario-version records must align one-to-one.", call. = FALSE)
   }
 
-  lapply(project$scenarios, woodhen_validate_scenario_record)
+  lapply(project$scenarios, woodhen_project_validate_scenario_record)
   scenario_ids <- vapply(project$scenarios, `[[`, character(1), "scenario_id")
   if (anyDuplicated(scenario_ids)) {
     stop("Project scenario IDs must be unique.", call. = FALSE)
@@ -723,6 +871,7 @@ validate_woodhen_project <- function(project) {
       stop("Every run must retain the matching immutable project scenario.", call. = FALSE)
     }
   }
+  woodhen_project_validate_parent_differences(project$runs)
 
   lapply(project$observations, woodhen_project_validate_observation, run_ids = run_ids)
   observation_ids <- vapply(project$observations, `[[`, character(1), "observation_id")
@@ -759,7 +908,7 @@ add_woodhen_scenario <- function(project,
                                  now = Sys.time(),
                                  supersedes_scenario_id = NULL) {
   validate_woodhen_project(project)
-  woodhen_validate_scenario_record(scenario)
+  woodhen_project_validate_scenario_record(scenario)
   timestamp <- woodhen_project_time(now, "now")
   if (!identical(scenario$reference_library_version, project$reference_library_version) ||
       !identical(scenario$catalog_version, project$catalog_version) ||
@@ -1555,27 +1704,16 @@ woodhen_validate_manifest <- function(manifest) {
     "project_json_sha256", "digest_algorithm"
   )
   woodhen_typed_require_object(manifest, fields, "manifest.json")
-  if (!is.character(manifest$package_format_version) ||
-      length(manifest$package_format_version) != 1L ||
-      !identical(
-        manifest$package_format_version,
-        woodhen_project_package_format_version()
-      )) {
-    woodhen_stop_unsupported_version(
-      as.character(manifest$package_format_version),
-      "package_format_version",
-      woodhen_project_package_format_version()
-    )
-  }
-  if (!is.character(manifest$project_schema_version) ||
-      length(manifest$project_schema_version) != 1L ||
-      !identical(manifest$project_schema_version, woodhen_project_schema_version())) {
-    woodhen_stop_unsupported_version(
-      as.character(manifest$project_schema_version),
-      "project_schema_version",
-      woodhen_project_schema_version()
-    )
-  }
+  woodhen_project_validate_version(
+    manifest$package_format_version,
+    "package_format_version",
+    woodhen_project_package_format_version()
+  )
+  woodhen_project_validate_version(
+    manifest$project_schema_version,
+    "project_schema_version",
+    woodhen_project_schema_version()
+  )
   woodhen_project_validate_id(manifest$project_id, "^woodhen_project_[0-9a-f]{16}$", "manifest$project_id")
   woodhen_project_validate_id(manifest$project_fingerprint, "^[0-9a-f]{64}$", "manifest$project_fingerprint")
   woodhen_project_time(manifest$exported_at, "manifest$exported_at")
@@ -1607,20 +1745,16 @@ woodhen_validate_project_document <- function(document) {
     ),
     "project.json"
   )
-  if (!identical(document$format_version, "woodhen-project-json-v1")) {
-    woodhen_stop_unsupported_version(
-      as.character(document$format_version),
-      "format_version",
-      "woodhen-project-json-v1"
-    )
-  }
-  if (!identical(document$project_schema_version, woodhen_project_schema_version())) {
-    woodhen_stop_unsupported_version(
-      as.character(document$project_schema_version),
-      "project_schema_version",
-      woodhen_project_schema_version()
-    )
-  }
+  woodhen_project_validate_version(
+    document$format_version,
+    "format_version",
+    "woodhen-project-json-v1"
+  )
+  woodhen_project_validate_version(
+    document$project_schema_version,
+    "project_schema_version",
+    woodhen_project_schema_version()
+  )
   woodhen_project_validate_id(document$project_id, "^woodhen_project_[0-9a-f]{16}$", "project.json$project_id")
   woodhen_project_validate_id(document$project_fingerprint, "^[0-9a-f]{64}$", "project.json$project_fingerprint")
   invisible(document)

@@ -363,6 +363,35 @@ project_test_mutate_document <- function(bytes, mutate_project) {
   woodhen_json_bytes(document)
 }
 
+project_test_repack_resigned <- function(valid_archive, output, mutate_project) {
+  members <- project_test_extract_members(valid_archive)
+  document <- woodhen_json_parse(members$project, "project.json")
+  project <- woodhen_typed_decode(document$payload, "project.json$payload")
+  project <- mutate_project(project)
+  project$project_fingerprint <- woodhen_project_fingerprint(project)
+  document$project_schema_version <- project$project_schema_version
+  document$project_id <- project$project_id
+  document$project_fingerprint <- project$project_fingerprint
+  document$payload <- woodhen_typed_encode(project)
+  project_bytes <- woodhen_json_bytes(document)
+  manifest <- woodhen_json_parse(members$manifest, "manifest.json")
+  manifest$project_schema_version <- project$project_schema_version
+  manifest$project_id <- project$project_id
+  manifest$project_fingerprint <- project$project_fingerprint
+  manifest$project_json_sha256 <- digest::digest(
+    project_bytes,
+    algo = "sha256",
+    serialize = FALSE
+  )
+  project_test_write_archive(
+    list(
+      manifest.json = woodhen_json_bytes(manifest),
+      project.json = project_bytes
+    ),
+    output
+  )
+}
+
 test_that("typed JSON preserves non-trivial R semantics deterministically", {
   value <- list(
     integer = c(1L, NA_integer_, 3L),
@@ -772,4 +801,310 @@ test_that("unsupported package versions raise structured conditions", {
   )
   expect_equal(condition$discovered_version, "woodhen-project-package-v999")
   expect_equal(condition$version_field, "package_format_version")
+
+  manifest_schema <- tempfile(fileext = ".zip")
+  project_test_repack(valid, manifest_schema, mutate_manifest = function(manifest) {
+    manifest$project_schema_version <- "woodhen-project-v999"
+    manifest
+  })
+  condition <- expect_error(
+    read_woodhen_project_package(manifest_schema),
+    class = "woodhen_unsupported_version"
+  )
+  expect_equal(condition$discovered_version, "woodhen-project-v999")
+  expect_equal(condition$version_field, "project_schema_version")
+
+  for (field in c("format_version", "project_schema_version")) {
+    document_version <- tempfile(fileext = ".zip")
+    discovered <- if (identical(field, "format_version")) {
+      "woodhen-project-json-v999"
+    } else {
+      "woodhen-project-v999"
+    }
+    project_test_repack(valid, document_version, mutate_project = function(bytes) {
+      document <- woodhen_json_parse(bytes)
+      document[[field]] <- discovered
+      woodhen_json_bytes(document)
+    })
+    condition <- expect_error(
+      read_woodhen_project_package(document_version),
+      class = "woodhen_unsupported_version",
+      info = field
+    )
+    expect_equal(condition$discovered_version, discovered, info = field)
+    expect_equal(condition$version_field, field, info = field)
+  }
+})
+
+test_that("portable project API is exported from the source namespace", {
+  required <- c(
+    "new_woodhen_project", "validate_woodhen_project", "add_woodhen_scenario",
+    "add_woodhen_run", "add_woodhen_observation", "select_woodhen_evidence",
+    "woodhen_project_fingerprint", "write_woodhen_project_package",
+    "read_woodhen_project_package"
+  )
+  expect_setequal(intersect(getNamespaceExports("rPVA"), required), required)
+})
+
+test_that("resigned portable packages reject inconsistent compact evidence", {
+  project <- project_test_nontrivial_project()
+  valid <- tempfile(fileext = ".zip")
+  write_woodhen_project_package(project, valid)
+
+  attacks <- list(
+    extinction_count = function(project) {
+      run <- project$runs[[1L]]
+      run$extinction_evidence$extinct_reps <- 1L
+      run$summary$extinct_reps <- 1L
+      run$summary$surviving_reps <- run$reps - 1L
+      project$runs[[1L]] <- run
+      project
+    },
+    extinction_probability = function(project) {
+      project$runs[[1L]]$extinction_evidence$probability_by_horizon <- 0.1
+      project$runs[[1L]]$extinction_evidence$cumulative$probability[] <- 0.1
+      project$runs[[1L]]$summary$PE <- 0.1
+      project
+    },
+    extinction_cumulative = function(project) {
+      run <- project$runs[[1L]]
+      midpoint <- as.integer(run$horizon %/% 2L)
+      run$extinction_evidence$cumulative$probability[
+        run$extinction_evidence$cumulative$year >= midpoint
+      ] <- 0.1
+      run$extinction_evidence$probability_by_horizon <- 0.1
+      run$summary$PE <- 0.1
+      project$runs[[1L]] <- run
+      project
+    },
+    extinction_conditional_median = function(project) {
+      project$runs[[1L]]$extinction_evidence$conditional_median_year <- 0
+      project
+    },
+    extinction_overall_median = function(project) {
+      project$runs[[1L]]$extinction_evidence$overall_median_year <- 0
+      project
+    },
+    extinction_first_event = function(project) {
+      project$runs[[1L]]$extinction_evidence$first_extinction_year[[1L]] <- 1L
+      project
+    },
+    summary_quantile = function(project) {
+      project$runs[[1L]]$summary$Nmed <- project$runs[[1L]]$summary$Nmed + 1
+      project
+    },
+    annual_quantile_order = function(project) {
+      run <- project$runs[[1L]]
+      run$annual_quantiles$q025[[1L]] <- run$annual_quantiles$q975[[1L]] + 1
+      project$runs[[1L]] <- run
+      project
+    },
+    annual_final_quantile = function(project) {
+      run <- project$runs[[1L]]
+      final_row <- nrow(run$annual_quantiles)
+      run$annual_quantiles$q025[[final_row]] <-
+        run$annual_quantiles$q025[[final_row]] + 0.25
+      project$runs[[1L]] <- run
+      project
+    },
+    trajectory_cartesian_product = function(project) {
+      run <- project$runs[[1L]]
+      first <- run$sampled_replicate_indices[[1L]]
+      second <- run$sampled_replicate_indices[[2L]]
+      row <- which(
+        run$trajectory_sample$year == 0L &
+          run$trajectory_sample$replicate_index == first
+      )[[1L]]
+      run$trajectory_sample$replicate_index[[row]] <- second
+      project$runs[[1L]] <- run
+      project
+    },
+    trajectory_horizon_abundance = function(project) {
+      run <- project$runs[[1L]]
+      sampled <- run$sampled_replicate_indices[[1L]]
+      row <- which(
+        run$trajectory_sample$year == run$horizon &
+          run$trajectory_sample$replicate_index == sampled
+      )[[1L]]
+      run$trajectory_sample$abundance[[row]] <-
+        run$trajectory_sample$abundance[[row]] + 1
+      project$runs[[1L]] <- run
+      project
+    },
+    quasi_count = function(project) {
+      project$runs[[1L]]$quasi_extinction_50_pairs$crossed_reps <- 1L
+      project
+    },
+    quasi_probability = function(project) {
+      project$runs[[1L]]$quasi_extinction_50_pairs$probability_by_horizon <- 0.1
+      project$runs[[1L]]$quasi_extinction_50_pairs$cumulative$probability[] <- 0.1
+      project
+    },
+    quasi_cumulative = function(project) {
+      run <- project$runs[[1L]]
+      midpoint <- as.integer(run$horizon %/% 2L)
+      run$quasi_extinction_50_pairs$cumulative$probability[
+        run$quasi_extinction_50_pairs$cumulative$year >= midpoint
+      ] <- 0.1
+      run$quasi_extinction_50_pairs$probability_by_horizon <- 0.1
+      project$runs[[1L]] <- run
+      project
+    },
+    quasi_conditional_median = function(project) {
+      project$runs[[1L]]$quasi_extinction_50_pairs$conditional_median_year <- 0
+      project
+    },
+    quasi_overall_median = function(project) {
+      project$runs[[1L]]$quasi_extinction_50_pairs$overall_median_year <- 0
+      project
+    },
+    quasi_first_event = function(project) {
+      project$runs[[1L]]$quasi_extinction_50_pairs$first_crossing_year[[1L]] <- 1L
+      project
+    },
+    quasi_minimum = function(project) {
+      project$runs[[1L]]$quasi_extinction_50_pairs$minimum_breeding_pairs[[1L]] <- 0
+      project
+    },
+    parentless_status = function(project) {
+      project$runs[[1L]]$difference_from_parent$status <- "pending_comparison"
+      project
+    },
+    pending_outcomes = function(project) {
+      project$runs[[2L]]$difference_from_parent$outcomes <- list(
+        extinction_probability = 0,
+        quasi_extinction_probability = 0,
+        final_median_abundance = 0
+      )
+      project
+    },
+    computed_parent_delta = function(project) {
+      project$runs[[2L]]$difference_from_parent$status <- "computed"
+      project$runs[[2L]]$difference_from_parent$outcomes <- list(
+        extinction_probability = 0,
+        quasi_extinction_probability = 0,
+        final_median_abundance = 0
+      )
+      project
+    }
+  )
+
+  for (name in names(attacks)) {
+    hostile <- tempfile(pattern = paste0("woodhen-", name, "-"), fileext = ".zip")
+    project_test_repack_resigned(valid, hostile, attacks[[name]])
+    expect_error(
+      read_woodhen_project_package(hostile),
+      "evidence|summary|quantile|trajectory|quasi|difference|parent",
+      info = name
+    )
+  }
+})
+
+test_that("valid parent comparison states remain portable", {
+  family <- build_woodhen_sensitivity_family("K", c(350, 250), seed = 913L)
+  baseline <- project_test_run(family$scenarios[[1L]])
+  child <- project_test_run(family$scenarios[[2L]], abundance_shift = -80)
+  compared <- compare_woodhen_run_family(list(baseline, child), family$family_id)$runs
+
+  baseline_zero <- compared[[1L]]
+  expect_silent(woodhen_project_validate_run(baseline_zero))
+
+  child_only <- add_woodhen_scenario(new_woodhen_project(), family$scenarios[[1L]])
+  child_only <- add_woodhen_scenario(child_only, family$scenarios[[2L]])
+  expect_silent(add_woodhen_run(child_only, compared[[2L]]))
+})
+
+test_that("nested portable versions raise structured conditions", {
+  project <- project_test_nontrivial_project()
+  first <- tempfile(fileext = ".zip")
+  write_woodhen_project_package(project, first)
+  imported <- read_woodhen_project_package(first)
+  valid <- tempfile(fileext = ".zip")
+  write_woodhen_project_package(imported, valid)
+
+  cases <- list(
+    scenario_record = list(
+      field = "record_schema_version", supported = "woodhen-scenario-record-v1",
+      mutate = function(project) {
+        project$scenarios[[1L]]$record_schema_version <- "woodhen-scenario-record-v999"
+        project
+      }
+    ),
+    scenario_version = list(
+      field = "scenario_version_schema", supported = "woodhen-project-scenario-version-v1",
+      mutate = function(project) {
+        project$scenario_versions[[1L]]$scenario_version_schema <-
+          "woodhen-project-scenario-version-v999"
+        project
+      }
+    ),
+    compact_run = list(
+      field = "run_schema_version", supported = "woodhen-compact-run-v1",
+      mutate = function(project) {
+        project$runs[[1L]]$run_schema_version <- "woodhen-compact-run-v999"
+        project
+      }
+    ),
+    embedded_scenario = list(
+      field = "record_schema_version", supported = "woodhen-scenario-record-v1",
+      mutate = function(project) {
+        project$runs[[1L]]$scenario$record_schema_version <-
+          "woodhen-scenario-record-v999"
+        project
+      }
+    ),
+    observation = list(
+      field = "observation_schema_version", supported = "woodhen-observation-v1",
+      mutate = function(project) {
+        project$observations[[1L]]$observation_schema_version <- "woodhen-observation-v999"
+        project
+      }
+    ),
+    import_event = list(
+      field = "event_schema_version", supported = "woodhen-import-event-v1",
+      mutate = function(project) {
+        project$provenance$imports[[1L]]$event_schema_version <-
+          "woodhen-import-event-v999"
+        project
+      }
+    ),
+    import_package = list(
+      field = "package_format_version", supported = "woodhen-project-package-v1",
+      mutate = function(project) {
+        project$provenance$imports[[1L]]$package_format_version <-
+          "woodhen-project-package-v999"
+        project
+      }
+    ),
+    export_event = list(
+      field = "event_schema_version", supported = "woodhen-export-event-v1",
+      mutate = function(project) {
+        project$provenance$exports[[1L]]$event_schema_version <-
+          "woodhen-export-event-v999"
+        project
+      }
+    ),
+    export_package = list(
+      field = "package_format_version", supported = "woodhen-project-package-v1",
+      mutate = function(project) {
+        project$provenance$exports[[1L]]$package_format_version <-
+          "woodhen-project-package-v999"
+        project
+      }
+    )
+  )
+
+  for (name in names(cases)) {
+    case <- cases[[name]]
+    hostile <- tempfile(pattern = paste0("woodhen-version-", name, "-"), fileext = ".zip")
+    project_test_repack_resigned(valid, hostile, case$mutate)
+    condition <- expect_error(
+      read_woodhen_project_package(hostile),
+      class = "woodhen_unsupported_version",
+      info = name
+    )
+    expect_equal(condition$version_field, case$field, info = name)
+    expect_equal(condition$supported_version, case$supported, info = name)
+    expect_match(condition$discovered_version, "v999$", info = name)
+  }
 })
