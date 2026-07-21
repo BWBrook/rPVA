@@ -12,18 +12,20 @@ RoxygenNote: 7.3.3
 Imports:
     digest,
     dplyr,
-    yaml,
     ggplot2,
+    jsonlite,
     popbio,
     future,
     reshape2,
     patchwork,
     readr,
-    future.apply
+    future.apply,
+    rmarkdown,
+    yaml,
+    zip
 Suggests:
     pkgload,
     testthat,
     ggrastr,
     knitr,
-    rmarkdown,
     shiny
