@@ -1012,6 +1012,23 @@ test_that("valid parent comparison states remain portable", {
   child_only <- add_woodhen_scenario(new_woodhen_project(), family$scenarios[[1L]])
   child_only <- add_woodhen_scenario(child_only, family$scenarios[[2L]])
   expect_silent(add_woodhen_run(child_only, compared[[2L]]))
+
+  project <- new_woodhen_project("Computed comparison")
+  project <- add_woodhen_scenario(project, family$scenarios[[1L]])
+  project <- add_woodhen_scenario(project, family$scenarios[[2L]])
+  project <- add_woodhen_run(project, compared[[1L]])
+  project <- add_woodhen_run(project, compared[[2L]])
+  fingerprint <- project$project_fingerprint
+  path <- tempfile(fileext = ".zip")
+  write_woodhen_project_package(project, path)
+  imported <- read_woodhen_project_package(path)
+
+  expect_identical(imported$runs, project$runs)
+  expect_identical(
+    imported$runs[[2L]]$difference_from_parent$outcomes,
+    compared[[2L]]$difference_from_parent$outcomes
+  )
+  expect_identical(imported$project_fingerprint, fingerprint)
 })
 
 test_that("nested portable versions raise structured conditions", {

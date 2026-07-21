@@ -1849,6 +1849,15 @@ woodhen_project_restore_run_order <- function(run) {
     run$difference_from_parent,
     c("parent_id", "status", "specification_changes", "outcomes")
   )
+  if (!is.null(run$difference_from_parent$outcomes)) {
+    run$difference_from_parent$outcomes <- woodhen_project_reorder_fields(
+      run$difference_from_parent$outcomes,
+      c(
+        "extinction_probability", "quasi_extinction_probability",
+        "final_median_abundance"
+      )
+    )
+  }
   specification_changes <- run$difference_from_parent$specification_changes
   scenario_change_names <- names(run$scenario$changes)
   if (is.list(specification_changes) && !is.null(names(specification_changes))) {
