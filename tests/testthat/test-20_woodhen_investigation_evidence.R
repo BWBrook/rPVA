@@ -236,6 +236,69 @@ test_that("retained scenarios use a strict portable schema", {
   )
 })
 
+test_that("scenario payload shapes cannot hide full trajectories", {
+  scenario <- build_woodhen_sensitivity_family(
+    "K", c(350, 250), seed = 515L
+  )$scenarios[[2L]]
+  result <- synthetic_woodhen_investigation_result(scenario)
+  component_id <- names(scenario$components)[[1L]]
+
+  matrix_payload <- scenario
+  matrix_payload$components[[component_id]]$value <- matrix(
+    1,
+    nrow = 76L,
+    ncol = 1000L
+  )
+  matrix_payload$scientific_identity_fingerprint <-
+    woodhen_record_scientific_fingerprint(matrix_payload)
+  expect_error(
+    compact_woodhen_run(result, matrix_payload),
+    "component.*value|stage-matched|matrix"
+  )
+
+  flattened_payload <- scenario
+  flattened_payload$changes[[component_id]]$before <- rep(1, 76L * 1000L)
+  flattened_payload$scientific_identity_fingerprint <-
+    woodhen_record_scientific_fingerprint(flattened_payload)
+  expect_error(
+    compact_woodhen_run(result, flattened_payload),
+    "change.*before|profile|length"
+  )
+
+  metadata_payload <- scenario
+  metadata_payload$student_label <- rep("flattened-trajectory-value", 76L * 1000L)
+  expect_error(
+    compact_woodhen_run(result, metadata_payload),
+    "student_label.*character value|scalar"
+  )
+})
+
+test_that("legitimate survival and fecundity profile matrices remain portable", {
+  family <- build_woodhen_prospective_family(list(
+    threat_id = "novel_disease",
+    components = list(fecundity_effect = list(
+      field = "fecund",
+      operator = "multiply",
+      value = 0.80
+    ))
+  ))
+  scenario <- family$scenarios[[2L]]
+
+  expect_equal(dim(scenario$spec$annual_profiles$surv), c(75L, 7L))
+  expect_equal(dim(scenario$spec$annual_profiles$fecund), c(75L, 7L))
+  expect_true(all(vapply(
+    scenario$changes,
+    function(change) identical(dim(change$before), c(75L, 7L)) &&
+      identical(dim(change$after), c(75L, 7L)),
+    logical(1)
+  )))
+  expect_silent(compact_woodhen_run(
+    synthetic_woodhen_investigation_result(scenario),
+    scenario,
+    sample_trajectories = 3L
+  ))
+})
+
 test_that("compact extinction evidence preserves exact timing and probability", {
   baseline <- build_woodhen_sensitivity_family(
     "K", c(350, 250), seed = 606L

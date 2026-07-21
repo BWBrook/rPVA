@@ -199,6 +199,343 @@ woodhen_validate_portable_value <- function(value, path = "scenario") {
   invisible(value)
 }
 
+woodhen_require_exact_fields <- function(value, expected, path) {
+  if (!is.list(value) || is.null(names(value)) || anyDuplicated(names(value)) ||
+      !setequal(names(value), expected)) {
+    stop(
+      "`", path, "` must contain exactly: ", paste(expected, collapse = ", "), ".",
+      call. = FALSE
+    )
+  }
+  invisible(value)
+}
+
+woodhen_validate_temporal_profile_record <- function(profile, years, path) {
+  woodhen_require_exact_fields(
+    profile,
+    c("shape", "onset_year", "end_year"),
+    path
+  )
+  valid_shape <- is.character(profile$shape) && length(profile$shape) == 1L &&
+    !is.na(profile$shape) &&
+    profile$shape %in% c("fixed_setting", "step", "linear", "scheduled_pulses")
+  valid_year <- function(value) {
+    is.numeric(value) && length(value) == 1L && is.finite(value) &&
+      value == as.integer(value) && value >= 1L && value <= years
+  }
+  if (!valid_shape || !valid_year(profile$onset_year) || !valid_year(profile$end_year) ||
+      profile$end_year < profile$onset_year) {
+    stop("`", path, "` is not a valid bounded temporal profile.", call. = FALSE)
+  }
+  shape_valid <- switch(
+    profile$shape,
+    fixed_setting = profile$onset_year == 1L && profile$end_year == years,
+    step = profile$end_year == profile$onset_year,
+    linear = profile$end_year >= profile$onset_year,
+    scheduled_pulses = profile$end_year == profile$onset_year + 2L
+  )
+  if (!shape_valid) {
+    stop("`", path, "` has inconsistent bounds for its temporal shape.", call. = FALSE)
+  }
+  invisible(profile)
+}
+
+woodhen_validate_release_state <- function(value, years, n_stage, path) {
+  woodhen_require_exact_fields(value, c("release_years", "release_vec"), path)
+  release_years <- value$release_years
+  release_vec <- value$release_vec
+  if (!is.null(release_years)) {
+    valid_years <- is.numeric(release_years) && length(release_years) <= years &&
+      all(is.finite(release_years)) && all(release_years == as.integer(release_years)) &&
+      all(release_years >= 1L & release_years <= years)
+    if (!valid_years) {
+      stop("`", path, "$release_years` has an invalid length or value.", call. = FALSE)
+    }
+  }
+  if (!is.null(release_vec)) {
+    valid_vector <- is.numeric(release_vec) && length(release_vec) == n_stage &&
+      is.null(dim(release_vec)) && all(is.finite(release_vec))
+    if (!valid_vector) {
+      stop("`", path, "$release_vec` must be one stage-matched vector.", call. = FALSE)
+    }
+  }
+  invisible(value)
+}
+
+woodhen_validate_change_profile <- function(value,
+                                            affected_fields,
+                                            years,
+                                            n_stage,
+                                            path) {
+  if (identical(affected_fields, c("release_years", "release_vec"))) {
+    return(woodhen_validate_release_state(value, years, n_stage, path))
+  }
+  if (!is.numeric(value) || length(value) == 0L || any(!is.finite(value))) {
+    stop("`", path, "` must contain finite numeric change evidence.", call. = FALSE)
+  }
+  field <- affected_fields[[1L]]
+  if (field %in% c("surv", "fecund")) {
+    valid <- if (is.null(dim(value))) {
+      length(value) == n_stage
+    } else {
+      identical(as.integer(dim(value)), c(as.integer(years), as.integer(n_stage)))
+    }
+    if (!valid) {
+      stop(
+        "`", path, "` vital-rate profile must be stage-matched or exactly years x stages.",
+        call. = FALSE
+      )
+    }
+  } else if (!is.null(dim(value)) || !length(value) %in% c(1L, years)) {
+    stop(
+      "`", path, "` scalar-field profile must have length one or exactly years.",
+      call. = FALSE
+    )
+  }
+  invisible(value)
+}
+
+woodhen_validate_spec_payload <- function(spec) {
+  base_fields <- c(
+    "name", "years", "reps", "surv", "stasis", "fecund", "sex_ratio_init",
+    "monogamy", "n0", "demographic_stochasticity", "env_sd", "K", "K_sd",
+    "cat_freq", "cat_surv", "cat_repro", "genetics", "F_init",
+    "lethal_equiv", "B_on_fec", "Ne_N_ratio", "Ne_window", "purge_kappa"
+  )
+  optional_fields <- intersect(c("annual_profiles", "release_years", "release_vec"), names(spec))
+  expected_fields <- c(base_fields, optional_fields)
+  woodhen_require_exact_fields(spec, expected_fields, "scenario$spec")
+  if (xor("release_years" %in% names(spec), "release_vec" %in% names(spec))) {
+    stop("`scenario$spec` must store release years and vector together.", call. = FALSE)
+  }
+
+  years <- as.integer(spec$years)
+  n_stage <- length(spec$n0)
+  stage_fields <- c("surv", "stasis", "fecund", "n0", "lethal_equiv")
+  for (field in stage_fields) {
+    value <- spec[[field]]
+    if (!is.numeric(value) || !is.null(dim(value)) || length(value) != n_stage ||
+        any(!is.finite(value))) {
+      stop("`scenario$spec$", field, "` must be one stage-matched vector.", call. = FALSE)
+    }
+  }
+  scalar_fields <- setdiff(base_fields, c("name", stage_fields))
+  for (field in scalar_fields) {
+    value <- spec[[field]]
+    if (length(value) != 1L || !is.null(dim(value))) {
+      stop("`scenario$spec$", field, "` must be scalar.", call. = FALSE)
+    }
+  }
+  if ("release_years" %in% names(spec)) {
+    woodhen_validate_release_state(
+      list(release_years = spec$release_years, release_vec = spec$release_vec),
+      years,
+      n_stage,
+      "scenario$spec"
+    )
+  }
+
+  if ("annual_profiles" %in% names(spec)) {
+    profiles <- spec$annual_profiles
+    allowed_profiles <- c(
+      "surv", "fecund", "K", "K_sd", "env_sd", "cat_freq", "cat_surv", "cat_repro"
+    )
+    if (!is.list(profiles) || is.null(names(profiles)) || anyDuplicated(names(profiles)) ||
+        any(!names(profiles) %in% allowed_profiles)) {
+      stop("`scenario$spec$annual_profiles` contains an unsupported profile.", call. = FALSE)
+    }
+    for (field in names(profiles)) {
+      value <- profiles[[field]]
+      path <- paste0("scenario$spec$annual_profiles$", field)
+      if (!is.numeric(value) || any(!is.finite(value))) {
+        stop("`", path, "` must contain finite numeric values.", call. = FALSE)
+      }
+      if (field %in% c("surv", "fecund")) {
+        if (!identical(as.integer(dim(value)), c(years, as.integer(n_stage)))) {
+          stop("`", path, "` must be exactly years x stages.", call. = FALSE)
+        }
+      } else if (!is.null(dim(value)) || length(value) != years) {
+        stop("`", path, "` must be one scalar-field value per year.", call. = FALSE)
+      }
+    }
+  }
+  invisible(spec)
+}
+
+woodhen_validate_component_payloads <- function(scenario) {
+  components <- scenario$components
+  changes <- scenario$changes
+  temporal_profiles <- scenario$temporal_profile
+  if (!is.list(components) || !is.list(changes) || !is.list(temporal_profiles)) {
+    stop("Scenario components, changes, and temporal profiles must be lists.", call. = FALSE)
+  }
+  if (length(components) == 0L) {
+    if (length(changes) != 0L || length(temporal_profiles) != 0L) {
+      stop("A component-free scenario cannot retain changes or profiles.", call. = FALSE)
+    }
+    return(invisible(scenario))
+  }
+  component_names <- names(components)
+  if (is.null(component_names) || anyDuplicated(component_names) ||
+      !identical(component_names, names(changes)) ||
+      !identical(component_names, names(temporal_profiles))) {
+    stop("Scenario component, change, and profile names must match exactly.", call. = FALSE)
+  }
+
+  years <- as.integer(scenario$spec$years)
+  n_stage <- length(scenario$spec$n0)
+  allowed_fields <- c(
+    "K", "K_sd", "env_sd", "cat_freq", "cat_surv", "cat_repro",
+    "surv", "fecund", "release_years", "release_vec"
+  )
+  for (component_name in component_names) {
+    component <- components[[component_name]]
+    change <- changes[[component_name]]
+    component_path <- paste0("scenario$components$", component_name)
+    change_path <- paste0("scenario$changes$", component_name)
+    woodhen_require_exact_fields(
+      component,
+      c(
+        "component_id", "affected_fields", "affected_stages", "operator",
+        "value", "temporal_profile"
+      ),
+      component_path
+    )
+    woodhen_require_exact_fields(
+      change,
+      c(
+        "component_id", "affected_fields", "affected_stages", "operator",
+        "before", "after", "temporal_profile"
+      ),
+      change_path
+    )
+    metadata_fields <- c(
+      "component_id", "affected_fields", "affected_stages", "operator", "temporal_profile"
+    )
+    if (!identical(component$component_id, component_name) ||
+        !all(vapply(metadata_fields, function(field) {
+          identical(component[[field]], change[[field]])
+        }, logical(1))) ||
+        !identical(component$temporal_profile, temporal_profiles[[component_name]])) {
+      stop("Component/change metadata must match its named scenario profile.", call. = FALSE)
+    }
+
+    affected_fields <- component$affected_fields
+    valid_fields <- is.character(affected_fields) && length(affected_fields) > 0L &&
+      all(affected_fields %in% allowed_fields) &&
+      (length(affected_fields) == 1L ||
+        identical(affected_fields, c("release_years", "release_vec")))
+    if (!valid_fields) {
+      stop("`", component_path, "$affected_fields` is not supported.", call. = FALSE)
+    }
+    valid_operators <- c(
+      "absolute", "multiply", "recover_toward_locked_baseline",
+      "recover_toward_one", "annual_release_schedule"
+    )
+    if (!is.character(component$operator) || length(component$operator) != 1L ||
+        is.na(component$operator) || !component$operator %in% valid_operators) {
+      stop("`", component_path, "$operator` is not supported.", call. = FALSE)
+    }
+    affected_stages <- component$affected_stages
+    if (affected_fields[[1L]] %in% c("surv", "fecund")) {
+      valid_stages <- is.numeric(affected_stages) && length(affected_stages) > 0L &&
+        all(is.finite(affected_stages)) &&
+        all(affected_stages == as.integer(affected_stages)) &&
+        all(affected_stages >= 1L & affected_stages <= n_stage) &&
+        !anyDuplicated(affected_stages)
+    } else if (identical(affected_fields, c("release_years", "release_vec"))) {
+      valid_stages <- identical(as.integer(affected_stages), 2L)
+    } else {
+      valid_stages <- identical(affected_stages, "not_applicable")
+    }
+    if (!valid_stages) {
+      stop("`", component_path, "$affected_stages` is not stage-matched.", call. = FALSE)
+    }
+
+    value <- component$value
+    max_value_length <- if (affected_fields[[1L]] %in% c("surv", "fecund")) {
+      length(affected_stages)
+    } else {
+      1L
+    }
+    if (!is.numeric(value) || !is.null(dim(value)) || length(value) == 0L ||
+        !length(value) %in% c(1L, max_value_length) || any(!is.finite(value))) {
+      stop(
+        "`", component_path, "$value` must be scalar or stage-matched, never a matrix.",
+        call. = FALSE
+      )
+    }
+    woodhen_validate_temporal_profile_record(
+      component$temporal_profile,
+      years,
+      paste0(component_path, "$temporal_profile")
+    )
+    woodhen_validate_change_profile(
+      change$before,
+      affected_fields,
+      years,
+      n_stage,
+      paste0(change_path, "$before")
+    )
+    woodhen_validate_change_profile(
+      change$after,
+      affected_fields,
+      years,
+      n_stage,
+      paste0(change_path, "$after")
+    )
+  }
+  invisible(scenario)
+}
+
+woodhen_validate_scenario_payload_shapes <- function(scenario) {
+  woodhen_validate_spec_payload(scenario$spec)
+  woodhen_validate_component_payloads(scenario)
+  invisible(scenario)
+}
+
+woodhen_validate_scenario_metadata <- function(scenario) {
+  required_character <- c(
+    "record_schema_version", "scenario_id", "family_id", "student_label",
+    "scenario_type", "locked_baseline_id", "reference_library_version",
+    "catalog_version", "model_version", "spec_fingerprint",
+    "fingerprint_algorithm", "canonicalization_version",
+    "scientific_identity_fingerprint"
+  )
+  if (identical(scenario$scenario_type, "intervention")) {
+    required_character <- c(required_character, "intervention_id")
+  }
+  for (field in required_character) {
+    value <- scenario[[field]]
+    if (!is.character(value) || length(value) != 1L || is.na(value) || !nzchar(value)) {
+      stop(
+        "`scenario$", field, "` must be one non-empty character value.",
+        call. = FALSE
+      )
+    }
+  }
+  for (field in c("parent_id", "created_at", "modified_at")) {
+    value <- scenario[[field]]
+    if (!is.character(value) || length(value) != 1L ||
+        (!is.na(value) && !nzchar(value))) {
+      stop(
+        "`scenario$", field, "` must be one character value or NA.",
+        call. = FALSE
+      )
+    }
+  }
+  if (!identical(scenario$record_schema_version, "woodhen-scenario-record-v1")) {
+    stop("`scenario$record_schema_version` is not supported.", call. = FALSE)
+  }
+  if (!is.null(scenario$notes) &&
+      (!is.character(scenario$notes) || length(scenario$notes) != 1L ||
+        is.na(scenario$notes))) {
+    stop("`scenario$notes` must be NULL or one portable character value.", call. = FALSE)
+  }
+  woodhen_validate_seed(scenario$seed)
+  invisible(scenario)
+}
+
 woodhen_validate_scenario_record <- function(scenario) {
   if (!is.list(scenario) || is.null(names(scenario)) || anyDuplicated(names(scenario))) {
     stop("`scenario` must be a complete Woodhen investigation scenario record.", call. = FALSE)
@@ -225,16 +562,12 @@ woodhen_validate_scenario_record <- function(scenario) {
       call. = FALSE
     )
   }
-  if (!is.null(scenario$notes) &&
-      (!is.character(scenario$notes) || length(scenario$notes) != 1L ||
-        is.na(scenario$notes))) {
-    stop("`scenario$notes` must be NULL or one portable character value.", call. = FALSE)
-  }
+  woodhen_validate_scenario_metadata(scenario)
   woodhen_validate_portable_value(scenario)
+  woodhen_validate_scenario_payload_shapes(scenario)
   if (!identical(woodhen_spec_fingerprint(scenario$spec), scenario$spec_fingerprint)) {
     stop("`scenario$spec_fingerprint` does not match its executable specification.", call. = FALSE)
   }
-  woodhen_validate_seed(scenario$seed)
   woodhen_preflight_spec(scenario$spec)
   if (!identical(
     woodhen_record_scientific_fingerprint(scenario),
