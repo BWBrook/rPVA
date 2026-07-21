@@ -118,7 +118,7 @@ start_server <- function(id,
       tryCatch(
         list(
           ok = TRUE,
-          candidate = new_woodhen_project(
+          candidate = rPVA::new_woodhen_project(
             title = if (nzchar(title)) title else NULL,
             owner_label = if (nzchar(owner)) owner else NULL
           )
@@ -144,7 +144,7 @@ start_server <- function(id,
         return(list(ok = FALSE, message = "Choose one portable project package."))
       }
       tryCatch(
-        list(ok = TRUE, candidate = read_woodhen_project_package(upload$datapath)),
+        list(ok = TRUE, candidate = rPVA::read_woodhen_project_package(upload$datapath)),
         error = function(error) list(ok = FALSE, message = conditionMessage(error))
       )
     })
@@ -159,7 +159,7 @@ start_server <- function(id,
       },
       content = function(file) {
         candidate <- req(project())
-        write_woodhen_project_package(candidate, file)
+        rPVA::write_woodhen_project_package(candidate, file)
         next_count <- download_counter() + 1L
         download_counter(next_count)
         download_requested(list(

@@ -80,6 +80,7 @@ make_practical2_server <- function() {
     }
 
     track_request <- function(request_id, request) {
+      request$request_id <- request_id
       requests <- pending_requests()
       requests[[request_id]] <- request
       pending_requests(requests)
@@ -170,7 +171,7 @@ make_practical2_server <- function() {
         candidate,
         portable_request_fingerprint = portable_fingerprint()
     ) {
-      validate_woodhen_project(candidate)
+      rPVA::validate_woodhen_project(candidate)
       replace_live_project(project, candidate)
       saved_fingerprint(NULL)
       portable_fingerprint(portable_request_fingerprint)
@@ -211,6 +212,7 @@ make_practical2_server <- function() {
         showNotification(event$message, type = "error")
         return()
       }
+      pending_restore(NULL)
       activate_project(event$candidate, portable_request_fingerprint = NULL)
       showNotification("New Woodhen investigation project created.", type = "message")
     }, ignoreInit = TRUE)
@@ -249,11 +251,18 @@ make_practical2_server <- function() {
         showNotification("An unsolicited browser restore response was ignored.", type = "warning")
         return()
       }
+      response_request_id <- input$project_store_restore$request_id
+      if (!is.character(response_request_id) || length(response_request_id) != 1L ||
+          is.na(response_request_id) ||
+          !identical(response_request_id, pending$request_id)) {
+        showNotification("A stale browser restore response was ignored.", type = "warning")
+        return()
+      }
+      pending_restore(NULL)
       candidate <- tryCatch(
         validate_project_store_restore(input$project_store_restore, pending),
         error = function(error) error
       )
-      pending_restore(NULL)
       if (inherits(candidate, "error")) {
         showNotification(
           paste("Browser project was not restored:", conditionMessage(candidate)),
@@ -275,9 +284,10 @@ make_practical2_server <- function() {
         )
         return()
       }
+      pending_restore(NULL)
       activate_project(event$candidate, portable_request_fingerprint = NULL)
       showNotification("Portable project imported after validation.", type = "message")
-    }, ignoreInit = TRUE)
+    })
 
     observeEvent(events$download_requested(), {
       event <- events$download_requested()
@@ -319,10 +329,9 @@ make_practical2_server <- function() {
         return()
       }
       status <- tryCatch(
-        validate_project_store_status(input$project_store_status, request_id),
+        validate_project_store_status(input$project_store_status, request),
         error = function(error) error
       )
-      forget_request(request_id)
       if (inherits(status, "error")) {
         showNotification(
           paste("Browser storage acknowledgement was rejected:", conditionMessage(status)),
@@ -330,35 +339,37 @@ make_practical2_server <- function() {
         )
         return()
       }
-      expected <- request$record
-      if (!identical(status$key, expected$key) ||
-          !identical(status$project_id, expected$project_id) ||
-          !identical(status$project_fingerprint, expected$project_fingerprint)) {
-        showNotification("Browser storage acknowledgement did not match its request.", type = "warning")
-        return()
-      }
+      forget_request(request_id)
 
-      if (identical(status$status, "saved")) {
-        saved_fingerprint(status$project_fingerprint)
-        browser_status(status_value(
-          "Autosaved in this browser.", "current", "circle-check"
-        ))
-        refresh_dirty_status()
-      } else if (identical(status$status, "superseded")) {
-        browser_status(status_value(
-          "A newer browser autosave is pending.", "pending", "clock"
-        ))
+      if (identical(request$kind, "save")) {
+        if (identical(status$status, "saved")) {
+          saved_fingerprint(status$project_fingerprint)
+          browser_status(status_value(
+            "Autosaved in this browser.", "current", "circle-check"
+          ))
+          refresh_dirty_status()
+        } else if (identical(status$status, "superseded")) {
+          browser_status(status_value(
+            "A newer browser autosave is pending.", "pending", "clock"
+          ))
+        } else {
+          browser_status(status_value(
+            "Browser autosave is unavailable; download a portable project.",
+            "warning",
+            "triangle-exclamation"
+          ))
+          refresh_dirty_status()
+        }
       } else if (identical(status$status, "portable_marked")) {
         refresh_portable_status()
       } else {
-        browser_status(status_value(
-          "Browser autosave is unavailable; download a portable project.",
+        portable_status(status_value(
+          "Portable project download requested; browser recovery did not record it.",
           "warning",
           "triangle-exclamation"
         ))
-        refresh_dirty_status()
       }
-    }, ignoreInit = TRUE)
+    })
   }
 }
 

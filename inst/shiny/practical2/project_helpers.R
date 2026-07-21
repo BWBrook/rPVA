@@ -65,7 +65,7 @@ project_store_record <- function(project,
                                  snapshot_json,
                                  saved_at,
                                  portable_request_fingerprint = NULL) {
-  validate_woodhen_project(project)
+  rPVA::validate_woodhen_project(project)
   decoded <- rPVA:::read_woodhen_project_browser_snapshot(snapshot_json)
   if (!identical(decoded, project)) {
     stop("The browser snapshot does not exactly match the live project.", call. = FALSE)
@@ -191,7 +191,7 @@ validate_project_store_restore <- function(envelope,
   candidate
 }
 
-validate_project_store_status <- function(envelope, pending_request_id) {
+validate_project_store_status <- function(envelope, pending_request) {
   project_store_exact_fields(
     envelope,
     c(
@@ -203,12 +203,27 @@ validate_project_store_status <- function(envelope, pending_request_id) {
   if (!identical(envelope$contract_version, project_store_contract_version())) {
     stop("The project-store status contract version is unsupported.", call. = FALSE)
   }
+  if (!is.list(pending_request) ||
+      !all(c("request_id", "kind", "record") %in% names(pending_request))) {
+    stop("The pending project-store request is malformed.", call. = FALSE)
+  }
   request_id <- project_store_request_id(envelope$request_id)
-  if (!identical(request_id, pending_request_id)) {
+  if (!identical(request_id, pending_request$request_id)) {
     stop("The project-store status request ID is not pending.", call. = FALSE)
   }
-  if (!envelope$status %in% c("saved", "save_error", "superseded", "portable_marked", "portable_error")) {
-    stop("The project-store status value is unsupported.", call. = FALSE)
+  allowed_status <- switch(
+    pending_request$kind,
+    save = c("saved", "save_error", "superseded"),
+    portable = c("portable_marked", "portable_error"),
+    stop("The pending project-store request kind is unsupported.", call. = FALSE)
+  )
+  if (!envelope$status %in% allowed_status) {
+    stop(
+      "The project-store status is invalid for pending `",
+      pending_request$kind,
+      "` request kind.",
+      call. = FALSE
+    )
   }
   expected_key <- project_store_key(rPVA:::woodhen_project_schema_version(), envelope$project_id)
   if (!identical(envelope$key, expected_key)) {
@@ -216,11 +231,17 @@ validate_project_store_status <- function(envelope, pending_request_id) {
   }
   project_store_validate_fingerprint(envelope$project_fingerprint, "project_fingerprint")
   project_store_scalar_text(envelope$message, "message")
+  expected <- pending_request$record
+  for (field in c("key", "project_id", "project_fingerprint")) {
+    if (!identical(envelope[[field]], expected[[field]])) {
+      stop("The project-store status does not match pending `", field, "`.", call. = FALSE)
+    }
+  }
   envelope
 }
 
 replace_live_project <- function(project_state, candidate) {
-  validate_woodhen_project(candidate)
+  rPVA::validate_woodhen_project(candidate)
   project_state(candidate)
   invisible(candidate)
 }

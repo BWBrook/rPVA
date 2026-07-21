@@ -13,6 +13,43 @@ source_practical2_app <- function() {
   env
 }
 
+practical2_store_fixture <- function(env, title) {
+  project <- rPVA::new_woodhen_project(title)
+  snapshot <- rPVA:::woodhen_project_browser_snapshot(project)
+  record <- env$project_store_record(
+    project,
+    snapshot,
+    format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
+    NULL
+  )
+  list(
+    project = project,
+    record = record,
+    metadata = record[setdiff(names(record), "snapshot_json")]
+  )
+}
+
+practical2_restore_envelope <- function(record, request_id) {
+  list(
+    contract_version = "woodhen-project-store-contract-v1",
+    request_id = request_id,
+    key = record$key,
+    record = record
+  )
+}
+
+practical2_status_envelope <- function(request_id, status, record) {
+  list(
+    contract_version = "woodhen-project-store-contract-v1",
+    request_id = request_id,
+    key = record$key,
+    status = status,
+    project_id = record$project_id,
+    project_fingerprint = record$project_fingerprint,
+    message = paste("Test status", status)
+  )
+}
+
 test_that("installed Practical 2 shell contains its complete Task 6 asset inventory", {
   app_dir <- practical2_app_dir()
   expected <- c(
@@ -46,6 +83,86 @@ test_that("helpers and the real Start module source from the installed app direc
     inherits = FALSE
   )))
   expect_s3_class(env$ui, "shiny.tag.list")
+})
+
+test_that("cold namespace-only app supports Create, Import, and restore helpers", {
+  testthat::skip_if_not_installed("callr")
+  project_root <- normalizePath(".", winslash = "/", mustWork = TRUE)
+
+  result <- callr::r(function(project_root) {
+    pkgload::load_all(
+      project_root,
+      attach = FALSE,
+      export_all = FALSE,
+      helpers = FALSE,
+      attach_testthat = FALSE,
+      quiet = TRUE
+    )
+    stopifnot(!"package:rPVA" %in% search())
+    app_dir <- rPVA:::practical2_shiny_app_dir()
+    old <- setwd(app_dir)
+    on.exit(setwd(old), add = TRUE)
+    env <- new.env(parent = globalenv())
+    sys.source("app.R", envir = env)
+
+    portable_path <- tempfile(fileext = ".zip")
+    on.exit(unlink(portable_path), add = TRUE)
+    portable_project <- rPVA::new_woodhen_project("Cold import")
+    rPVA::write_woodhen_project_package(portable_project, portable_path)
+    neutral <- env$status_value("No active project yet.")
+    captured <- new.env(parent = emptyenv())
+
+    shiny::testServer(env$start_server, args = list(
+      project = function() NULL,
+      inventory = function() list(),
+      browser_status = function() neutral,
+      portable_status = function() neutral,
+      dirty_status = function() neutral
+    ), {
+      session$setInputs(
+        project_title = "Cold create",
+        owner_label = "Study group",
+        create_project = 1
+      )
+      captured$created <- create_event()
+      session$setInputs(import_project = list(
+        name = "cold-import.zip",
+        size = file.info(portable_path)$size,
+        type = "application/zip",
+        datapath = portable_path
+      ))
+      captured$imported <- import_event()
+    })
+
+    stopifnot(isTRUE(captured$created$ok), isTRUE(captured$imported$ok))
+    snapshot <- rPVA:::woodhen_project_browser_snapshot(captured$created$candidate)
+    record <- env$project_store_record(
+      captured$created$candidate,
+      snapshot,
+      "2026-07-22T11:00:00Z",
+      NULL
+    )
+    envelope <- list(
+      contract_version = env$project_store_contract_version(),
+      request_id = "restore-cold",
+      key = record$key,
+      record = record
+    )
+    restored <- env$validate_project_store_restore(envelope, "restore-cold")
+
+    list(
+      package_attached = "package:rPVA" %in% search(),
+      created_id = captured$created$candidate$project_id,
+      imported_id = captured$imported$candidate$project_id,
+      portable_id = portable_project$project_id,
+      restored_id = restored$project_id
+    )
+  }, args = list(project_root))
+
+  expect_false(result$package_attached)
+  expect_match(result$created_id, "^woodhen_project_")
+  expect_identical(result$imported_id, result$portable_id)
+  expect_identical(result$restored_id, result$created_id)
 })
 
 test_that("installed Practical 2 app constructs without repository artefacts", {
@@ -139,7 +256,7 @@ test_that("root server owns replacement and module exposes reactive events", {
   module_text <- paste(readLines(file.path(app_dir, "modules", "mod_start.R"), warn = FALSE), collapse = "\n")
 
   expect_match(app_text, "project <- reactiveVal(NULL)", fixed = TRUE)
-  expect_match(app_text, "validate_woodhen_project(candidate)", fixed = TRUE)
+  expect_match(app_text, "rPVA::validate_woodhen_project(candidate)", fixed = TRUE)
   expect_match(app_text, "project(candidate)", fixed = TRUE)
   expect_match(app_text, "events <- start_server", fixed = TRUE)
   expect_match(module_text, "moduleServer(id", fixed = TRUE)
@@ -147,7 +264,9 @@ test_that("root server owns replacement and module exposes reactive events", {
   expect_match(module_text, "resume_event <- eventReactive", fixed = TRUE)
   expect_match(module_text, "import_event <- eventReactive", fixed = TRUE)
   expect_match(module_text, "output$download_project <- downloadHandler", fixed = TRUE)
-  expect_match(module_text, "write_woodhen_project_package(candidate, file)", fixed = TRUE)
+  expect_match(module_text, "rPVA::new_woodhen_project(", fixed = TRUE)
+  expect_match(module_text, "rPVA::read_woodhen_project_package(upload$datapath)", fixed = TRUE)
+  expect_match(module_text, "rPVA::write_woodhen_project_package(candidate, file)", fixed = TRUE)
   expect_false(grepl("assign\\(|<<-", paste(app_text, module_text)))
 })
 
@@ -212,6 +331,192 @@ test_that("Start returns validated create and failed import events to the root",
     expect_true(import_result$ok)
     expect_s3_class(import_result$candidate, "woodhen_project")
     expect_identical(import_result$candidate$project_id, valid_project$project_id)
+  })
+})
+
+test_that("only the latest Resume response may replace the live project", {
+  env <- source_practical2_app()
+  first <- practical2_store_fixture(env, "Resume A")
+  second <- practical2_store_fixture(env, "Resume B")
+
+  shiny::testServer(env$make_practical2_server(), {
+    session$setInputs(`start-resume_project` = 0, `start-create_project` = 0)
+    session$flushReact()
+    inventory(list(first$metadata, second$metadata))
+
+    session$setInputs(
+      `start-resume_key` = first$record$key,
+      `start-resume_project` = 1
+    )
+    session$flushReact()
+    request_a <- pending_restore()
+
+    session$setInputs(
+      `start-resume_key` = second$record$key,
+      `start-resume_project` = 2
+    )
+    session$flushReact()
+    request_b <- pending_restore()
+    expect_false(identical(request_a$request_id, request_b$request_id))
+
+    session$setInputs(project_store_restore = practical2_restore_envelope(
+      first$record,
+      request_a$request_id
+    ))
+    session$flushReact()
+    expect_null(project())
+    expect_identical(pending_restore(), request_b)
+
+    session$setInputs(project_store_restore = practical2_restore_envelope(
+      second$record,
+      request_b$request_id
+    ))
+    session$flushReact()
+    expect_identical(project()$project_id, second$project$project_id)
+    expect_null(pending_restore())
+  })
+})
+
+test_that("Create and Import invalidate a pending Resume response", {
+  env <- source_practical2_app()
+  resumed <- practical2_store_fixture(env, "Late resume")
+  import_path <- tempfile(fileext = ".zip")
+  imported <- rPVA::new_woodhen_project("Explicit import")
+  rPVA::write_woodhen_project_package(imported, import_path)
+  on.exit(unlink(import_path), add = TRUE)
+
+  shiny::testServer(env$make_practical2_server(), {
+    session$setInputs(`start-resume_project` = 0, `start-create_project` = 0)
+    session$flushReact()
+    inventory(list(resumed$metadata))
+    session$setInputs(
+      `start-resume_key` = resumed$record$key,
+      `start-resume_project` = 1
+    )
+    session$flushReact()
+    pending <- pending_restore()
+
+    session$setInputs(
+      `start-project_title` = "Explicit create",
+      `start-create_project` = 1
+    )
+    session$flushReact()
+    created <- project()
+    expect_identical(created$title, "Explicit create")
+    expect_null(pending_restore())
+
+    session$setInputs(project_store_restore = practical2_restore_envelope(
+      resumed$record,
+      pending$request_id
+    ))
+    session$flushReact()
+    expect_identical(project(), created)
+  })
+
+  shiny::testServer(env$make_practical2_server(), {
+    session$setInputs(`start-resume_project` = 0, `start-create_project` = 0)
+    session$flushReact()
+    inventory(list(resumed$metadata))
+    session$setInputs(
+      `start-resume_key` = resumed$record$key,
+      `start-resume_project` = 1
+    )
+    session$flushReact()
+    pending <- pending_restore()
+
+    session$setInputs(`start-import_project` = list(
+      name = "explicit-import.zip",
+      size = file.info(import_path)$size,
+      type = "application/zip",
+      datapath = import_path
+    ))
+    session$flushReact()
+    explicit_import <- project()
+    expect_identical(explicit_import$project_id, imported$project_id)
+    expect_null(pending_restore())
+
+    session$setInputs(project_store_restore = practical2_restore_envelope(
+      resumed$record,
+      pending$request_id
+    ))
+    session$flushReact()
+    expect_identical(project(), explicit_import)
+  })
+})
+
+test_that("invalid storage acknowledgements do not consume pending requests", {
+  env <- source_practical2_app()
+  current <- practical2_store_fixture(env, "Save current")
+  other <- practical2_store_fixture(env, "Save other")
+
+  shiny::testServer(env$make_practical2_server(), {
+    project(current$project)
+    request_id <- "save-91"
+    track_request(request_id, list(
+      request_id = request_id,
+      kind = "save",
+      record = current$record
+    ))
+
+    session$setInputs(project_store_status = practical2_status_envelope(
+      request_id,
+      "portable_marked",
+      current$record
+    ))
+    session$flushReact()
+    expect_false(is.null(pending_requests()[[request_id]]))
+    expect_null(saved_fingerprint())
+
+    session$setInputs(project_store_status = practical2_status_envelope(
+      request_id,
+      "saved",
+      other$record
+    ))
+    session$flushReact()
+    expect_false(is.null(pending_requests()[[request_id]]))
+    expect_null(saved_fingerprint())
+
+    session$setInputs(project_store_status = practical2_status_envelope(
+      request_id,
+      "saved",
+      current$record
+    ))
+    session$flushReact()
+    expect_null(pending_requests()[[request_id]])
+    expect_identical(saved_fingerprint(), current$project$project_fingerprint)
+  })
+})
+
+test_that("portable storage failure does not alter browser autosave state", {
+  env <- source_practical2_app()
+  current <- practical2_store_fixture(env, "Portable current")
+
+  shiny::testServer(env$make_practical2_server(), {
+    project(current$project)
+    saved_fingerprint(current$project$project_fingerprint)
+    browser_status(env$status_value("Autosaved in this browser.", "current", "circle-check"))
+    browser_before <- browser_status()
+    request_id <- "portable-92"
+    track_request(request_id, list(
+      request_id = request_id,
+      kind = "portable",
+      record = list(
+        key = current$record$key,
+        project_id = current$record$project_id,
+        project_fingerprint = current$record$project_fingerprint
+      )
+    ))
+
+    session$setInputs(project_store_status = practical2_status_envelope(
+      request_id,
+      "portable_error",
+      current$record
+    ))
+    session$flushReact()
+    expect_null(pending_requests()[[request_id]])
+    expect_identical(saved_fingerprint(), current$project$project_fingerprint)
+    expect_identical(browser_status(), browser_before)
+    expect_match(portable_status()$value, "download requested", ignore.case = TRUE)
   })
 })
 

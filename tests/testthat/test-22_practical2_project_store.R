@@ -172,6 +172,72 @@ test_that("restore envelope requires the pending request and validates outer and
   expect_error(env$validate_project_store_restore(extra, "restore-7"), "exactly")
 })
 
+test_that("storage status validator correlates kind and exact request identity", {
+  app_dir <- rPVA:::practical2_shiny_app_dir()
+  env <- new.env(parent = globalenv())
+  sys.source(file.path(app_dir, "project_helpers.R"), envir = env)
+  project <- rPVA::new_woodhen_project("Status advice")
+  snapshot <- rPVA:::woodhen_project_browser_snapshot(project)
+  record <- env$project_store_record(project, snapshot, "2026-07-22T10:01:00Z", NULL)
+  status <- list(
+    contract_version = "woodhen-project-store-contract-v1",
+    request_id = "save-7",
+    key = record$key,
+    status = "saved",
+    project_id = record$project_id,
+    project_fingerprint = record$project_fingerprint,
+    message = "Autosaved in this browser."
+  )
+  save_request <- list(
+    request_id = "save-7",
+    kind = "save",
+    record = record
+  )
+
+  expect_identical(env$validate_project_store_status(status, save_request), status)
+
+  wrong_kind <- status
+  wrong_kind$status <- "portable_marked"
+  expect_error(
+    env$validate_project_store_status(wrong_kind, save_request),
+    "kind|save"
+  )
+
+  other <- rPVA::new_woodhen_project("Other status advice")
+  wrong_identity <- status
+  wrong_identity$key <- env$project_store_key(other$project_schema_version, other$project_id)
+  wrong_identity$project_id <- other$project_id
+  wrong_identity$project_fingerprint <- other$project_fingerprint
+  expect_error(
+    env$validate_project_store_status(wrong_identity, save_request),
+    "match|key|project"
+  )
+
+  portable_request <- list(
+    request_id = "portable-8",
+    kind = "portable",
+    record = list(
+      key = record$key,
+      project_id = record$project_id,
+      project_fingerprint = record$project_fingerprint
+    )
+  )
+  portable_status <- status
+  portable_status$request_id <- "portable-8"
+  portable_status$status <- "portable_error"
+  expect_identical(
+    env$validate_project_store_status(portable_status, portable_request),
+    portable_status
+  )
+
+  save_as_portable <- portable_status
+  save_as_portable$status <- "saved"
+  expect_error(
+    env$validate_project_store_status(save_as_portable, portable_request),
+    "kind|portable"
+  )
+})
+
 test_that("JavaScript implements inventory-first, one restore input, keyed debounce, and error paths", {
   app_dir <- rPVA:::practical2_shiny_app_dir()
   js_path <- file.path(app_dir, "www", "project-store.js")
