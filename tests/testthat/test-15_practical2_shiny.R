@@ -472,6 +472,79 @@ test_that("root activates Calibrate updates and queues authoritative autosave", 
   })
 })
 
+test_that("root rejects a stale Investigate event without activation side effects", {
+  env <- source_practical2_app()
+  base <- rPVA:::run_woodhen_reference_project(
+    new_woodhen_project("Investigate event base"),
+    "05_future_baseline",
+    runner = practical2_calibrate_runner,
+    sample_trajectories = 2L
+  )$project
+  family <- build_woodhen_sensitivity_family("K", c(350, 250))
+  action <- rPVA:::woodhen_run_investigation_family_project(
+    base,
+    family,
+    runner = practical2_calibrate_runner,
+    sample_trajectories = 2L
+  )
+  event <- list(
+    ok = TRUE,
+    candidate = action$project,
+    family_id = family$family_id,
+    route = "sensitivity",
+    reused = FALSE,
+    message = "Complete family ready for project activation.",
+    base_project_fingerprint = base$project_fingerprint,
+    event_id = 101L
+  )
+
+  expect_identical(
+    env$validate_investigate_project_update_event(event, base),
+    action$project
+  )
+  expect_error(
+    env$validate_investigate_project_update_event(
+      c(event, list(unexpected = "field")), base
+    ),
+    "exactly"
+  )
+  expect_error(
+    env$validate_investigate_project_update_event(
+      event[names(event) != "base_project_fingerprint"], base
+    ),
+    "exactly"
+  )
+
+  replacement <- new_woodhen_project("Replacement before activation")
+  expect_error(
+    env$validate_investigate_project_update_event(event, replacement),
+    "active project changed"
+  )
+
+  shiny::testServer(env$make_practical2_server(), {
+    project(replacement)
+    session$flushReact()
+    before <- list(
+      project = project(),
+      dirty = dirty_status(),
+      browser = browser_status(),
+      requests = pending_requests(),
+      request_counter = request_counter(),
+      saved = saved_fingerprint(),
+      portable = portable_fingerprint()
+    )
+
+    expect_false(shiny::isolate(activate_investigate_update(event)))
+    expect_identical(project(), before$project)
+    expect_identical(dirty_status(), before$dirty)
+    expect_identical(browser_status(), before$browser)
+    expect_identical(pending_requests(), before$requests)
+    expect_identical(request_counter(), before$request_counter)
+    expect_identical(saved_fingerprint(), before$saved)
+    expect_identical(portable_fingerprint(), before$portable)
+  })
+})
+
 test_that("the first root Resume click requests browser restoration", {
   env <- source_practical2_app()
   stored <- practical2_store_fixture(env, "First click resume")

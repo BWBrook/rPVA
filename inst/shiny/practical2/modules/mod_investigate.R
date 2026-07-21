@@ -342,6 +342,16 @@ investigate_result_prompts <- function(ns, prefix) {
   )
 }
 
+investigate_disable_run_actions_js <- function(ns) {
+  ids <- paste0('"', c(ns("run_sensitivity"), ns("run_future")), '"')
+  paste0(
+    "[", paste(ids, collapse = ","), "].forEach(function(id){",
+    "var button=document.getElementById(id);",
+    "if(button){button.disabled=true;",
+    "button.setAttribute('aria-disabled','true');}});"
+  )
+}
+
 investigate_run_action <- function(ns, route, busy) {
   is_sensitivity <- identical(route, "sensitivity")
   button <- actionButton(
@@ -349,6 +359,7 @@ investigate_run_action <- function(ns, route, busy) {
     if (is_sensitivity) "Run three-setting family" else "Run threat-intervention family",
     icon = icon("play"),
     class = "btn-primary investigate-run-action",
+    onclick = investigate_disable_run_actions_js(ns),
     `aria-disabled` = if (busy) "true" else "false"
   )
   if (busy) tagAppendAttributes(button, disabled = "disabled") else button
@@ -572,6 +583,13 @@ investigate_server <- function(
       status <- status_state()
       status[[route]] <- value
       status_state(status)
+    }
+
+    release_batch_after_flush <- function() {
+      session$onFlushed(function() {
+        if (isTRUE(shiny::isolate(busy()))) busy(FALSE)
+      }, once = TRUE)
+      invisible(NULL)
     }
 
     set_progress <- function(route, scenario, scenarios, completed, total) {
@@ -800,17 +818,25 @@ investigate_server <- function(
       investigate_run_action(session$ns, "future", busy())
     })
 
-    run_route <- function(route, family, prompt) {
-      if (!investigate_begin_batch(busy)) {
+    run_route <- function(route, family, prompt, batch_started = FALSE) {
+      if (!batch_started && !investigate_begin_batch(busy)) {
         set_status(route, "A family is already running; the repeated submission was ignored.")
         return(NULL)
       }
+      if (batch_started && !isTRUE(shiny::isolate(busy()))) {
+        stop("An accepted investigation batch must retain the shared busy guard.", call. = FALSE)
+      }
       candidate <- project()
+      base_project_fingerprint <- candidate$project_fingerprint
       anchor <- rPVA:::woodhen_locked_anchor_status(candidate)
       if (!identical(anchor$status, "ready")) {
         set_status(route, paste("Run blocked.", anchor$action))
-        publish(project_update_state, list(ok = FALSE, message = paste("Run blocked.", anchor$action)))
-        busy(FALSE)
+        publish(project_update_state, list(
+          ok = FALSE,
+          message = paste("Run blocked.", anchor$action),
+          base_project_fingerprint = base_project_fingerprint
+        ))
+        release_batch_after_flush()
         return(NULL)
       }
       progress <- progress_state()
@@ -821,7 +847,26 @@ investigate_server <- function(
       progress_history_state(history)
       set_status(route, "Preparing the complete family in session scratch.")
       session$onFlushed(function() {
-        on.exit(busy(FALSE), add = TRUE)
+        on.exit(release_batch_after_flush(), add = TRUE)
+        live_project <- shiny::isolate(project())
+        live_project_fingerprint <- if (is.null(live_project)) {
+          NULL
+        } else {
+          live_project$project_fingerprint
+        }
+        if (!identical(live_project_fingerprint, base_project_fingerprint)) {
+          message <- paste(
+            "Family run cancelled because the active project changed",
+            "before simulation began. No candidate was created."
+          )
+          set_status(route, message)
+          publish(project_update_state, list(
+            ok = FALSE,
+            message = message,
+            base_project_fingerprint = base_project_fingerprint
+          ))
+          return(NULL)
+        }
         action <- tryCatch(
           rPVA:::woodhen_run_investigation_family_project(
             candidate,
@@ -840,7 +885,11 @@ investigate_server <- function(
             conditionMessage(action)
           )
           set_status(route, message)
-          publish(project_update_state, list(ok = FALSE, message = message))
+          publish(project_update_state, list(
+            ok = FALSE,
+            message = message,
+            base_project_fingerprint = base_project_fingerprint
+          ))
           return(NULL)
         }
         message <- if (action$reused) {
@@ -858,7 +907,8 @@ investigate_server <- function(
           family_id = action$family$family_id,
           route = route,
           reused = action$reused,
-          message = message
+          message = message,
+          base_project_fingerprint = base_project_fingerprint
         ))
         action
       }, once = TRUE)
@@ -866,6 +916,10 @@ investigate_server <- function(
     }
 
     observeEvent(input$run_sensitivity, {
+      if (!investigate_begin_batch(busy)) {
+        set_status("sensitivity", "A family is already running; the repeated submission was ignored.")
+        return()
+      }
       values <- tryCatch(investigate_sensitivity_values(
         input$factor_id,
         input$sensitivity_first_choice,
@@ -875,19 +929,32 @@ investigate_server <- function(
       ), error = function(error) error)
       if (inherits(values, "error")) {
         set_status("sensitivity", conditionMessage(values))
+        release_batch_after_flush()
         return()
       }
-      family <- rPVA::build_woodhen_sensitivity_family(
-        input$factor_id, values, seed = 123L
+      family <- tryCatch(
+        rPVA::build_woodhen_sensitivity_family(
+          input$factor_id, values, seed = 123L
+        ),
+        error = function(error) error
       )
+      if (inherits(family, "error")) {
+        set_status("sensitivity", conditionMessage(family))
+        release_batch_after_flush()
+        return()
+      }
       run_route("sensitivity", family, list(
         research_question = investigate_or(input$sensitivity_research_question, ""),
         biological_reason = investigate_or(input$sensitivity_biological_reason, ""),
         expected_direction = investigate_or(input$sensitivity_expected_direction, "")
-      ))
+      ), batch_started = TRUE)
     })
 
     observeEvent(input$run_future, {
+      if (!investigate_begin_batch(busy)) {
+        set_status("future", "A family is already running; the repeated submission was ignored.")
+        return()
+      }
       family <- tryCatch(investigate_build_future_family(
         input$threat_id,
         input$threat_choice,
@@ -898,13 +965,14 @@ investigate_server <- function(
       ), error = function(error) error)
       if (inherits(family, "error")) {
         set_status("future", conditionMessage(family))
+        release_batch_after_flush()
         return()
       }
       run_route("future", family, list(
         research_question = investigate_or(input$future_research_question, ""),
         biological_reason = investigate_or(input$future_biological_reason, ""),
         expected_direction = investigate_or(input$future_expected_direction, "")
-      ))
+      ), batch_started = TRUE)
     })
 
     sensitivity_comparison <- reactive({

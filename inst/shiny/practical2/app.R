@@ -12,6 +12,65 @@ status_value <- function(value, state = "neutral", icon = "circle-info") {
   list(value = value, state = state, icon = icon)
 }
 
+validate_investigate_project_update_event <- function(event, current_project) {
+  expected_fields <- c(
+    "ok", "candidate", "family_id", "route", "reused", "message",
+    "base_project_fingerprint", "event_id"
+  )
+  if (!is.list(event) || is.null(names(event)) || anyDuplicated(names(event)) ||
+      !setequal(names(event), expected_fields)) {
+    stop(
+      "A successful Investigate event must contain exactly: ",
+      paste(expected_fields, collapse = ", "), ".",
+      call. = FALSE
+    )
+  }
+  if (!identical(event$ok, TRUE)) {
+    stop("A candidate activation requires `event$ok` to be TRUE.", call. = FALSE)
+  }
+  valid_text <- function(value) {
+    is.character(value) && length(value) == 1L && !is.na(value) && nzchar(value)
+  }
+  if (!valid_text(event$family_id) || !valid_text(event$message) ||
+      !valid_text(event$base_project_fingerprint)) {
+    stop("Investigate event identity and message fields must be non-empty text.", call. = FALSE)
+  }
+  if (!valid_text(event$route) || !event$route %in% c("sensitivity", "future") ||
+      !is.logical(event$reused) || length(event$reused) != 1L || is.na(event$reused) ||
+      !is.numeric(event$event_id) || length(event$event_id) != 1L ||
+      !is.finite(event$event_id) || event$event_id < 1L ||
+      event$event_id != as.integer(event$event_id)) {
+    stop("Investigate event route, reuse state, or event ID is invalid.", call. = FALSE)
+  }
+  rPVA::validate_woodhen_project(current_project)
+  if (!identical(
+    event$base_project_fingerprint,
+    current_project$project_fingerprint
+  )) {
+    stop(
+      "The active project changed after this Investigate action was accepted.",
+      call. = FALSE
+    )
+  }
+  rPVA::validate_woodhen_project(event$candidate)
+  if (!identical(event$candidate$project_id, current_project$project_id)) {
+    stop("An Investigate candidate cannot replace a different project ID.", call. = FALSE)
+  }
+  family_runs <- event$candidate$runs[vapply(event$candidate$runs, function(run) {
+    identical(run$family_id, event$family_id)
+  }, logical(1))]
+  expected_types <- if (identical(event$route, "sensitivity")) {
+    c("locked_baseline", "sensitivity", "sensitivity")
+  } else {
+    c("locked_baseline", "threat", "intervention")
+  }
+  scenario_types <- vapply(family_runs, `[[`, character(1), "scenario_type")
+  if (!identical(scenario_types, expected_types)) {
+    stop("The Investigate candidate does not contain the event's exact family.", call. = FALSE)
+  }
+  event$candidate
+}
+
 ui <- navbarPage(
   title = "Practical 2 Woodhen Lab",
   id = "section",
@@ -180,6 +239,27 @@ make_practical2_server <- function(
       invisible(candidate)
     }
 
+    activate_investigate_update <- function(event) {
+      if (!isTRUE(event$ok)) {
+        showNotification(event$message, type = "warning")
+        return(FALSE)
+      }
+      candidate <- tryCatch(
+        validate_investigate_project_update_event(event, project()),
+        error = function(error) error
+      )
+      if (inherits(candidate, "error")) {
+        showNotification(
+          paste("Investigate update rejected:", conditionMessage(candidate)),
+          type = "warning"
+        )
+        return(FALSE)
+      }
+      activate_project(candidate)
+      showNotification(event$message, type = "message")
+      TRUE
+    }
+
     events <- start_server(
       "start",
       project = reactive(project()),
@@ -210,13 +290,7 @@ make_practical2_server <- function(
     })
 
     observeEvent(investigate_events$project_update(), {
-      event <- investigate_events$project_update()
-      if (!isTRUE(event$ok)) {
-        showNotification(event$message, type = "warning")
-        return()
-      }
-      activate_project(event$candidate)
-      showNotification(event$message, type = "message")
+      activate_investigate_update(investigate_events$project_update())
     })
 
     observeEvent(investigate_events$navigate(), {

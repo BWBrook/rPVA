@@ -388,6 +388,9 @@ test_that("Investigation module guards busy clicks and restores completed eviden
       progress_state()$sensitivity,
       c(scenario = 3L, scenarios = 3L, completed = 1000L, total = 1000L)
     )
+    expect_true(busy())
+    session$flushReact()
+    expect_false(busy())
   })
 })
 
@@ -406,11 +409,20 @@ test_that("Investigation module flushes disabled controls and rejects queued sub
   disabled <- paste(as.character(env$investigate_run_action(
     shiny::NS("investigate"), "sensitivity", TRUE
   )), collapse = "\n")
+  future_enabled <- paste(as.character(env$investigate_run_action(
+    shiny::NS("investigate"), "future", FALSE
+  )), collapse = "\n")
   expect_match(enabled, 'id="investigate-run_sensitivity"', fixed = TRUE)
   expect_false(grepl('disabled="disabled"', enabled, fixed = TRUE))
   expect_match(enabled, 'aria-disabled="false"', fixed = TRUE)
   expect_match(disabled, 'disabled="disabled"', fixed = TRUE)
   expect_match(disabled, 'aria-disabled="true"', fixed = TRUE)
+  for (html in c(enabled, future_enabled)) {
+    expect_match(html, "onclick=", fixed = TRUE)
+    expect_match(html, "investigate-run_sensitivity", fixed = TRUE)
+    expect_match(html, "investigate-run_future", fixed = TRUE)
+    expect_match(html, "button.disabled=true", fixed = TRUE)
+  }
 
   shiny::testServer(env$investigate_server, args = list(
     project = shiny::reactive(project), scenario_runner = runner
@@ -438,15 +450,99 @@ test_that("Investigation module flushes disabled controls and rejects queued sub
     expect_true(project_update_state()$ok)
     expect_false(project_update_state()$reused)
     expect_identical(
+      project_update_state()$base_project_fingerprint,
+      project()$project_fingerprint
+    )
+    expect_identical(
       status_state()[["future"]],
       "A family is already running; the repeated submission was ignored."
     )
+    expect_true(busy())
+    session$flushReact()
     expect_false(busy())
     expect_length(project_update_state()$candidate$runs, length(project()$runs) + 3L)
     expect_length(
       env$investigate_completed_family_ids(project_update_state()$candidate, "prospective"),
       0L
     )
+  })
+})
+
+test_that("Investigation aborts a deferred family when the live project changes", {
+  env <- source_investigate_app()
+  accepted <- investigate_ready_project()
+  replacement <- investigate_ready_project()
+  live <- shiny::reactiveVal(accepted)
+  calls <- 0L
+  runner <- function(...) {
+    calls <<- calls + 1L
+    investigate_test_runner(...)
+  }
+  family <- build_woodhen_sensitivity_family("K", c(350, 250))
+
+  shiny::testServer(env$investigate_server, args = list(
+    project = shiny::reactive(live()), scenario_runner = runner
+  ), {
+    shiny::isolate(run_route("sensitivity", family, list()))
+    expect_true(shiny::isolate(busy()))
+    live(replacement)
+    session$flushReact()
+
+    expect_equal(calls, 0L)
+    expect_false(project_update_state()$ok)
+    expect_match(project_update_state()$message, "active project changed", fixed = TRUE)
+    expect_identical(
+      project_update_state()$base_project_fingerprint,
+      accepted$project_fingerprint
+    )
+    session$flushReact()
+    expect_false(shiny::isolate(busy()))
+  })
+})
+
+test_that("Investigation keeps the cross-route guard through the post-work flush", {
+  env <- source_investigate_app()
+  project <- investigate_ready_project()
+  calls <- 0L
+  runner <- function(...) {
+    calls <<- calls + 1L
+    investigate_test_runner(...)
+  }
+  family <- build_woodhen_sensitivity_family("K", c(350, 250))
+  busy_after_work <- NA
+
+  shiny::testServer(env$investigate_server, args = list(
+    project = shiny::reactive(project), scenario_runner = runner
+  ), {
+    session$setInputs(
+      threat_id = "novel_disease",
+      threat_choice = "moderate",
+      threat_custom = 0.9,
+      intervention_id = "captive_breeding_supplementation",
+      intervention_choice = "moderate",
+      intervention_custom = 5
+    )
+    shiny::isolate(run_route("sensitivity", family, list()))
+    session$onFlushed(function() {
+      busy_after_work <<- shiny::isolate(busy())
+    }, once = TRUE)
+    session$setInputs(run_future = investigate_action_value(1L))
+
+    expect_true(busy_after_work)
+    expect_equal(calls, 3L)
+    expect_true(project_update_state()$ok)
+    expect_identical(project_update_state()$route, "sensitivity")
+    expect_identical(
+      status_state()[["future"]],
+      "A family is already running; the repeated submission was ignored."
+    )
+    expect_length(project_update_state()$candidate$runs, length(project()$runs) + 3L)
+    expect_length(
+      env$investigate_completed_family_ids(project_update_state()$candidate, "prospective"),
+      0L
+    )
+    session$flushReact()
+    expect_false(shiny::isolate(busy()))
   })
 })
 
@@ -477,6 +573,7 @@ test_that("Investigate UI and root integration are accessible and honest", {
   expect_match(css, "@media \\(max-width: 780px\\)")
   expect_match(module_text, "session$onFlushed(", fixed = TRUE)
   expect_match(module_text, 'aria-disabled` = if (busy)', fixed = TRUE)
+  expect_match(module_text, "base_project_fingerprint", fixed = TRUE)
   expect_match(app_text, 'source(file.path("modules", "mod_investigate.R")', fixed = TRUE)
   expect_match(app_text, 'investigate_ui("investigate")', fixed = TRUE)
   expect_match(app_text, "investigate_events <- investigate_server", fixed = TRUE)
