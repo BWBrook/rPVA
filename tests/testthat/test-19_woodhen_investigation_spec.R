@@ -136,6 +136,65 @@ test_that("scenario fingerprints are deterministic and ignore record presentatio
   expect_false(identical(first_hashes[[2]], first_hashes[[3]]))
 })
 
+test_that("scientific content gives stable unique family and scenario identities", {
+  intervention <- list(response = list(
+    intervention_id = "emergency_response", intensity = "moderate"
+  ))
+  low <- build_woodhen_prospective_family(
+    list(threat_id = "increased_cyclone_pressure", intensity = "low"),
+    intervention,
+    created_at = "2026-07-21T01:00:00Z"
+  )
+  low_relabelled <- build_woodhen_prospective_family(
+    list(
+      threat_id = "increased_cyclone_pressure", intensity = "low",
+      label = "Presentation-only label", notes = "Presentation-only note"
+    ),
+    intervention,
+    created_at = "2026-07-22T01:00:00Z"
+  )
+  high <- build_woodhen_prospective_family(
+    list(threat_id = "increased_cyclone_pressure", intensity = "high"),
+    intervention
+  )
+
+  expect_equal(low$family_id, low_relabelled$family_id)
+  expect_equal(
+    vapply(low$scenarios, `[[`, character(1), "scenario_id"),
+    vapply(low_relabelled$scenarios, `[[`, character(1), "scenario_id")
+  )
+  expect_false(identical(low$family_id, high$family_id))
+  expect_false(identical(
+    vapply(low$scenarios, `[[`, character(1), "scenario_id"),
+    vapply(high$scenarios, `[[`, character(1), "scenario_id")
+  ))
+  expect_equal(length(unique(vapply(low$scenarios, `[[`, character(1), "scenario_id"))), 3L)
+  expect_true(all(vapply(low$scenarios, function(x) identical(x$family_id, low$family_id), logical(1))))
+  expect_true(is.na(low$scenarios[[1]]$parent_id))
+  expect_equal(low$scenarios[[2]]$parent_id, low$scenarios[[1]]$scenario_id)
+  expect_equal(low$scenarios[[3]]$parent_id, low$scenarios[[2]]$scenario_id)
+  expect_equal(low$locked_baseline_id, low$scenarios[[1]]$scenario_id)
+
+  sensitivity_a <- build_woodhen_sensitivity_family("K", c(350, 250))
+  sensitivity_b <- build_woodhen_sensitivity_family("K", c(300, 250))
+  expect_false(identical(sensitivity_a$family_id, sensitivity_b$family_id))
+
+  expect_error(
+    build_woodhen_prospective_family(
+      "increased_cyclone_pressure",
+      c("emergency_response", "emergency_response")
+    ),
+    "unique"
+  )
+  expect_error(
+    build_woodhen_prospective_family(
+      "increased_cyclone_pressure",
+      list(baseline = list(intervention_id = "emergency_response"))
+    ),
+    "reserved"
+  )
+})
+
 test_that("all named threat and intervention families materialise explicit mappings", {
   threat_catalog <- woodhen_threat_catalog()
   for (threat_id in threat_catalog$id) {
@@ -191,7 +250,8 @@ test_that("prospective composition is ordered and resolved scientific presets ar
     family$composition_order,
     c(
       "locked_baseline", "threat_components",
-      "intervention_recovery_components", "full_validation"
+      "intervention_recovery_components", "intervention_direct_components",
+      "full_validation"
     )
   )
   threat_k <- family$scenarios[[2]]$spec$annual_profiles$K
@@ -235,6 +295,126 @@ test_that("prospective composition is ordered and resolved scientific presets ar
   release_spec <- supplement$scenarios[[3]]$spec
   expect_equal(release_spec$release_years, 5:7)
   expect_equal(release_spec$release_vec, c(0L, 10L, 0L, 0L, 0L, 0L, 0L))
+})
+
+test_that("fully composed records reject compulsory, advanced, and inherited name collisions", {
+  expect_error(
+    build_woodhen_prospective_family(list(
+      threat_id = "novel_disease",
+      components = list(disease_survival = list(
+        field = "fecund", operator = "multiply", value = 0.80
+      ))
+    )),
+    "collision"
+  )
+  expect_error(
+    build_woodhen_prospective_family(
+      "increased_cyclone_pressure",
+      list(response = list(
+        intervention_id = "emergency_response",
+        components = list(catastrophe_survival_recovery = list(
+          field = "cat_repro", operator = "absolute", value = 0.60
+        ))
+      ))
+    ),
+    "collision"
+  )
+  expect_error(
+    build_woodhen_prospective_family(
+      "increased_cyclone_pressure",
+      list(response = list(
+        intervention_id = "emergency_response",
+        components = list(threat__cyclone_frequency = list(
+          field = "cat_repro", operator = "absolute", value = 0.60
+        ))
+      ))
+    ),
+    "collision"
+  )
+})
+
+test_that("targeted recovery requires an explicit unique target when the parent is multi-factor", {
+  multi_vital_threat <- list(
+    threat_id = "novel_disease",
+    components = list(disease_fecundity = list(
+      field = "fecund", operator = "multiply", value = 0.80
+    ))
+  )
+  expect_error(
+    build_woodhen_prospective_family(
+      multi_vital_threat,
+      list(targeted = list(intervention_id = "targeted_vital_rate_improvement"))
+    ),
+    "target_component"
+  )
+
+  explicit <- build_woodhen_prospective_family(
+    multi_vital_threat,
+    list(targeted = list(
+      intervention_id = "targeted_vital_rate_improvement",
+      target_component = "disease_fecundity"
+    ))
+  )
+  managed_changes <- names(explicit$scenarios[[3]]$changes)
+  expect_true("targeted_vital_rate_improvement__disease_fecundity" %in% managed_changes)
+  expect_false("targeted_vital_rate_improvement__disease_survival" %in% managed_changes)
+
+  expect_error(
+    build_woodhen_prospective_family(
+      multi_vital_threat,
+      list(targeted = list(
+        intervention_id = "targeted_vital_rate_improvement",
+        target_component = "not_a_component"
+      ))
+    ),
+    "uniquely match"
+  )
+})
+
+test_that("vital-rate component values are scalar or exactly stage-matched", {
+  expect_error(
+    build_woodhen_prospective_family(list(
+      threat_id = "novel_disease",
+      components = list(stage_rates = list(
+        field = "surv", operator = "absolute", stages = "all",
+        value = c(0.60, 0.70, 0.80)
+      ))
+    )),
+    "one scalar or exactly 7"
+  )
+
+  exact_rates <- c(0.60, 0.70, 0.80, 0.72, 0.72, 0.62, 0.50)
+  accepted <- build_woodhen_prospective_family(list(
+    threat_id = "novel_disease",
+    components = list(stage_rates = list(
+      field = "surv", operator = "absolute", stages = "all",
+      value = exact_rates
+    ))
+  ))
+  expect_equal(as.numeric(tail(accepted$scenarios[[2]]$spec$annual_profiles$surv, 1)), exact_rates)
+})
+
+test_that("supplied timestamp strings must be strict UTC ISO-8601 values", {
+  expect_error(
+    build_woodhen_sensitivity_family("K", c(350, 250), created_at = "2026-07-21 01:00:00"),
+    "UTC ISO-8601"
+  )
+  expect_error(
+    build_woodhen_prospective_family("novel_disease", created_at = "2026-07-21T11:00:00+10:00"),
+    "UTC ISO-8601"
+  )
+  expect_error(
+    build_woodhen_prospective_family("novel_disease", created_at = "2026-02-30T01:00:00Z"),
+    "UTC ISO-8601"
+  )
+
+  valid <- build_woodhen_sensitivity_family(
+    "K", c(350, 250),
+    created_at = "2026-07-21T01:00:00Z",
+    modified_at = "2026-07-21T02:00:00Z"
+  )
+  expect_equal(valid$scenarios[[1]]$created_at, "2026-07-21T01:00:00Z")
+  expect_equal(valid$scenarios[[1]]$modified_at, "2026-07-21T02:00:00Z")
 })
 
 test_that("builders reject unsafe, unsupported, unnamed, and locked changes before simulation", {

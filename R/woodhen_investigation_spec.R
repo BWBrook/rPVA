@@ -21,10 +21,20 @@ woodhen_normalize_record_time <- function(value, field) {
   if (inherits(value, "POSIXt") && length(value) == 1L && !is.na(value)) {
     return(format(value, "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"))
   }
-  if (!is.character(value) || length(value) != 1L || is.na(value) || !nzchar(trimws(value))) {
-    stop("`", field, "` must be a non-empty timestamp string or POSIX time.", call. = FALSE)
+  valid <- is.character(value) && length(value) == 1L && !is.na(value) &&
+    grepl("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$", value)
+  if (valid) {
+    parsed <- as.POSIXct(strptime(value, format = "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"))
+    valid <- length(parsed) == 1L && !is.na(parsed) &&
+      identical(format(parsed, "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"), value)
   }
-  trimws(value)
+  if (!valid) {
+    stop(
+      "`", field, "` must use the UTC ISO-8601 representation YYYY-MM-DDTHH:MM:SSZ.",
+      call. = FALSE
+    )
+  }
+  value
 }
 
 woodhen_model_version <- function() {
@@ -61,22 +71,26 @@ woodhen_canonical_value <- function(value) {
   unname(value)
 }
 
-woodhen_spec_fingerprint <- function(spec) {
+woodhen_content_fingerprint <- function(value) {
   if (!requireNamespace("digest", quietly = TRUE)) {
     stop(
       "The locked `digest` package is required for Woodhen SHA-256 fingerprints.",
       call. = FALSE
     )
   }
-  executable <- unclass(spec)
-  executable$name <- NULL
-  executable <- executable[order(names(executable))]
   digest::digest(
-    woodhen_canonical_value(executable),
+    woodhen_canonical_value(value),
     algo = "sha256",
     serialize = TRUE,
     serializeVersion = 3L
   )
+}
+
+woodhen_spec_fingerprint <- function(spec) {
+  executable <- unclass(spec)
+  executable$name <- NULL
+  executable <- executable[order(names(executable))]
+  woodhen_content_fingerprint(executable)
 }
 
 woodhen_reference_spec <- function(reference_id) {
@@ -175,6 +189,7 @@ woodhen_new_record <- function(spec,
                                modified_at,
                                notes = NULL,
                                locked = woodhen_locked_future_spec()) {
+  woodhen_validate_composed_record_names(components, changes)
   spec <- woodhen_preflight_spec(spec, locked = locked)
   structure(
     list(
@@ -219,6 +234,89 @@ woodhen_new_family <- function(family_id,
     ),
     class = c("woodhen_investigation_family", "list")
   )
+}
+
+woodhen_validate_composed_record_names <- function(components, changes) {
+  for (entry in list(components = components, changes = changes)) {
+    if (length(entry) > 0L &&
+        (is.null(names(entry)) || anyNA(names(entry)) ||
+          any(!nzchar(names(entry))) || anyDuplicated(names(entry)))) {
+      stop(
+        "Component/change name collision: fully composed records require unique names.",
+        call. = FALSE
+      )
+    }
+  }
+  if (!identical(names(components), names(changes))) {
+    stop("Fully composed component and change names must match exactly.", call. = FALSE)
+  }
+  invisible(TRUE)
+}
+
+woodhen_finalize_family_identity <- function(family_type,
+                                             scientific_key,
+                                             scenarios,
+                                             scenario_keys = NULL) {
+  fingerprints <- vapply(scenarios, `[[`, character(1), "spec_fingerprint")
+  if (identical(family_type, "sensitivity")) {
+    content <- list(
+      family_type = family_type,
+      scientific_key = scientific_key,
+      altered_specs = sort(fingerprints[-1L])
+    )
+  } else {
+    managed <- if (length(fingerprints) > 2L) sort(fingerprints[-c(1L, 2L)]) else character()
+    content <- list(
+      family_type = family_type,
+      scientific_key = scientific_key,
+      threat_spec = fingerprints[[2L]],
+      intervention_specs = managed
+    )
+  }
+  suffix <- substr(woodhen_content_fingerprint(content), 1L, 12L)
+  family_id <- paste0(family_type, "_", scientific_key, "_", suffix)
+
+  scenarios[[1L]]$family_id <- family_id
+  scenarios[[1L]]$scenario_id <- paste0(family_id, "__baseline")
+  scenarios[[1L]]$parent_id <- NA_character_
+  scenarios[[1L]]$locked_baseline_id <- scenarios[[1L]]$scenario_id
+
+  if (identical(family_type, "sensitivity")) {
+    for (i in seq_along(scenarios)[-1L]) {
+      scenarios[[i]]$family_id <- family_id
+      scenarios[[i]]$scenario_id <- paste0(
+        family_id, "__setting_", substr(scenarios[[i]]$spec_fingerprint, 1L, 12L)
+      )
+      scenarios[[i]]$parent_id <- scenarios[[1L]]$scenario_id
+      scenarios[[i]]$locked_baseline_id <- scenarios[[1L]]$scenario_id
+    }
+  } else {
+    scenarios[[2L]]$family_id <- family_id
+    scenarios[[2L]]$scenario_id <- paste0(
+      family_id, "__threat_", substr(scenarios[[2L]]$spec_fingerprint, 1L, 12L)
+    )
+    scenarios[[2L]]$parent_id <- scenarios[[1L]]$scenario_id
+    scenarios[[2L]]$locked_baseline_id <- scenarios[[1L]]$scenario_id
+    if (length(scenarios) > 2L) {
+      stopifnot(length(scenario_keys) == length(scenarios) - 2L)
+      for (i in seq.int(3L, length(scenarios))) {
+        key <- scenario_keys[[i - 2L]]
+        scenarios[[i]]$family_id <- family_id
+        scenarios[[i]]$scenario_id <- paste0(
+          family_id, "__intervention_", key, "_",
+          substr(scenarios[[i]]$spec_fingerprint, 1L, 12L)
+        )
+        scenarios[[i]]$parent_id <- scenarios[[2L]]$scenario_id
+        scenarios[[i]]$locked_baseline_id <- scenarios[[1L]]$scenario_id
+      }
+    }
+  }
+
+  ids <- vapply(scenarios, `[[`, character(1), "scenario_id")
+  if (anyDuplicated(ids)) {
+    stop("Scientific family construction produced duplicate scenario identities.", call. = FALSE)
+  }
+  list(family_id = family_id, scenarios = scenarios)
 }
 
 woodhen_catalog_match <- function(catalog, id, kind) {
@@ -373,14 +471,20 @@ build_woodhen_sensitivity_family <- function(factor_id,
     )
   })
 
-  woodhen_new_family(
-    family_id = family_id,
+  scenarios <- c(list(baseline), altered)
+  identity <- woodhen_finalize_family_identity(
     family_type = "sensitivity",
-    scenarios = c(list(baseline), altered),
+    scientific_key = factor_id,
+    scenarios = scenarios
+  )
+  woodhen_new_family(
+    family_id = identity$family_id,
+    family_type = "sensitivity",
+    scenarios = identity$scenarios,
     seed = seed,
     factor_id = factor_id,
     values = c(baseline_value, values),
-    locked_baseline_id = baseline$scenario_id
+    locked_baseline_id = identity$scenarios[[1L]]$scenario_id
   )
 }
 
@@ -402,7 +506,8 @@ woodhen_validate_named_components <- function(components, label) {
   if (!is.list(components)) {
     stop("`", label, "` must be a named list.", call. = FALSE)
   }
-  if (is.null(names(components)) || any(!nzchar(names(components))) || anyDuplicated(names(components))) {
+  if (is.null(names(components)) || anyNA(names(components)) ||
+      any(!nzchar(names(components))) || anyDuplicated(names(components))) {
     stop("Every multi-factor component must be named with a unique, non-empty ID.", call. = FALSE)
   }
   components
@@ -452,7 +557,19 @@ woodhen_component_stages <- function(stages, field, n_stage) {
   unique(as.integer(stages))
 }
 
-woodhen_validate_component_value <- function(field, operator, value, locked) {
+woodhen_validate_component_value <- function(field, operator, value, stages, locked) {
+  if (field %in% c("surv", "fecund")) {
+    expected <- length(stages)
+    if (!(length(value) %in% c(1L, expected))) {
+      stop(
+        "Vital-rate component `", field, "` must provide one scalar or exactly ",
+        expected, " values for the selected stages.",
+        call. = FALSE
+      )
+    }
+  } else if (length(value) != 1L) {
+    stop("Scalar component `", field, "` must have one value.", call. = FALSE)
+  }
   bounds <- NULL
   if (operator %in% c("recover_toward_locked_baseline", "recover_toward_one")) {
     bounds <- c(min = 0, max = 1)
@@ -504,35 +621,33 @@ woodhen_apply_profile_component <- function(spec,
   if (!is.numeric(value) || length(value) == 0L || any(!is.finite(value))) {
     stop("Component `", component_id, "` must have finite numeric `value`.", call. = FALSE)
   }
-  woodhen_validate_component_value(field, operator, value, locked)
-
   stages <- woodhen_component_stages(stages, field, length(spec$surv))
+  woodhen_validate_component_value(field, operator, value, stages, locked)
   before <- woodhen_spec_field_profile(spec, field)
   locked_profile <- woodhen_spec_field_profile(locked, field)
   weights <- woodhen_effect_weights(spec$years, temporal_profile)
   after <- before
 
   if (field %in% c("surv", "fecund")) {
+    stage_values <- if (length(value) == 1L) rep(value, length(stages)) else value
     for (year in seq_len(spec$years)) {
       current <- as.numeric(before[year, ])
       baseline <- as.numeric(locked_profile[year, ])
       if (identical(operator, "absolute")) {
         target <- current
-        target[stages] <- rep(value, length.out = length(stages))
+        target[stages] <- stage_values
         current[stages] <- current[stages] + weights[[year]] * (target[stages] - current[stages])
       } else if (identical(operator, "multiply")) {
-        current[stages] <- current[stages] * (1 + weights[[year]] * (value - 1))
+        current[stages] <- current[stages] * (1 + weights[[year]] * (stage_values - 1))
       } else if (identical(operator, "recover_toward_locked_baseline")) {
-        current[stages] <- current[stages] + weights[[year]] * value * (baseline[stages] - current[stages])
+        current[stages] <- current[stages] +
+          weights[[year]] * stage_values * (baseline[stages] - current[stages])
       } else {
         stop("Unsupported vital-rate component operator `", operator, "`.", call. = FALSE)
       }
       after[year, ] <- current
     }
   } else {
-    if (length(value) != 1L) {
-      stop("Scalar component `", component_id, "` must have one value.", call. = FALSE)
-    }
     if (identical(operator, "absolute")) {
       after <- before + weights * (value - before)
     } else if (identical(operator, "multiply")) {
@@ -721,11 +836,10 @@ woodhen_normalize_interventions <- function(interventions) {
     return(list())
   }
   if (is.character(interventions)) {
-    out <- lapply(interventions, function(id) list(intervention_id = id))
-    names(out) <- interventions
-    return(out)
-  }
-  if (!is.list(interventions)) {
+    normalized <- lapply(interventions, function(id) list(intervention_id = id))
+    names(normalized) <- interventions
+    interventions <- normalized
+  } else if (!is.list(interventions)) {
     stop("`interventions` must be a named list of independent alternatives.", call. = FALSE)
   }
   if (is.null(names(interventions)) || any(!nzchar(names(interventions)))) {
@@ -736,8 +850,20 @@ woodhen_normalize_interventions <- function(interventions) {
       }
     }
   }
-  if (is.null(names(interventions)) || any(!nzchar(names(interventions))) || anyDuplicated(names(interventions))) {
+  if (is.null(names(interventions)) || anyNA(names(interventions)) ||
+      any(!nzchar(names(interventions))) || anyDuplicated(names(interventions))) {
     stop("Every intervention alternative must have a unique, non-empty name.", call. = FALSE)
+  }
+  reserved <- c("baseline", "threat")
+  if (any(tolower(names(interventions)) %in% reserved)) {
+    stop("Intervention alternative names `baseline` and `threat` are reserved.", call. = FALSE)
+  }
+  valid_ids <- grepl("^[A-Za-z][A-Za-z0-9_-]*$", names(interventions))
+  if (!all(valid_ids)) {
+    stop(
+      "Intervention alternative names must begin with a letter and contain only letters, numbers, `_`, or `-`.",
+      call. = FALSE
+    )
   }
   interventions
 }
@@ -851,9 +977,20 @@ woodhen_build_intervention_scenario <- function(config,
     parent_changes <- woodhen_threat_changes_for(threat_scenario, c("surv", "fecund"))
     target_component <- normalized$config$target_component
     if (!is.null(target_component)) {
-      parent_changes <- parent_changes[intersect(names(parent_changes), target_component)]
+      if (!is.character(target_component) || length(target_component) != 1L ||
+          is.na(target_component) || !nzchar(target_component)) {
+        stop("`target_component` must uniquely match one named parent component.", call. = FALSE)
+      }
+      matches <- which(names(parent_changes) == target_component)
+      if (length(matches) != 1L) {
+        stop("`target_component` must uniquely match one named survival or fecundity parent component.", call. = FALSE)
+      }
+      parent_changes <- parent_changes[matches]
     } else if (length(parent_changes) > 1L) {
-      parent_changes <- parent_changes[1L]
+      stop(
+        "`target_component` is required when multiple survival or fecundity parent components are eligible.",
+        call. = FALSE
+      )
     }
     if (length(parent_changes) == 0L) {
       stop("Targeted vital-rate improvement requires a named survival or fecundity parent component.", call. = FALSE)
@@ -1011,18 +1148,27 @@ build_woodhen_prospective_family <- function(threat,
       modified_at = modified_at
     )
   })
+  names(managed) <- names(intervention_configs)
+  scenarios <- c(list(baseline, built_threat$scenario), managed)
+  identity <- woodhen_finalize_family_identity(
+    family_type = "prospective",
+    scientific_key = threat_id,
+    scenarios = scenarios,
+    scenario_keys = names(intervention_configs)
+  )
 
   woodhen_new_family(
-    family_id = family_id,
+    family_id = identity$family_id,
     family_type = "prospective",
-    scenarios = c(list(baseline, built_threat$scenario), managed),
+    scenarios = identity$scenarios,
     seed = seed,
     threat_id = threat_id,
     intervention_ids = names(intervention_configs),
-    locked_baseline_id = baseline$scenario_id,
+    locked_baseline_id = identity$scenarios[[1L]]$scenario_id,
     composition_order = c(
       "locked_baseline", "threat_components",
-      "intervention_recovery_components", "full_validation"
+      "intervention_recovery_components", "intervention_direct_components",
+      "full_validation"
     )
   )
 }
