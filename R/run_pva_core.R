@@ -41,6 +41,7 @@ run_pva_core <- function(
   n_stage <- normalized$n_stage
   env_alpha <- normalized$env_alpha
   env_beta <- normalized$env_beta
+  has_annual_profiles <- !is.null(spec$annual_profiles) && length(spec$annual_profiles) > 0
 
   # seed
   if (!is.null(seed)) set.seed(seed)
@@ -64,7 +65,23 @@ run_pva_core <- function(
     }
 
     for (t in seq_len(years)) {
-      step_out <- run_pva_step(N, sr, F, LE, N_hist, t, spec, stasis, env_alpha, env_beta)
+      if (has_annual_profiles) {
+        year_spec <- resolve_pva_year_spec(spec, stasis, t)
+        step_out <- run_pva_step(
+          N,
+          sr,
+          F,
+          LE,
+          N_hist,
+          t,
+          year_spec$spec,
+          year_spec$stasis,
+          year_spec$env_alpha,
+          year_spec$env_beta
+        )
+      } else {
+        step_out <- run_pva_step(N, sr, F, LE, N_hist, t, spec, stasis, env_alpha, env_beta)
+      }
       N <- step_out$N
       sr <- step_out$sr
       F <- step_out$F

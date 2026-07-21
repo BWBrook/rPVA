@@ -23,6 +23,7 @@ allowed_pva_spec_fields <- function() {
     "Ne_N_ratio",
     "Ne_window",
     "purge_kappa",
+    "annual_profiles",
     "removal_years",
     "removal_vec",
     "release_years",
@@ -171,6 +172,13 @@ normalize_pva_spec_fields <- function(spec) {
 
   out <- spec
   for (field in names(spec)) {
+    if (identical(field, "annual_profiles")) {
+      if (!is.null(spec[[field]]) && !is.list(spec[[field]])) {
+        stop("`annual_profiles` must be a named list or NULL.", call. = FALSE)
+      }
+      out[[field]] <- spec[[field]]
+      next
+    }
     out[[field]] <- normalize_pva_spec_field(field, spec[[field]])
   }
 
@@ -209,6 +217,9 @@ validate_full_pva_spec <- function(spec) {
   }
 
   n_stage <- length(spec$surv)
+  if (!is.null(spec$annual_profiles)) {
+    spec$annual_profiles <- validate_annual_profiles(spec$annual_profiles, spec$years, n_stage)
+  }
   validate_stage_length(spec$fecund, "fecund", n_stage)
   validate_stage_length(spec$n0, "n0", n_stage)
   validate_probability_vector(spec$surv, "surv")
