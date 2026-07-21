@@ -1181,14 +1181,19 @@ woodhen_sensitivity_setting_values <- function(runs) {
     return(values)
   }
   first_change <- runs[[altered[[1L]]]]$scenario$changes[[1L]]
-  if (is.numeric(first_change$before) && length(first_change$before) == 1L) {
-    baseline <- which(vapply(runs, function(run) is.na(run$parent_id), logical(1)))
-    values[baseline] <- first_change$before
+  baseline_value <- if (identical(first_change$operator, "multiply")) {
+    1
+  } else if (is.numeric(first_change$before) && length(first_change$before) == 1L) {
+    as.numeric(first_change$before)
+  } else {
+    NA_real_
   }
+  baseline <- which(vapply(runs, function(run) is.na(run$parent_id), logical(1)))
+  values[baseline] <- baseline_value
   for (index in altered) {
-    after <- runs[[index]]$scenario$changes[[1L]]$after
-    if (is.numeric(after) && length(after) == 1L) {
-      values[[index]] <- after
+    component <- runs[[index]]$scenario$components[[1L]]
+    if (is.numeric(component$value) && length(component$value) == 1L) {
+      values[[index]] <- as.numeric(component$value)
     }
   }
   values
@@ -1205,7 +1210,14 @@ woodhen_run_metric_row <- function(run) {
     reps = run$reps,
     horizon = run$horizon,
     extinction_probability = run$extinction_evidence$probability_by_horizon,
+    extinction_conditional_median_year =
+      run$extinction_evidence$conditional_median_year,
+    extinction_overall_median_year = run$extinction_evidence$overall_median_year,
     quasi_extinction_probability = run$quasi_extinction_50_pairs$probability_by_horizon,
+    quasi_extinction_conditional_median_year =
+      run$quasi_extinction_50_pairs$conditional_median_year,
+    quasi_extinction_overall_median_year =
+      run$quasi_extinction_50_pairs$overall_median_year,
     final_median_abundance = run$final_abundance$median,
     final_q025 = run$final_abundance$q025,
     final_q975 = run$final_abundance$q975,
@@ -1326,5 +1338,243 @@ compare_woodhen_run_family <- function(runs,
       awkward_annotation = if (awkward) awkward_annotation else NULL
     ),
     class = c("woodhen_run_family_comparison", "list")
+  )
+}
+
+woodhen_family_expected_run_id <- function(scenario) {
+  woodhen_reference_run_id(scenario, seed = scenario$seed)
+}
+
+woodhen_validate_core_family <- function(family) {
+  if (!inherits(family, "woodhen_investigation_family") ||
+      !is.list(family$scenarios) || length(family$scenarios) < 3L ||
+      !family$family_type %in% c("sensitivity", "prospective")) {
+    stop(
+      "An investigation action requires a complete sensitivity or prospective family.",
+      call. = FALSE
+    )
+  }
+  lapply(family$scenarios, woodhen_validate_scenario_record)
+  if (!identical(
+    unname(vapply(family$scenarios, `[[`, character(1), "family_id")),
+    rep(family$family_id, length(family$scenarios))
+  )) {
+    stop("Every scenario must share the supplied family identity.", call. = FALSE)
+  }
+  scenario_types <- unname(vapply(
+    family$scenarios, `[[`, character(1), "scenario_type"
+  ))
+  expected_prefix <- if (identical(family$family_type, "sensitivity")) {
+    c("locked_baseline", "sensitivity", "sensitivity")
+  } else {
+    c("locked_baseline", "threat", "intervention")
+  }
+  if (!identical(scenario_types[seq_along(expected_prefix)], expected_prefix)) {
+    stop("The investigation family does not have the required scenario ancestry.", call. = FALSE)
+  }
+  locked <- woodhen_locked_future_spec()
+  ordinary_controls <- vapply(family$scenarios, function(scenario) {
+    identical(scenario$seed, 123L) && identical(scenario$spec$reps, 1000L) &&
+      identical(scenario$spec$years, 75L) && identical(scenario$spec$n0, locked$n0)
+  }, logical(1))
+  if (!all(ordinary_controls)) {
+    stop(
+      "Core investigations require the locked starting population, 75 years, 1,000 futures, and seed 123.",
+      call. = FALSE
+    )
+  }
+  invisible(family)
+}
+
+woodhen_reconcile_family_scenarios <- function(project, family) {
+  scenario_ids <- vapply(project$scenarios, `[[`, character(1), "scenario_id")
+  scenarios <- family$scenarios
+  for (index in seq_along(scenarios)) {
+    existing <- match(scenarios[[index]]$scenario_id, scenario_ids)
+    if (is.na(existing)) next
+    stored <- project$scenarios[[existing]]
+    same_science <- identical(
+      stored$scientific_identity_fingerprint,
+      scenarios[[index]]$scientific_identity_fingerprint
+    ) && identical(stored$spec_fingerprint, scenarios[[index]]$spec_fingerprint) &&
+      identical(stored$parent_id, scenarios[[index]]$parent_id)
+    if (!same_science) {
+      stop("Scenario ID collision with different scientific content.", call. = FALSE)
+    }
+    scenarios[[index]] <- stored
+  }
+  family$scenarios <- scenarios
+  family
+}
+
+woodhen_existing_family_runs <- function(project, family) {
+  expected_ids <- vapply(family$scenarios, woodhen_family_expected_run_id, character(1))
+  run_ids <- vapply(project$runs, `[[`, character(1), "run_id")
+  matches <- match(expected_ids, run_ids)
+  if (anyNA(matches)) return(NULL)
+  runs <- project$runs[matches]
+  same_science <- vapply(seq_along(runs), function(index) {
+    identical(
+      runs[[index]]$scientific_identity_fingerprint,
+      family$scenarios[[index]]$scientific_identity_fingerprint
+    ) && identical(runs[[index]]$scenario_id, family$scenarios[[index]]$scenario_id) &&
+      identical(runs[[index]]$seed, 123L) && identical(runs[[index]]$reps, 1000L) &&
+      identical(runs[[index]]$horizon, 75L)
+  }, logical(1))
+  if (!all(same_science)) {
+    stop("An existing family run has stale or incompatible identity.", call. = FALSE)
+  }
+  runs
+}
+
+woodhen_prompt_observation <- function(prompt, family_type, run_ids) {
+  if (is.null(prompt) || length(prompt) == 0L) return(NULL)
+  if (!is.list(prompt)) {
+    stop("`prompt` must be a named list of pre-run responses or NULL.", call. = FALSE)
+  }
+  fields <- c("research_question", "biological_reason", "expected_direction")
+  labels <- c(
+    research_question = "Research question",
+    biological_reason = "Biological reason",
+    expected_direction = "Expected direction"
+  )
+  values <- vapply(fields, function(field) {
+    value <- prompt[[field]]
+    if (is.null(value)) return("")
+    if (!is.character(value) || length(value) != 1L || is.na(value)) {
+      stop("Every pre-run prompt response must be one plain-text value.", call. = FALSE)
+    }
+    trimws(value)
+  }, character(1))
+  keep <- nzchar(values)
+  if (!any(keep)) return(NULL)
+  list(
+    title = if (identical(family_type, "sensitivity")) {
+      "Sensitivity pre-run prompt"
+    } else {
+      "Future advice pre-run prompt"
+    },
+    note = paste(paste0(labels[keep], ": ", values[keep]), collapse = "\n"),
+    run_ids = run_ids
+  )
+}
+
+woodhen_add_prompt_once <- function(project, observation, now) {
+  if (is.null(observation)) {
+    return(list(project = project, saved = FALSE))
+  }
+  duplicate <- vapply(project$observations, function(existing) {
+    identical(existing$title, observation$title) &&
+      identical(existing$note, observation$note) &&
+      identical(existing$run_ids, observation$run_ids)
+  }, logical(1))
+  if (any(duplicate)) {
+    return(list(project = project, saved = FALSE))
+  }
+  list(
+    project = add_woodhen_observation(project, observation, now = now),
+    saved = TRUE
+  )
+}
+
+woodhen_call_family_runner <- function(runner,
+                                       scenario,
+                                       scenario_index,
+                                       scenario_count,
+                                       sample_trajectories,
+                                       progress) {
+  last_completed <- 0L
+  callback <- function(completed, total) {
+    completed <- as.integer(completed)
+    total <- as.integer(total)
+    if (total != 1000L || completed < last_completed || completed > total) {
+      stop("Family progress must be monotonic within 1,000 futures.", call. = FALSE)
+    }
+    last_completed <<- completed
+    if (!is.null(progress)) {
+      progress(scenario_index, scenario_count, completed, total)
+    }
+  }
+  run <- runner(
+    scenario = scenario,
+    seed = scenario$seed,
+    sample_trajectories = sample_trajectories,
+    progress = callback
+  )
+  if (last_completed < 1000L) callback(1000L, 1000L)
+  run
+}
+
+woodhen_run_investigation_family_project <- function(
+    project,
+    family,
+    prompt = NULL,
+    progress = NULL,
+    runner = run_woodhen_investigation_scenario,
+    sample_trajectories = 100L,
+    now = Sys.time()) {
+  anchor <- woodhen_locked_anchor_status(project)
+  if (!identical(anchor$status, "ready")) {
+    stop(
+      "A ready current-library locked future baseline is required. ",
+      anchor$action,
+      call. = FALSE
+    )
+  }
+  validate_woodhen_project(project)
+  woodhen_validate_core_family(family)
+  if (!is.function(runner)) stop("`runner` must be a function.", call. = FALSE)
+  if (!is.null(progress) && !is.function(progress)) {
+    stop("`progress` must be a function or NULL.", call. = FALSE)
+  }
+  woodhen_validate_sample_count(sample_trajectories)
+  timestamp <- woodhen_project_time(now, "now")
+  family <- woodhen_reconcile_family_scenarios(project, family)
+  runs <- woodhen_existing_family_runs(project, family)
+  reused <- !is.null(runs)
+
+  if (is.null(runs)) {
+    runs <- lapply(seq_along(family$scenarios), function(index) {
+      run <- woodhen_call_family_runner(
+        runner = runner,
+        scenario = family$scenarios[[index]],
+        scenario_index = index,
+        scenario_count = length(family$scenarios),
+        sample_trajectories = sample_trajectories,
+        progress = progress
+      )
+      woodhen_validate_compact_run(run)
+      expected_id <- woodhen_family_expected_run_id(family$scenarios[[index]])
+      if (!identical(run$run_id, expected_id) ||
+          !identical(run$scenario, family$scenarios[[index]])) {
+        stop("A completed family run does not match its exact scenario identity.", call. = FALSE)
+      }
+      run
+    })
+  }
+
+  comparison <- compare_woodhen_run_family(runs, family$family_id)
+  candidate <- project
+  if (!reused) {
+    for (scenario in family$scenarios) {
+      candidate <- add_woodhen_scenario(candidate, scenario, now = timestamp)
+    }
+    for (run in comparison$runs) {
+      candidate <- add_woodhen_run(candidate, run, now = timestamp)
+    }
+  }
+  run_ids <- vapply(comparison$runs, `[[`, character(1), "run_id")
+  observation <- woodhen_prompt_observation(prompt, family$family_type, run_ids)
+  prompted <- woodhen_add_prompt_once(candidate, observation, timestamp)
+  candidate <- prompted$project
+  validate_woodhen_project(candidate)
+
+  list(
+    project = candidate,
+    family = family,
+    comparison = comparison,
+    runs = comparison$runs,
+    reused = reused,
+    prompt_saved = prompted$saved
   )
 }

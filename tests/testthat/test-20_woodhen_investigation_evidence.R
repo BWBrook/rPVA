@@ -364,6 +364,58 @@ test_that("sensitivity comparison derives response and parent differences", {
   expect_s3_class(plot_woodhen_sensitivity_response(comparison), "ggplot")
 })
 
+test_that("all sensitivity factors expose their scalar setting on the response scale", {
+  catalog <- woodhen_sensitivity_catalog()
+
+  for (index in seq_len(nrow(catalog))) {
+    values <- unname(catalog$anchors[[index]][c("moderate", "high")])
+    family <- build_woodhen_sensitivity_family(
+      catalog$id[[index]], values, seed = 81L
+    )
+    runs <- Map(function(scenario, shift) {
+      compact_woodhen_run(
+        synthetic_woodhen_investigation_result(scenario, shift),
+        scenario,
+        sample_trajectories = 3L
+      )
+    }, family$scenarios, c(0, -100, -200))
+    comparison <- compare_woodhen_run_family(runs, family$family_id)
+
+    expect_equal(
+      comparison$table$setting_value,
+      c(catalog$locked_baseline[[index]], values),
+      info = catalog$id[[index]]
+    )
+    expect_true(all(is.finite(comparison$table$setting_value)))
+    expect_s3_class(plot_woodhen_sensitivity_response(comparison), "ggplot")
+  }
+})
+
+test_that("family result tables retain extinction and strict 50-pair timing", {
+  family <- build_woodhen_sensitivity_family("K", c(350, 250), seed = 812L)
+  runs <- lapply(family$scenarios, function(scenario) {
+    result <- synthetic_woodhen_investigation_result(scenario)
+    result$traj[3:76, , 1:600] <- 0
+    result$raw$traj <- result$traj
+    totals <- apply(result$traj, c(1L, 3L), sum)
+    result$Nend <- as.numeric(totals[76L, ])
+    result$raw$Nend <- result$Nend
+    result$ext_prob <- rowMeans(totals == 0)
+    compact_woodhen_run(result, scenario, sample_trajectories = 3L)
+  })
+
+  table <- compare_woodhen_run_family(runs, family$family_id)$table
+  expect_true(all(c(
+    "extinction_conditional_median_year", "extinction_overall_median_year",
+    "quasi_extinction_conditional_median_year",
+    "quasi_extinction_overall_median_year"
+  ) %in% names(table)))
+  expect_equal(table$extinction_conditional_median_year, rep(2, 3L))
+  expect_equal(table$extinction_overall_median_year, rep(2, 3L))
+  expect_equal(table$quasi_extinction_conditional_median_year, rep(2, 3L))
+  expect_equal(table$quasi_extinction_overall_median_year, rep(2, 3L))
+})
+
 test_that("prospective comparison supports compact baseline-threat-intervention plots", {
   family <- build_woodhen_prospective_family(
     "increased_cyclone_pressure",

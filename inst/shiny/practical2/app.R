@@ -6,6 +6,7 @@ source("ui_helpers.R", local = TRUE)
 source("project_helpers.R", local = TRUE)
 source(file.path("modules", "mod_start.R"), local = TRUE)
 source(file.path("modules", "mod_calibrate.R"), local = TRUE)
+source(file.path("modules", "mod_investigate.R"), local = TRUE)
 
 status_value <- function(value, state = "neutral", icon = "circle-info") {
   list(value = value, state = state, icon = icon)
@@ -28,10 +29,7 @@ ui <- navbarPage(
   tabPanel(
     "Investigate",
     value = "investigate",
-    pending_tab_ui(
-      "Investigate future choices",
-      "Sensitivity, threat, and intervention workspaces will be added here."
-    )
+    investigate_ui("investigate")
   ),
   tabPanel(
     "Compare",
@@ -52,7 +50,8 @@ ui <- navbarPage(
 )
 
 make_practical2_server <- function(
-    calibrate_scenario_runner = rPVA::run_woodhen_investigation_scenario
+    calibrate_scenario_runner = rPVA::run_woodhen_investigation_scenario,
+    investigate_scenario_runner = rPVA::run_woodhen_investigation_scenario
 ) {
   function(input, output, session) {
     project <- reactiveVal(NULL)
@@ -194,6 +193,11 @@ make_practical2_server <- function(
       project = reactive(project()),
       scenario_runner = calibrate_scenario_runner
     )
+    investigate_events <- investigate_server(
+      "investigate",
+      project = reactive(project()),
+      scenario_runner = investigate_scenario_runner
+    )
 
     observeEvent(calibrate_events$project_update(), {
       event <- calibrate_events$project_update()
@@ -203,6 +207,22 @@ make_practical2_server <- function(
       }
       activate_project(event$candidate)
       showNotification(event$message, type = "message")
+    })
+
+    observeEvent(investigate_events$project_update(), {
+      event <- investigate_events$project_update()
+      if (!isTRUE(event$ok)) {
+        showNotification(event$message, type = "warning")
+        return()
+      }
+      activate_project(event$candidate)
+      showNotification(event$message, type = "message")
+    })
+
+    observeEvent(investigate_events$navigate(), {
+      event <- investigate_events$navigate()
+      if (is.null(event) || !identical(event$section, "calibrate")) return()
+      updateNavbarPage(session, "section", selected = "calibrate")
     })
 
     observeEvent(input$project_store_inventory, {
