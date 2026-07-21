@@ -172,3 +172,269 @@ plot_woodhen_threshold_curve <- function(evidence, max_threshold = NULL) {
     ) +
     ggplot2::theme_minimal(base_size = 11)
 }
+
+validate_woodhen_plot_run <- function(run) {
+  woodhen_validate_compact_run(run)
+  required <- c(
+    "student_label", "trajectory_sample", "annual_quantiles",
+    "final_abundance", "extinction_evidence", "quasi_extinction_50_pairs"
+  )
+  missing <- setdiff(required, names(run))
+  if (length(missing) > 0L) {
+    stop(
+      "`run` is missing compact plotting field(s): ",
+      paste(missing, collapse = ", "),
+      call. = FALSE
+    )
+  }
+  run
+}
+
+woodhen_compact_plot_subtitle <- function(run, units = "total birds") {
+  paste0(
+    run$student_label, " | ", units, " | ", run$horizon,
+    "-year horizon | ", run$reps, " futures"
+  )
+}
+
+#' Plot sampled and summarised Woodhen trajectories from compact evidence
+#'
+#' @param run A `woodhen_compact_run`.
+#' @return A ggplot object.
+plot_woodhen_trajectories <- function(run) {
+  run <- validate_woodhen_plot_run(run)
+  ggplot2::ggplot(
+    run$trajectory_sample,
+    ggplot2::aes(
+      x = year,
+      y = abundance,
+      group = factor(replicate_index)
+    )
+  ) +
+    ggplot2::geom_line(colour = "#7A8C8D", alpha = 0.20, linewidth = 0.35) +
+    ggplot2::geom_ribbon(
+      data = run$annual_quantiles,
+      ggplot2::aes(x = year, ymin = q025, ymax = q975),
+      inherit.aes = FALSE,
+      fill = "#9CC5C8",
+      alpha = 0.45
+    ) +
+    ggplot2::geom_line(
+      data = run$annual_quantiles,
+      ggplot2::aes(x = year, y = median),
+      inherit.aes = FALSE,
+      colour = "#006D77",
+      linewidth = 0.9
+    ) +
+    ggplot2::labs(
+      title = "Population trajectories and annual uncertainty",
+      subtitle = woodhen_compact_plot_subtitle(run),
+      x = "Projection year",
+      y = "Total abundance (birds)",
+      caption = paste0(
+        "Median and 95% interval across all futures; ",
+        length(run$sampled_replicate_indices),
+        " deterministically selected trajectories shown."
+      )
+    ) +
+    ggplot2::theme_minimal(base_size = 11)
+}
+
+#' Plot the final-abundance distribution from compact evidence
+#'
+#' @param run A `woodhen_compact_run`.
+#' @return A ggplot object.
+plot_woodhen_final_abundance <- function(run) {
+  run <- validate_woodhen_plot_run(run)
+  plot_data <- data.frame(abundance = run$final_abundance$values)
+  ggplot2::ggplot(plot_data, ggplot2::aes(x = abundance)) +
+    ggplot2::geom_histogram(bins = 30L, fill = "#4C956C", colour = "white") +
+    ggplot2::geom_vline(
+      xintercept = run$final_abundance$median,
+      colour = "#1D3557",
+      linewidth = 0.9
+    ) +
+    ggplot2::labs(
+      title = "Final-abundance distribution",
+      subtitle = woodhen_compact_plot_subtitle(run),
+      x = "Final total abundance (birds)",
+      y = "Number of futures",
+      caption = paste0(
+        "Median ", format(run$final_abundance$median, trim = TRUE),
+        "; all-future 95% interval ",
+        format(run$final_abundance$q025, trim = TRUE), "-",
+        format(run$final_abundance$q975, trim = TRUE), "."
+      )
+    ) +
+    ggplot2::theme_minimal(base_size = 11)
+}
+
+#' Plot cumulative extinction and 50-pair risk from compact evidence
+#'
+#' @param run A `woodhen_compact_run`.
+#' @return A ggplot object.
+plot_woodhen_risk_evidence <- function(run) {
+  run <- validate_woodhen_plot_run(run)
+  extinction <- run$extinction_evidence$cumulative
+  extinction$event <- "Extinction (0 birds)"
+  quasi <- run$quasi_extinction_50_pairs$cumulative
+  quasi$event <- "Fewer than 50 breeding pairs"
+  plot_data <- rbind(extinction, quasi)
+  conditional <- run$quasi_extinction_50_pairs$conditional_median_year
+  conditional_caption <- if (is.na(conditional)) {
+    "Conditional 50-pair first-passage median: not available; no crossing futures were observed."
+  } else {
+    paste0(
+      "Conditional 50-pair first-passage median among crossing futures: ",
+      format(conditional, trim = TRUE), " years."
+    )
+  }
+
+  ggplot2::ggplot(
+    plot_data,
+    ggplot2::aes(x = year, y = probability, colour = event)
+  ) +
+    ggplot2::geom_line(linewidth = 0.9) +
+    woodhen_probability_scale() +
+    ggplot2::scale_colour_manual(values = c("#B23A48", "#006D77")) +
+    ggplot2::labs(
+      title = "Cumulative population risk",
+      subtitle = woodhen_compact_plot_subtitle(run, "birds and breeding pairs"),
+      x = "Projection year",
+      y = "Probability of ever reaching the event",
+      colour = "Event",
+      caption = conditional_caption
+    ) +
+    ggplot2::theme_minimal(base_size = 11) +
+    ggplot2::theme(legend.position = "bottom")
+}
+
+validate_woodhen_plot_comparison <- function(comparison, family_type = NULL) {
+  if (!inherits(comparison, "woodhen_run_family_comparison") ||
+      !is.data.frame(comparison$table) || nrow(comparison$table) == 0L) {
+    stop("`comparison` must be a compact Woodhen family comparison.", call. = FALSE)
+  }
+  if (!is.null(family_type) && !identical(comparison$family_type, family_type)) {
+    stop("This plot requires a ", family_type, " family comparison.", call. = FALSE)
+  }
+  comparison
+}
+
+#' Plot a compact one-factor sensitivity response
+#'
+#' @param comparison A sensitivity `woodhen_run_family_comparison`.
+#' @return A ggplot object.
+plot_woodhen_sensitivity_response <- function(comparison) {
+  comparison <- validate_woodhen_plot_comparison(comparison, "sensitivity")
+  plot_data <- comparison$table
+  if (anyNA(plot_data$setting_value)) {
+    stop("Sensitivity plotting requires one scalar setting value per run.", call. = FALSE)
+  }
+  plot_data <- plot_data[order(plot_data$setting_value), , drop = FALSE]
+  horizon <- unique(plot_data$horizon)
+  reps <- unique(plot_data$reps)
+
+  ggplot2::ggplot(
+    plot_data,
+    ggplot2::aes(x = setting_value, y = final_median_abundance)
+  ) +
+    ggplot2::geom_ribbon(
+      ggplot2::aes(ymin = final_q025, ymax = final_q975),
+      fill = "#9CC5C8",
+      alpha = 0.45
+    ) +
+    ggplot2::geom_line(colour = "#006D77", linewidth = 0.9) +
+    ggplot2::geom_point(colour = "#006D77", size = 2.2) +
+    ggplot2::labs(
+      title = "Sensitivity response across settings",
+      subtitle = paste0(
+        comparison$family_id, " | total birds | ",
+        paste(horizon, collapse = "/"), "-year horizon | ",
+        paste(reps, collapse = "/"), " futures"
+      ),
+      x = "Ecological factor setting",
+      y = "Final total abundance (median and 95% interval)",
+      caption = "Each setting differs from the locked baseline in one named factor."
+    ) +
+    ggplot2::theme_minimal(base_size = 11)
+}
+
+#' Plot a compact baseline-threat-intervention comparison
+#'
+#' @param comparison A prospective `woodhen_run_family_comparison`.
+#' @return A ggplot object.
+plot_woodhen_family_comparison <- function(comparison) {
+  comparison <- validate_woodhen_plot_comparison(comparison, "prospective")
+  table <- comparison$table
+  n <- nrow(table)
+  plot_data <- data.frame(
+    student_label = rep(table$student_label, 3L),
+    scenario_type = rep(table$scenario_type, 3L),
+    scenario_order = rep(seq_len(n), 3L),
+    metric = factor(
+      rep(c(
+        "Final total abundance (birds)",
+        "Extinction probability",
+        "Probability of fewer than 50 breeding pairs"
+      ), each = n),
+      levels = c(
+        "Final total abundance (birds)",
+        "Extinction probability",
+        "Probability of fewer than 50 breeding pairs"
+      )
+    ),
+    value = c(
+      table$final_median_abundance,
+      table$extinction_probability,
+      table$quasi_extinction_probability
+    ),
+    lower = c(table$final_q025, table$extinction_probability, table$quasi_extinction_probability),
+    upper = c(table$final_q975, table$extinction_probability, table$quasi_extinction_probability)
+  )
+  plot_data$student_label <- factor(
+    plot_data$student_label,
+    levels = unique(table$student_label)
+  )
+
+  ggplot2::ggplot(
+    plot_data,
+    ggplot2::aes(x = student_label, y = value, colour = scenario_type)
+  ) +
+    ggplot2::geom_errorbar(
+      ggplot2::aes(ymin = lower, ymax = upper),
+      width = 0.16,
+      linewidth = 0.65
+    ) +
+    ggplot2::geom_point(size = 2.2) +
+    ggplot2::facet_wrap(~metric, scales = "free_y", ncol = 1L) +
+    ggplot2::scale_colour_manual(values = c(
+      locked_baseline = "#006D77",
+      threat = "#B23A48",
+      intervention = "#4C956C"
+    )) +
+    ggplot2::labs(
+      title = "Baseline, threat, and intervention evidence",
+      subtitle = paste0(
+        comparison$family_id, " | ", paste(unique(table$horizon), collapse = "/"),
+        "-year horizon | ", paste(unique(table$reps), collapse = "/"), " futures"
+      ),
+      x = NULL,
+      y = NULL,
+      colour = "Scenario order",
+      caption = if (comparison$awkward_comparison) {
+        paste0("Awkward comparison: ", comparison$awkward_annotation)
+      } else {
+        "Risk probabilities are proportions; final abundance shows the all-future 95% interval."
+      }
+    ) +
+    ggplot2::theme_minimal(base_size = 11) +
+    ggplot2::theme(
+      legend.position = "none",
+      axis.text.x = ggplot2::element_text(angle = 20, hjust = 1)
+    )
+}
+
+# Stable descriptive aliases for callers that name the evidence rather than the display.
+plot_woodhen_trajectory_evidence <- plot_woodhen_trajectories
+plot_woodhen_final_distribution <- plot_woodhen_final_abundance
+plot_woodhen_baseline_threat_intervention <- plot_woodhen_family_comparison
