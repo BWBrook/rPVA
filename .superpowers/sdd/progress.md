@@ -78,3 +78,15 @@ Gate 2 review dispositions:
 - Portable package audit: complete (5 scenarios, 3 compact runs, 1 observation; 15,794 bytes compressed and 405,544 bytes expanded; exact IDs, typed scientific content, notes, selections, comparison outcomes, and stable fingerprint survived re-export)
 
 Gate 2 status: closed. Next tranche is Gate 3's student-facing three-hour core route; the first browser checkpoint follows Tasks 6-8.
+
+Gate 3:
+- Task 6: complete (commits 02d4ba9, 727eb18, and d678e42; 113-expectation Shiny, 56-expectation project-store, and 209-expectation project compatibility suites passed; cold namespace-only Create/Import/restore and first-click Create/Resume passed; two review-repair rounds resolved all Critical and Important findings)
+
+Gate 3 review dispositions:
+- Browser snapshots remain strict typed project documents; IndexedDB inventory carries metadata only and explicit restore is the sole activation path.
+- Production launches with the `rPVA` namespace loaded but unattached, so app-side package APIs are explicitly namespace-qualified and cold-process tested.
+- Restore and storage acknowledgements are correlated by request identity, operation kind, project identity, and fingerprint before pending state is consumed.
+- Real Shiny action-button `0 -> 1` semantics are covered so Create and Resume work on the first click.
+- Real IndexedDB durability, browser download behavior, and rendered responsive acceptance remain assigned to the Gate 3 browser checkpoint after Tasks 7-8.
+
+Gate 3 status: in progress. Next tranche is Task 7 historical calibration.
