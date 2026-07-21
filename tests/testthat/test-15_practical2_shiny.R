@@ -57,13 +57,15 @@ practical2_action_button_value <- function(value) {
   )
 }
 
-test_that("installed Practical 2 shell contains its complete Task 6 asset inventory", {
+test_that("installed Practical 2 shell contains its implemented module assets", {
   app_dir <- practical2_app_dir()
   expected <- c(
     "README.md",
     "app.R",
+    "content/help-calibrate.md",
     "content/help-projects.md",
     "content/start.md",
+    "modules/mod_calibrate.R",
     "modules/mod_start.R",
     "project_helpers.R",
     "ui_helpers.R",
@@ -76,12 +78,13 @@ test_that("installed Practical 2 shell contains its complete Task 6 asset invent
   expect_true(all(file.exists(file.path(app_dir, expected))))
 })
 
-test_that("helpers and the real Start module source from the installed app directory", {
+test_that("helpers and implemented modules source from the installed app directory", {
   env <- source_practical2_app()
 
   expect_true(all(vapply(
     c(
-      "start_ui", "start_server", "pending_tab_ui", "project_help_modal",
+      "start_ui", "start_server", "calibrate_ui", "calibrate_server",
+      "pending_tab_ui", "project_help_modal",
       "project_store_key", "project_store_record", "make_practical2_server"
     ),
     exists,
@@ -244,16 +247,16 @@ test_that("Start narrative states the adviser, two-act, core-route, and extensio
   expect_match(help_text, "download requested", ignore.case = TRUE)
 })
 
-test_that("future tabs remain visible quiet bands without false completion", {
+test_that("only the three future workspaces remain quiet bands without false completion", {
   env <- source_practical2_app()
   html <- paste(as.character(env$ui), collapse = "\n")
 
-  expect_equal(length(gregexpr('class="pending-tab-band"', html, fixed = TRUE)[[1L]]), 4L)
+  expect_equal(length(gregexpr('class="pending-tab-band"', html, fixed = TRUE)[[1L]]), 3L)
   expect_match(html, "This workspace arrives in the next build stage", fixed = TRUE)
   expect_false(grepl("complete|completed|passed|report ready", html, ignore.case = TRUE))
   expect_false(any(file.exists(file.path(
     practical2_app_dir(), "modules",
-    c("mod_calibrate.R", "mod_investigate.R", "mod_compare.R", "mod_evidence.R")
+    c("mod_investigate.R", "mod_compare.R", "mod_evidence.R")
   ))))
 })
 
@@ -261,11 +264,14 @@ test_that("root server owns replacement and module exposes reactive events", {
   app_dir <- practical2_app_dir()
   app_text <- paste(readLines(file.path(app_dir, "app.R"), warn = FALSE), collapse = "\n")
   module_text <- paste(readLines(file.path(app_dir, "modules", "mod_start.R"), warn = FALSE), collapse = "\n")
+  calibrate_text <- paste(readLines(file.path(app_dir, "modules", "mod_calibrate.R"), warn = FALSE), collapse = "\n")
 
   expect_match(app_text, "project <- reactiveVal(NULL)", fixed = TRUE)
   expect_match(app_text, "rPVA::validate_woodhen_project(candidate)", fixed = TRUE)
   expect_match(app_text, "project(candidate)", fixed = TRUE)
   expect_match(app_text, "events <- start_server", fixed = TRUE)
+  expect_match(app_text, "calibrate_events <- calibrate_server", fixed = TRUE)
+  expect_match(app_text, "observeEvent(calibrate_events$project_update()", fixed = TRUE)
   expect_match(module_text, "moduleServer(id", fixed = TRUE)
   expect_match(module_text, "create_event <- eventReactive", fixed = TRUE)
   expect_match(module_text, "resume_event <- eventReactive", fixed = TRUE)
@@ -274,7 +280,9 @@ test_that("root server owns replacement and module exposes reactive events", {
   expect_match(module_text, "rPVA::new_woodhen_project(", fixed = TRUE)
   expect_match(module_text, "rPVA::read_woodhen_project_package(upload$datapath)", fixed = TRUE)
   expect_match(module_text, "rPVA::write_woodhen_project_package(candidate, file)", fixed = TRUE)
-  expect_false(grepl("assign\\(|<<-", paste(app_text, module_text)))
+  expect_match(calibrate_text, "moduleServer(id", fixed = TRUE)
+  expect_match(calibrate_text, "project_update", fixed = TRUE)
+  expect_false(grepl("assign\\(|<<-", paste(app_text, module_text, calibrate_text)))
 })
 
 test_that("failed project candidates preserve the live project", {

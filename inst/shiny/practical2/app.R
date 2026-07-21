@@ -5,6 +5,7 @@ practical2_app_dir <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)
 source("ui_helpers.R", local = TRUE)
 source("project_helpers.R", local = TRUE)
 source(file.path("modules", "mod_start.R"), local = TRUE)
+source(file.path("modules", "mod_calibrate.R"), local = TRUE)
 
 status_value <- function(value, state = "neutral", icon = "circle-info") {
   list(value = value, state = state, icon = icon)
@@ -22,10 +23,7 @@ ui <- navbarPage(
   tabPanel(
     "Calibrate",
     value = "calibrate",
-    pending_tab_ui(
-      "Calibrate against history",
-      "The historical reference runs and recovery check will be added here."
-    )
+    calibrate_ui("calibrate")
   ),
   tabPanel(
     "Investigate",
@@ -189,6 +187,20 @@ make_practical2_server <- function() {
       portable_status = reactive(portable_status()),
       dirty_status = reactive(dirty_status())
     )
+    calibrate_events <- calibrate_server(
+      "calibrate",
+      project = reactive(project())
+    )
+
+    observeEvent(calibrate_events$project_update(), {
+      event <- calibrate_events$project_update()
+      if (!isTRUE(event$ok)) {
+        showNotification(event$message, type = "warning")
+        return()
+      }
+      activate_project(event$candidate)
+      showNotification(event$message, type = "message")
+    })
 
     observeEvent(input$project_store_inventory, {
       records <- tryCatch(

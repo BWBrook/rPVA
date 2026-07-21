@@ -139,6 +139,86 @@ woodhen_scenario_record_fields <- function(scenario_type) {
   }
 }
 
+woodhen_reference_family_id <- function(reference_id) {
+  if (reference_id %in% c("01_no_mgmt", "02_pig_control", "03_captive_pig")) {
+    return("woodhen_reference_1980_crisis")
+  }
+  if (identical(reference_id, "04_rodent_eradication")) {
+    return("woodhen_reference_2019_recovery")
+  }
+  "woodhen_reference_2025_anchor"
+}
+
+woodhen_reference_record_raw <- function(reference_id) {
+  catalog <- woodhen_reference_catalog()
+  row <- woodhen_catalog_match(catalog, reference_id, "reference scenario")
+  spec <- woodhen_reference_spec(reference_id)
+  portable_spec_order <- c(
+    "name", "years", "reps", "surv", "stasis", "fecund", "sex_ratio_init",
+    "monogamy", "n0", "demographic_stochasticity", "env_sd", "K", "K_sd",
+    "cat_freq", "cat_surv", "cat_repro", "genetics", "F_init",
+    "lethal_equiv", "B_on_fec", "Ne_N_ratio", "Ne_window", "purge_kappa",
+    "annual_profiles", "release_years", "release_vec"
+  )
+  spec <- spec[c(
+    intersect(portable_spec_order, names(spec)),
+    sort(setdiff(names(spec), portable_spec_order), method = "radix")
+  )]
+  class(spec) <- c("pva_spec", "list")
+  scenario <- structure(
+    list(
+      record_schema_version = "woodhen-scenario-record-v1",
+      scenario_id = reference_id,
+      family_id = woodhen_reference_family_id(reference_id),
+      student_label = row$label[[1L]],
+      scenario_type = "reference",
+      parent_id = NA_character_,
+      locked_baseline_id = "05_future_baseline",
+      components = list(),
+      changes = list(),
+      temporal_profile = list(),
+      spec = spec,
+      seed = 123L,
+      reference_library_version = woodhen_reference_library_version(),
+      catalog_version = woodhen_investigation_catalog_version(),
+      model_version = woodhen_model_version(),
+      created_at = NA_character_,
+      modified_at = NA_character_,
+      notes = NULL,
+      spec_fingerprint = woodhen_spec_fingerprint(spec),
+      fingerprint_algorithm = "sha256",
+      canonicalization_version = "woodhen-spec-canonical-v1",
+      scientific_identity_fingerprint = NA_character_
+    ),
+    class = c("woodhen_investigation_scenario", "list")
+  )
+  scenario$scientific_identity_fingerprint <-
+    woodhen_record_scientific_fingerprint(scenario)
+  scenario
+}
+
+woodhen_validate_reference_scenario <- function(scenario) {
+  reference_ids <- woodhen_reference_catalog()$id
+  if (!is.character(scenario$scenario_id) || length(scenario$scenario_id) != 1L ||
+      is.na(scenario$scenario_id) || !scenario$scenario_id %in% reference_ids) {
+    stop("A reference record must use an exact catalogued reference ID.", call. = FALSE)
+  }
+  expected <- woodhen_reference_record_raw(scenario$scenario_id)
+  if (!identical(scenario, expected)) {
+    stop(
+      "The reference record does not match its exact catalogued specification and metadata.",
+      call. = FALSE
+    )
+  }
+  invisible(scenario)
+}
+
+woodhen_reference_scenario <- function(reference_id) {
+  scenario <- woodhen_reference_record_raw(reference_id)
+  woodhen_validate_scenario_record(scenario)
+  scenario
+}
+
 woodhen_validate_portable_value <- function(value, path = "scenario") {
   value_type <- typeof(value)
   allowed_types <- c("NULL", "logical", "integer", "double", "character", "list")
@@ -542,7 +622,9 @@ woodhen_validate_scenario_record <- function(scenario) {
   }
   if (!is.character(scenario$scenario_type) || length(scenario$scenario_type) != 1L ||
       is.na(scenario$scenario_type) ||
-      !scenario$scenario_type %in% c("locked_baseline", "sensitivity", "threat", "intervention")) {
+      !scenario$scenario_type %in% c(
+        "reference", "locked_baseline", "sensitivity", "threat", "intervention"
+      )) {
     stop("`scenario$scenario_type` is not a supported investigation type.", call. = FALSE)
   }
   expected_fields <- woodhen_scenario_record_fields(scenario$scenario_type)
@@ -564,11 +646,15 @@ woodhen_validate_scenario_record <- function(scenario) {
   }
   woodhen_validate_scenario_metadata(scenario)
   woodhen_validate_portable_value(scenario)
-  woodhen_validate_scenario_payload_shapes(scenario)
   if (!identical(woodhen_spec_fingerprint(scenario$spec), scenario$spec_fingerprint)) {
     stop("`scenario$spec_fingerprint` does not match its executable specification.", call. = FALSE)
   }
-  woodhen_preflight_spec(scenario$spec)
+  if (identical(scenario$scenario_type, "reference")) {
+    woodhen_validate_reference_scenario(scenario)
+  } else {
+    woodhen_validate_scenario_payload_shapes(scenario)
+    woodhen_preflight_spec(scenario$spec)
+  }
   if (!identical(
     woodhen_record_scientific_fingerprint(scenario),
     scenario$scientific_identity_fingerprint
@@ -750,6 +836,302 @@ run_woodhen_investigation_scenario <- function(
     progress = progress
   )
   compact_woodhen_run(result, scenario, sample_trajectories = sample_trajectories)
+}
+
+woodhen_reference_run_id <- function(scenario, seed = scenario$seed) {
+  seed <- woodhen_validate_seed(seed)
+  paste0(
+    "woodhen_run_",
+    substr(woodhen_content_fingerprint(list(
+      scenario_id = scenario$scenario_id,
+      scientific_identity_fingerprint = scenario$scientific_identity_fingerprint,
+      seed = seed,
+      reps = as.integer(scenario$spec$reps)
+    )), 1L, 16L)
+  )
+}
+
+woodhen_reference_project_versions_match <- function(project) {
+  identical(project$reference_library_version, woodhen_reference_library_version()) &&
+    identical(project$catalog_version, woodhen_investigation_catalog_version()) &&
+    identical(project$model_version, woodhen_model_version())
+}
+
+woodhen_reference_run_in_project <- function(project, reference_id) {
+  scenario <- woodhen_reference_scenario(reference_id)
+  expected_run_id <- woodhen_reference_run_id(scenario)
+  run_ids <- vapply(project$runs, `[[`, character(1), "run_id")
+  index <- match(expected_run_id, run_ids)
+  if (is.na(index)) NULL else project$runs[[index]]
+}
+
+woodhen_run_reference_project_result <- function(project, reference_id, run, now) {
+  scenario <- woodhen_reference_scenario(reference_id)
+  woodhen_validate_compact_run(run)
+  if (!identical(run$scenario, scenario) ||
+      !identical(run$run_id, woodhen_reference_run_id(scenario)) ||
+      !identical(run$seed, 123L) ||
+      !identical(run$reps, 1000L) ||
+      !identical(run$horizon, as.integer(scenario$spec$years))) {
+    stop("The completed reference run does not match its exact reference identity.", call. = FALSE)
+  }
+  candidate <- add_woodhen_scenario(project, scenario, now = now)
+  candidate <- add_woodhen_run(candidate, run, now = now)
+  list(project = candidate, scenario = scenario, run = run, reused = FALSE)
+}
+
+woodhen_run_reference_project_reuse <- function(project, reference_id) {
+  existing <- woodhen_reference_run_in_project(project, reference_id)
+  if (is.null(existing)) return(NULL)
+  scenario <- woodhen_reference_scenario(reference_id)
+  if (!identical(existing$scenario, scenario) ||
+      !identical(existing$seed, 123L) ||
+      !identical(existing$reps, 1000L) ||
+      !identical(existing$horizon, as.integer(scenario$spec$years))) {
+    stop("An existing reference run has stale or incompatible identity.", call. = FALSE)
+  }
+  list(project = project, scenario = scenario, run = existing, reused = TRUE)
+}
+
+woodhen_validate_reference_action_args <- function(project, runner, sample_trajectories) {
+  validate_woodhen_project(project)
+  if (!woodhen_reference_project_versions_match(project)) {
+    stop(
+      "This project uses an incompatible reference library. Start or import a current compatible project.",
+      call. = FALSE
+    )
+  }
+  if (!is.function(runner)) {
+    stop("`runner` must be a function.", call. = FALSE)
+  }
+  woodhen_validate_sample_count(sample_trajectories)
+  invisible(project)
+}
+
+woodhen_call_reference_runner <- function(
+    runner,
+    scenario,
+    sample_trajectories,
+    progress
+) {
+  runner(
+    scenario = scenario,
+    seed = scenario$seed,
+    sample_trajectories = sample_trajectories,
+    progress = progress
+  )
+}
+
+run_woodhen_reference_project <- function(
+    project,
+    reference_id,
+    progress = NULL,
+    runner = run_woodhen_investigation_scenario,
+    sample_trajectories = 100L,
+    now = Sys.time()
+) {
+  woodhen_validate_reference_action_args(project, runner, sample_trajectories)
+  if (!is.null(progress) && !is.function(progress)) {
+    stop("`progress` must be a function or NULL.", call. = FALSE)
+  }
+  scenario <- woodhen_reference_scenario(reference_id)
+  existing <- woodhen_run_reference_project_reuse(project, reference_id)
+  if (!is.null(existing)) return(existing)
+
+  run <- woodhen_call_reference_runner(
+    runner,
+    scenario,
+    sample_trajectories,
+    progress
+  )
+  woodhen_run_reference_project_result(project, reference_id, run, now)
+}
+
+compare_woodhen_1980_references <- function(runs) {
+  expected_ids <- c("01_no_mgmt", "02_pig_control", "03_captive_pig")
+  if (!is.list(runs) || length(runs) != length(expected_ids)) {
+    stop("The 1980 comparison requires exactly 01_no_mgmt, 02_pig_control, and 03_captive_pig.", call. = FALSE)
+  }
+  lapply(runs, woodhen_validate_compact_run)
+  scenario_ids <- vapply(runs, `[[`, character(1), "scenario_id")
+  if (anyDuplicated(scenario_ids) || !setequal(scenario_ids, expected_ids)) {
+    stop("The 1980 comparison requires exactly 01_no_mgmt, 02_pig_control, and 03_captive_pig.", call. = FALSE)
+  }
+  runs <- runs[match(expected_ids, scenario_ids)]
+  for (index in seq_along(runs)) {
+    expected <- woodhen_reference_scenario(expected_ids[[index]])
+    if (!identical(runs[[index]]$scenario, expected) ||
+        !identical(runs[[index]]$seed, 123L) ||
+        !identical(runs[[index]]$reps, 1000L) ||
+        !identical(runs[[index]]$horizon, 40L)) {
+      stop("The 1980 comparison includes stale or incompatible reference evidence.", call. = FALSE)
+    }
+  }
+  table <- do.call(rbind, lapply(runs, woodhen_run_metric_row))
+  rownames(table) <- NULL
+  structure(
+    list(
+      comparison_id = "woodhen_reference_1980_crisis",
+      reference_ids = expected_ids,
+      table = table,
+      runs = runs,
+      interpretation = paste(
+        "These cases share the 1980 decision context, starting state,",
+        "40-year horizon, seed 123, and 1,000 simulated futures."
+      )
+    ),
+    class = c("woodhen_1980_reference_comparison", "list")
+  )
+}
+
+woodhen_calibration_history <- function() {
+  future <- woodhen_reference_spec("05_future_baseline")
+  list(
+    crisis_1980 = list(
+      period = "1980-2020",
+      heading = "1980 crisis and 40-year management alternatives",
+      reference_ids = c("01_no_mgmt", "02_pig_control", "03_captive_pig"),
+      observed_history = paste(
+        "By 1980, only about 4-6 viable breeding pairs remained in restricted",
+        "upland habitat while pigs excluded Woodhens from the lowlands."
+      ),
+      horizon = 40L
+    ),
+    recovery_2019_2024 = list(
+      period = "2019-2024",
+      heading = "2019-2024 rodent-eradication recovery check",
+      reference_ids = "04_rodent_eradication",
+      observed_history = "The observed historical milestone was over 1,600 birds by 2024.",
+      model_state = list(
+        total_birds = as.integer(2 * sum(future$n0)),
+        breeding_pairs = as.integer(sum(future$n0[-1L])),
+        label = paste(
+          "The supplied 2024 model state is exactly 1,654 birds and about",
+          "330 breeding pairs; it is not an independently precise empirical census."
+        )
+      ),
+      warning = paste(
+        "Short-horizon warning: this five-year recovery check must not be ranked",
+        "against the three 40-year cases."
+      ),
+      horizon = 5L
+    ),
+    future_2025_2100 = list(
+      period = "2025-2100",
+      heading = "2025-2100 locked future baseline",
+      reference_ids = "05_future_baseline",
+      observed_history = paste(
+        "This no-change projection begins from the supplied 2024 model state",
+        "and establishes the common future anchor for Act 2."
+      ),
+      horizon = 75L
+    )
+  )
+}
+
+woodhen_locked_anchor_expected_identity <- function() {
+  scenario <- woodhen_reference_scenario("05_future_baseline")
+  list(
+    scenario_id = scenario$scenario_id,
+    scenario_type = scenario$scenario_type,
+    run_id = woodhen_reference_run_id(scenario),
+    spec_fingerprint = scenario$spec_fingerprint,
+    scientific_identity_fingerprint = scenario$scientific_identity_fingerprint,
+    seed = 123L,
+    reps = 1000L,
+    horizon = 75L,
+    reference_library_version = woodhen_reference_library_version(),
+    catalog_version = woodhen_investigation_catalog_version(),
+    model_version = woodhen_model_version()
+  )
+}
+
+woodhen_locked_anchor_observed_identity <- function(project, scenario, run) {
+  field_or_na <- function(value, field, type = "character") {
+    result <- if (is.list(value)) value[[field]] else NULL
+    if (!is.null(result) && length(result) == 1L) return(result)
+    switch(type, integer = NA_integer_, character = NA_character_)
+  }
+  list(
+    scenario_id = field_or_na(scenario, "scenario_id"),
+    scenario_type = field_or_na(scenario, "scenario_type"),
+    run_id = field_or_na(run, "run_id"),
+    spec_fingerprint = field_or_na(run, "spec_fingerprint"),
+    scientific_identity_fingerprint = field_or_na(run, "scientific_identity_fingerprint"),
+    seed = field_or_na(run, "seed", "integer"),
+    reps = field_or_na(run, "reps", "integer"),
+    horizon = field_or_na(run, "horizon", "integer"),
+    reference_library_version = field_or_na(project, "reference_library_version"),
+    catalog_version = field_or_na(project, "catalog_version"),
+    model_version = field_or_na(project, "model_version")
+  )
+}
+
+woodhen_locked_anchor_result <- function(status, expected, observed, action) {
+  list(status = status, expected = expected, observed = observed, action = action)
+}
+
+woodhen_locked_anchor_status <- function(project) {
+  expected <- woodhen_locked_anchor_expected_identity()
+  run_action <- "Run the locked future baseline."
+  project_action <- "Start or import a current compatible project."
+  if (is.null(project)) {
+    return(woodhen_locked_anchor_result("missing", expected, NULL, run_action))
+  }
+  if (!is.list(project)) {
+    return(woodhen_locked_anchor_result("stale", expected, NULL, project_action))
+  }
+  project_current <- woodhen_reference_project_versions_match(project)
+  scenarios <- if (is.list(project$scenarios)) project$scenarios else list()
+  runs <- if (is.list(project$runs)) project$runs else list()
+  scenario_ids <- vapply(scenarios, function(value) {
+    if (is.list(value) && is.character(value$scenario_id) && length(value$scenario_id) == 1L) {
+      value$scenario_id
+    } else {
+      NA_character_
+    }
+  }, character(1))
+  scenario <- if ("05_future_baseline" %in% scenario_ids) {
+    scenarios[[match("05_future_baseline", scenario_ids)]]
+  } else {
+    NULL
+  }
+  run_scenario_ids <- vapply(runs, function(value) {
+    if (is.list(value) && is.character(value$scenario_id) && length(value$scenario_id) == 1L) {
+      value$scenario_id
+    } else {
+      NA_character_
+    }
+  }, character(1))
+  run <- if ("05_future_baseline" %in% run_scenario_ids) {
+    runs[[match("05_future_baseline", run_scenario_ids)]]
+  } else {
+    NULL
+  }
+  observed <- woodhen_locked_anchor_observed_identity(project, scenario, run)
+  if (!project_current) {
+    return(woodhen_locked_anchor_result("stale", expected, observed, project_action))
+  }
+  if (is.null(scenario) && is.null(run)) {
+    return(woodhen_locked_anchor_result("missing", expected, observed, run_action))
+  }
+  expected_scenario <- woodhen_reference_scenario("05_future_baseline")
+  if (is.null(run)) {
+    status <- if (identical(scenario, expected_scenario)) "missing" else "stale"
+    action <- if (identical(status, "missing")) run_action else project_action
+    return(woodhen_locked_anchor_result(status, expected, observed, action))
+  }
+  validated <- !inherits(try(validate_woodhen_project(project), silent = TRUE), "try-error")
+  identity_matches <- identical(scenario, expected_scenario) &&
+    identical(observed, expected) &&
+    identical(run$scenario, expected_scenario) &&
+    identical(run$baseline_spec_fingerprint, expected$spec_fingerprint) &&
+    identical(run$provenance$reference_library_version, expected$reference_library_version) &&
+    identical(run$provenance$catalog_version, expected$catalog_version) &&
+    identical(run$provenance$model_version, expected$model_version)
+  status <- if (validated && identity_matches) "ready" else "stale"
+  action <- if (identical(status, "ready")) "The locked future baseline is ready." else project_action
+  woodhen_locked_anchor_result(status, expected, observed, action)
 }
 
 woodhen_validate_compact_run <- function(run) {
