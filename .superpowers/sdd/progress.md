@@ -33,3 +33,17 @@ Task 9 disposition of carried findings:
 - Cleanup validation is exercised through structured runtime probes, including relative, parent, root, symlink, dangling-symlink, nested, and valid uncreated temporary paths.
 - Final CSV and Markdown are checked against rendered selected IDs, exact stages, labels, complete comparison values, and exact ordered settings/provenance.
 - Final adversarial audit reported no Critical, Important, or Minor findings. The only residual uncertainty is deployment-image equivalence, assigned to Task 10.
+
+---
+
+# Practical 2 Woodhen Management Lab Progress
+
+Plan: docs/superpowers/plans/2026-07-21-practical2-woodhen-management-lab.md
+Start commit: 7f9d58c
+Execution mode: subagent-driven in isolated worktree on codex/practical2-implementation
+Baseline: full pre-change test suite passed on 2026-07-21
+
+Gate 1:
+- Task 1: pending
+- Task 2: pending
+- Task 3: pending
