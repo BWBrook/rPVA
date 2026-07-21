@@ -1455,7 +1455,7 @@ woodhen_prompt_observation <- function(prompt, family_type, run_ids) {
       "Future advice pre-run prompt"
     },
     note = paste(paste0(labels[keep], ": ", values[keep]), collapse = "\n"),
-    run_ids = run_ids
+    run_ids = sort(run_ids)
   )
 }
 
@@ -1463,10 +1463,11 @@ woodhen_add_prompt_once <- function(project, observation, now) {
   if (is.null(observation)) {
     return(list(project = project, saved = FALSE))
   }
+  observation$run_ids <- sort(observation$run_ids)
   duplicate <- vapply(project$observations, function(existing) {
     identical(existing$title, observation$title) &&
       identical(existing$note, observation$note) &&
-      identical(existing$run_ids, observation$run_ids)
+      identical(sort(existing$run_ids), observation$run_ids)
   }, logical(1))
   if (any(duplicate)) {
     return(list(project = project, saved = FALSE))
@@ -1551,6 +1552,10 @@ woodhen_run_investigation_family_project <- function(
       }
       run
     })
+  } else if (!is.null(progress)) {
+    for (index in seq_along(runs)) {
+      progress(index, length(runs), 1000L, 1000L)
+    }
   }
 
   comparison <- compare_woodhen_run_family(runs, family$family_id)

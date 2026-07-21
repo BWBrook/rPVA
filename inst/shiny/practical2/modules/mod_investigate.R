@@ -121,8 +121,32 @@ investigate_family_key <- function(family_id, family_type) {
     rPVA::woodhen_threat_catalog()$id
   }
   prefix <- paste0(family_type, "_", catalog_ids, "_")
-  match_index <- which(startsWith(family_id, prefix))
+  suffix <- substring(family_id, nchar(prefix) + 1L)
+  match_index <- which(
+    startsWith(family_id, prefix) &
+      nchar(suffix) == 12L & grepl("^[0-9a-f]{12}$", suffix)
+  )
   if (length(match_index) == 1L) catalog_ids[[match_index]] else NA_character_
+}
+
+investigate_sensitivity_factor_id <- function(comparison) {
+  sensitivity_runs <- comparison$runs[vapply(comparison$runs, function(run) {
+    identical(run$scenario_type, "sensitivity")
+  }, logical(1))]
+  component_ids <- unique(unlist(lapply(sensitivity_runs, function(run) {
+    names(run$scenario$components)
+  }), use.names = FALSE))
+  catalog <- rPVA::woodhen_sensitivity_catalog()
+  catalog_components <- vapply(
+    catalog$mapping,
+    function(mapping) names(mapping)[[1L]],
+    character(1)
+  )
+  matches <- match(component_ids, catalog_components)
+  if (length(component_ids) != 1L || anyNA(matches)) {
+    stop("A restored sensitivity family has no exact catalogue component.", call. = FALSE)
+  }
+  catalog$id[[matches[[1L]]]]
 }
 
 investigate_completed_family_ids <- function(project, family_type) {
@@ -167,7 +191,7 @@ investigate_restored_controls <- function(project) {
 
   sensitivity_state <- NULL
   if (!is.null(sensitivity)) {
-    factor_id <- investigate_family_key(sensitivity_id, "sensitivity")
+    factor_id <- investigate_sensitivity_factor_id(sensitivity)
     row <- investigate_catalog_row(
       rPVA::woodhen_sensitivity_catalog(), factor_id, "sensitivity factor"
     )
@@ -318,6 +342,18 @@ investigate_result_prompts <- function(ns, prefix) {
   )
 }
 
+investigate_run_action <- function(ns, route, busy) {
+  is_sensitivity <- identical(route, "sensitivity")
+  button <- actionButton(
+    ns(if (is_sensitivity) "run_sensitivity" else "run_future"),
+    if (is_sensitivity) "Run three-setting family" else "Run threat-intervention family",
+    icon = icon("play"),
+    class = "btn-primary investigate-run-action",
+    `aria-disabled` = if (busy) "true" else "false"
+  )
+  if (busy) tagAppendAttributes(button, disabled = "disabled") else button
+}
+
 investigate_ui <- function(id) {
   ns <- NS(id)
   sensitivity <- rPVA::woodhen_sensitivity_catalog()
@@ -399,12 +435,7 @@ investigate_ui <- function(id) {
           class = "investigate-prompts",
           investigate_prompt_inputs(ns, "sensitivity")
         ),
-        actionButton(
-          ns("run_sensitivity"),
-          "Run three-setting family",
-          icon = icon("play"),
-          class = "btn-primary investigate-run-action"
-        ),
+        uiOutput(ns("sensitivity_run_control")),
         uiOutput(ns("sensitivity_progress")),
         uiOutput(ns("sensitivity_status"), `aria-live` = "polite", `aria-atomic` = "true"),
         uiOutput(ns("sensitivity_completion")),
@@ -474,12 +505,7 @@ investigate_ui <- function(id) {
           class = "investigate-prompts",
           investigate_prompt_inputs(ns, "future")
         ),
-        actionButton(
-          ns("run_future"),
-          "Run threat-intervention family",
-          icon = icon("play"),
-          class = "btn-primary investigate-run-action"
-        ),
+        uiOutput(ns("future_run_control")),
         uiOutput(ns("future_progress")),
         uiOutput(ns("future_status"), `aria-live` = "polite", `aria-atomic` = "true"),
         uiOutput(ns("future_completion")),
@@ -767,17 +793,24 @@ investigate_server <- function(
       )
     })
 
+    output$sensitivity_run_control <- renderUI({
+      investigate_run_action(session$ns, "sensitivity", busy())
+    })
+    output$future_run_control <- renderUI({
+      investigate_run_action(session$ns, "future", busy())
+    })
+
     run_route <- function(route, family, prompt) {
       if (!investigate_begin_batch(busy)) {
         set_status(route, "A family is already running; the repeated submission was ignored.")
         return(NULL)
       }
-      on.exit(busy(FALSE), add = TRUE)
       candidate <- project()
       anchor <- rPVA:::woodhen_locked_anchor_status(candidate)
       if (!identical(anchor$status, "ready")) {
         set_status(route, paste("Run blocked.", anchor$action))
         publish(project_update_state, list(ok = FALSE, message = paste("Run blocked.", anchor$action)))
+        busy(FALSE)
         return(NULL)
       }
       progress <- progress_state()
@@ -787,42 +820,49 @@ investigate_server <- function(
       history[[route]] <- list()
       progress_history_state(history)
       set_status(route, "Preparing the complete family in session scratch.")
-      action <- tryCatch(
-        rPVA:::woodhen_run_investigation_family_project(
-          candidate,
-          family,
-          prompt = prompt,
-          progress = function(scenario, scenarios, completed, total) {
-            set_progress(route, scenario, scenarios, completed, total)
-          },
-          runner = scenario_runner
-        ),
-        error = function(error) error
-      )
-      if (inherits(action, "error")) {
-        message <- paste("Family run failed; no partial evidence was inserted:", conditionMessage(action))
+      session$onFlushed(function() {
+        on.exit(busy(FALSE), add = TRUE)
+        action <- tryCatch(
+          rPVA:::woodhen_run_investigation_family_project(
+            candidate,
+            family,
+            prompt = prompt,
+            progress = function(scenario, scenarios, completed, total) {
+              set_progress(route, scenario, scenarios, completed, total)
+            },
+            runner = scenario_runner
+          ),
+          error = function(error) error
+        )
+        if (inherits(action, "error")) {
+          message <- paste(
+            "Family run failed; no partial evidence was inserted:",
+            conditionMessage(action)
+          )
+          set_status(route, message)
+          publish(project_update_state, list(ok = FALSE, message = message))
+          return(NULL)
+        }
+        message <- if (action$reused) {
+          "Exact completed family reused; no duplicate scenarios or runs were created."
+        } else {
+          "Complete family ready for project activation."
+        }
+        if (action$prompt_saved) {
+          message <- paste(message, "The non-empty pre-run prompt was recorded.")
+        }
         set_status(route, message)
-        publish(project_update_state, list(ok = FALSE, message = message))
-        return(NULL)
-      }
-      message <- if (action$reused) {
-        "Exact completed family reused; no duplicate scenarios or runs were created."
-      } else {
-        "Complete family ready for project activation."
-      }
-      if (action$prompt_saved) {
-        message <- paste(message, "The non-empty pre-run prompt was recorded.")
-      }
-      set_status(route, message)
-      publish(project_update_state, list(
-        ok = TRUE,
-        candidate = action$project,
-        family_id = action$family$family_id,
-        route = route,
-        reused = action$reused,
-        message = message
-      ))
-      action
+        publish(project_update_state, list(
+          ok = TRUE,
+          candidate = action$project,
+          family_id = action$family$family_id,
+          route = route,
+          reused = action$reused,
+          message = message
+        ))
+        action
+      }, once = TRUE)
+      invisible(TRUE)
     }
 
     observeEvent(input$run_sensitivity, {
@@ -1044,6 +1084,7 @@ investigate_server <- function(
       progress_state = reactive(progress_state()),
       progress_history = reactive(progress_history_state()),
       busy_state = reactive(busy()),
+      status_state = reactive(status_state()),
       sensitivity_comparison = sensitivity_comparison,
       future_comparison = future_comparison,
       completion_state = completion_state

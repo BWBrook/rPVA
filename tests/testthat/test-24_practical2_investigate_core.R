@@ -81,6 +81,10 @@ source_investigate_app <- function() {
   env
 }
 
+investigate_action_value <- function(value) {
+  structure(as.integer(value), class = c("shinyActionButtonValue", "integer"))
+}
+
 test_that("both investigation routes require the exact current locked anchor", {
   ready <- investigate_ready_project()
   family <- build_woodhen_sensitivity_family("K", c(350, 250))
@@ -116,6 +120,7 @@ test_that("all eight factors run exact isolated three-setting families", {
   locked <- woodhen_locked_future_spec()
   catalog <- woodhen_sensitivity_catalog()
   project <- investigate_ready_project()
+  env <- source_investigate_app()
 
   for (index in seq_len(nrow(catalog))) {
     values <- unname(catalog$anchors[[index]][c("moderate", "high")])
@@ -152,6 +157,9 @@ test_that("all eight factors run exact isolated three-setting families", {
       expect_true(all(diff(observed) >= 0))
       expect_equal(tail(observed, 1L), 1000)
     }
+    restored <- env$investigate_restored_controls(project)$sensitivity
+    expect_identical(restored$factor_id, catalog$id[[index]])
+    expect_equal(restored$values, values)
   }
   expect_silent(validate_woodhen_project(project))
 })
@@ -256,13 +264,39 @@ test_that("family actions are atomic, immutable, duplicate-free, and prompt-awar
   expect_length(first$project$observations, 1L)
   expect_true(first$prompt_saved)
 
+  reuse_progress <- list()
   rerun <- rPVA:::woodhen_run_investigation_family_project(
     first$project, family, prompt = prompt,
+    progress = function(scenario, scenarios, completed, total) {
+      reuse_progress[[length(reuse_progress) + 1L]] <<- c(
+        scenario = scenario, scenarios = scenarios,
+        completed = completed, total = total
+      )
+    },
     runner = function(...) stop("exact rerun must be reused")
   )
   expect_true(rerun$reused)
   expect_false(rerun$prompt_saved)
   expect_identical(rerun$project, first$project)
+  expect_length(reuse_progress, 3L)
+  expect_equal(vapply(reuse_progress, `[[`, numeric(1), "scenario"), 1:3)
+  expect_equal(vapply(reuse_progress, `[[`, numeric(1), "scenarios"), rep(3, 3L))
+  expect_equal(vapply(reuse_progress, `[[`, numeric(1), "completed"), rep(1000, 3L))
+  expect_equal(vapply(reuse_progress, `[[`, numeric(1), "total"), rep(1000, 3L))
+
+  reversed <- build_woodhen_sensitivity_family("K", c(250, 350))
+  expect_identical(reversed$family_id, family$family_id)
+  reversed_rerun <- rPVA:::woodhen_run_investigation_family_project(
+    rerun$project, reversed, prompt = prompt,
+    runner = function(...) stop("reversed exact family must be reused")
+  )
+  expect_true(reversed_rerun$reused)
+  expect_false(reversed_rerun$prompt_saved)
+  expect_length(reversed_rerun$project$observations, 1L)
+  expect_identical(
+    reversed_rerun$comparison$table$setting_value,
+    c(500, 250, 350)
+  )
 
   changed <- build_woodhen_sensitivity_family("K", c(300, 250))
   second <- rPVA:::woodhen_run_investigation_family_project(
@@ -301,7 +335,7 @@ test_that("Investigation module guards busy clicks and restores completed eviden
   shiny::isolate(busy(FALSE))
 
   project <- investigate_ready_project()
-  family <- build_woodhen_sensitivity_family("K", c(350, 250))
+  family <- build_woodhen_sensitivity_family("K_sd", c(75, 100))
   completed <- rPVA:::woodhen_run_investigation_family_project(
     project, family, runner = investigate_test_runner, sample_trajectories = 3L
   )$project
@@ -314,8 +348,8 @@ test_that("Investigation module guards busy clicks and restores completed eviden
     runner = investigate_test_runner, sample_trajectories = 3L
   )$project
   restored <- env$investigate_restored_controls(completed)
-  expect_identical(restored$sensitivity$factor_id, "K")
-  expect_equal(restored$sensitivity$values, c(350, 250))
+  expect_identical(restored$sensitivity$factor_id, "K_sd")
+  expect_equal(restored$sensitivity$values, c(75, 100))
   expect_identical(restored$sensitivity$choices, c("moderate", "high"))
   expect_identical(restored$future$threat_id, "sea_level_rise_pathway")
   expect_equal(restored$future$threat_value, 325)
@@ -326,15 +360,93 @@ test_that("Investigation module guards busy clicks and restores completed eviden
   expect_equal(restored$future$intervention_value, 1)
   expect_identical(restored$future$intervention_choice, "high")
   live <- shiny::reactiveVal(completed)
+  reuse_calls <- 0L
+  reuse_runner <- function(...) {
+    reuse_calls <<- reuse_calls + 1L
+    stop("a completed module family must be reused")
+  }
 
   shiny::testServer(env$investigate_server, args = list(
-    project = shiny::reactive(live()), scenario_runner = investigate_test_runner
+    project = shiny::reactive(live()), scenario_runner = reuse_runner
   ), {
     expect_identical(completion_state()$sensitivity, "Three sensitivity settings available")
     expect_s3_class(sensitivity_comparison(), "woodhen_run_family_comparison")
     expect_equal(sensitivity_comparison()$family_id, family$family_id)
     expect_identical(completion_state()$future, "Threat-intervention family complete")
     expect_equal(future_comparison()$family_id, future_family$family_id)
+    session$setInputs(
+      factor_id = "K_sd",
+      sensitivity_first_choice = "moderate",
+      sensitivity_second_choice = "high",
+      sensitivity_first_custom = 75,
+      sensitivity_second_custom = 100,
+      run_sensitivity = investigate_action_value(1L)
+    )
+    expect_equal(reuse_calls, 0L)
+    expect_true(project_update_state()$reused)
+    expect_identical(
+      progress_state()$sensitivity,
+      c(scenario = 3L, scenarios = 3L, completed = 1000L, total = 1000L)
+    )
+  })
+})
+
+test_that("Investigation module flushes disabled controls and rejects queued submissions", {
+  env <- source_investigate_app()
+  project <- investigate_ready_project()
+  calls <- 0L
+  runner <- function(...) {
+    calls <<- calls + 1L
+    investigate_test_runner(...)
+  }
+
+  enabled <- paste(as.character(env$investigate_run_action(
+    shiny::NS("investigate"), "sensitivity", FALSE
+  )), collapse = "\n")
+  disabled <- paste(as.character(env$investigate_run_action(
+    shiny::NS("investigate"), "sensitivity", TRUE
+  )), collapse = "\n")
+  expect_match(enabled, 'id="investigate-run_sensitivity"', fixed = TRUE)
+  expect_false(grepl('disabled="disabled"', enabled, fixed = TRUE))
+  expect_match(enabled, 'aria-disabled="false"', fixed = TRUE)
+  expect_match(disabled, 'disabled="disabled"', fixed = TRUE)
+  expect_match(disabled, 'aria-disabled="true"', fixed = TRUE)
+
+  shiny::testServer(env$investigate_server, args = list(
+    project = shiny::reactive(project), scenario_runner = runner
+  ), {
+    session$setInputs(
+      factor_id = "K",
+      sensitivity_first_choice = "moderate",
+      sensitivity_second_choice = "high",
+      sensitivity_first_custom = 350,
+      sensitivity_second_custom = 250,
+      threat_id = "novel_disease",
+      threat_choice = "moderate",
+      threat_custom = 0.9,
+      intervention_id = "captive_breeding_supplementation",
+      intervention_choice = "moderate",
+      intervention_custom = 5
+    )
+    session$setInputs(
+      run_sensitivity = investigate_action_value(1L),
+      run_future = investigate_action_value(1L)
+    )
+
+    expect_equal(calls, 3L)
+    expect_identical(project_update_state()$route, "sensitivity")
+    expect_true(project_update_state()$ok)
+    expect_false(project_update_state()$reused)
+    expect_identical(
+      status_state()[["future"]],
+      "A family is already running; the repeated submission was ignored."
+    )
+    expect_false(busy())
+    expect_length(project_update_state()$candidate$runs, length(project()$runs) + 3L)
+    expect_length(
+      env$investigate_completed_family_ids(project_update_state()$candidate, "prospective"),
+      0L
+    )
   })
 })
 
@@ -344,11 +456,14 @@ test_that("Investigate UI and root integration are accessible and honest", {
   app_text <- paste(readLines(file.path(env$practical2_app_dir, "app.R")), collapse = "\n")
   help <- paste(readLines(file.path(env$practical2_app_dir, "content", "help-investigate.md")), collapse = "\n")
   css <- paste(readLines(file.path(env$practical2_app_dir, "www", "styles.css")), collapse = "\n")
+  module_text <- paste(readLines(file.path(
+    env$practical2_app_dir, "modules", "mod_investigate.R"
+  )), collapse = "\n")
 
   for (id in c(
-    "investigate-factor_id", "investigate-run_sensitivity",
+    "investigate-factor_id", "investigate-sensitivity_run_control",
     "investigate-threat_id", "investigate-intervention_id",
-    "investigate-run_future", "investigate-go_calibrate"
+    "investigate-future_run_control", "investigate-go_calibrate"
   )) expect_match(html, paste0('id="', id, '"'), fixed = TRUE)
   expect_match(html, 'aria-live="polite"', fixed = TRUE)
   expect_match(html, "fewer than 50 breeding pairs", ignore.case = TRUE)
@@ -360,6 +475,8 @@ test_that("Investigate UI and root integration are accessible and honest", {
   expect_match(help, "not yet implemented", ignore.case = TRUE)
   expect_match(css, "investigate-workspaces")
   expect_match(css, "@media \\(max-width: 780px\\)")
+  expect_match(module_text, "session$onFlushed(", fixed = TRUE)
+  expect_match(module_text, 'aria-disabled` = if (busy)', fixed = TRUE)
   expect_match(app_text, 'source(file.path("modules", "mod_investigate.R")', fixed = TRUE)
   expect_match(app_text, 'investigate_ui("investigate")', fixed = TRUE)
   expect_match(app_text, "investigate_events <- investigate_server", fixed = TRUE)
