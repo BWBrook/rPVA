@@ -10,6 +10,7 @@ Encoding: UTF-8
 Depends: R (>= 4.1.0)
 RoxygenNote: 7.3.3
 Imports:
+    digest,
     dplyr,
     yaml,
     ggplot2,
