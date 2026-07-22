@@ -141,7 +141,7 @@ pre-empt the interface decision may continue in parallel.
 | Gate | Type | Surface | State on 2026-07-22 |
 | --- | --- | --- | --- |
 | A1 | Hard engineering | Scientific engine and risk evidence | Complete |
-| A2 | Scientific review | Ecological assumptions and catalogue audit | Not reviewed |
+| A2 | Scientific review | Ecological assumptions and catalogue audit | Accepted 2026-07-22 |
 | B | Hard engineering | Durable projects and compact evidence | Complete |
 | C | Student-facing | Start | Implemented; review pending |
 | D | Student-facing | Calibrate: 1980 alternatives | Implemented; review pending |
@@ -180,7 +180,7 @@ reviewed explicitly in Gate A2.
 
 ## Gate A2: Ecological Assumptions And Catalogue Audit
 
-**Type:** Scientific review. **Status:** Required before Gates F and G.
+**Type:** Scientific review. **Status:** Accepted 22 July 2026; pragmatic model-state convention retained for the 2026 delivery.
 
 **Files:**
 
@@ -192,29 +192,29 @@ reviewed explicitly in Gate A2.
 - Create `docs/teaching/woodhen/practical-2-ecological-assumptions-audit.md`
 - Modify `tests/testthat/test-19_woodhen_investigation_spec.R`
 
-- [ ] Expand the existing audit to show every baseline parameter, value, unit,
+- [x] Expand the existing audit to show every baseline parameter, value, unit,
   and model location.
-- [ ] Show each sensitivity factor with its baseline and two proposed altered
+- [x] Show each sensitivity factor with its baseline and two proposed altered
   settings, including units and permitted exploratory range.
-- [ ] Show each threat and intervention as an ecological process, the exact
+- [x] Show each threat and intervention as an ecological process, the exact
   model quantity it changes, the direction and timing of change, and how an
   intervention modifies or offsets its threatened parent.
-- [ ] Classify every number as empirically sourced, inherited from the existing
+- [x] Classify every number as empirically sourced, inherited from the existing
   practical, tuned for historical illustration, or a bounded exploratory
   setting; cite the source or state the rationale.
-- [ ] Distinguish immediate, delayed, gradual, and finite-duration assumptions.
-- [ ] Record important omitted processes and the inference each omission limits.
-- [ ] Explain whether the 2019 and 2024 observations helped construct or tune the
+- [x] Distinguish immediate, delayed, gradual, and finite-duration assumptions.
+- [x] Record important omitted processes and the inference each omission limits.
+- [x] Explain whether the 2019 and 2024 observations helped construct or tune the
   rodent-recovery reconstruction and therefore whether either can be treated as
   independent evidence.
-- [ ] Explain the 50-pair value as a shared working warning threshold unless a
+- [x] Explain the 50-pair value as a shared working warning threshold unless a
   defensible empirical or management basis is documented.
-- [ ] Translate model stages into breeding pairs in biological terms, including
+- [x] Translate model stages into breeding pairs in biological terms, including
   sex, pair, and individual interpretation; do not rely on the phrase "stages 2
   onward" as sufficient explanation.
-- [ ] Identify a wider threshold-sensitivity view as an optional extension, not
+- [x] Identify a wider threshold-sensitivity view as an optional extension, not
   a prerequisite for the compulsory workflow.
-- [ ] **Barry review:** accept, amend, or reject the ecological interpretation,
+- [x] **Barry review:** accept, amend, or reject the ecological interpretation,
   values, bounds, temporal assumptions, provenance classes, omissions, and
   threshold treatment before any Investigate design is approved.
 

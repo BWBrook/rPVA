@@ -554,15 +554,61 @@ test_that("scientific catalogue audit writes only to its caller-supplied directo
   dir.create(output_dir)
   paths <- audit_practical2_scientific_catalog(output_dir)
 
-  expect_named(paths, c("csv", "markdown"))
+  expect_named(paths, c("baseline_csv", "catalogue_csv", "recovery_csv", "markdown"))
   expect_true(all(file.exists(unlist(paths))))
   expect_true(all(dirname(normalizePath(unlist(paths))) == normalizePath(output_dir)))
-  csv <- utils::read.csv(paths$csv, stringsAsFactors = FALSE)
+  baseline <- utils::read.csv(paths$baseline_csv, stringsAsFactors = FALSE)
+  catalogue <- utils::read.csv(paths$catalogue_csv, stringsAsFactors = FALSE)
+  recovery <- utils::read.csv(paths$recovery_csv, stringsAsFactors = FALSE)
   markdown <- readLines(paths$markdown, warn = FALSE)
+
+  expect_setequal(baseline$parameter, names(woodhen_locked_future_spec()))
   expect_true(all(c(
-    "anchor", "bound_min", "bound_max", "model_mapping", "temporal_allowance",
-    "horizon_years", "seed", "breeding_pair_definition"
-  ) %in% names(csv)))
-  expect_true(any(grepl("fewer than 50", markdown, fixed = TRUE)))
-  expect_true(any(grepl("stages 2 onward", markdown, fixed = TRUE)))
+    "parameter", "value", "unit", "model_location", "provenance_class",
+    "source_or_rationale", "temporal_assumption", "inference_limit"
+  ) %in% names(baseline)))
+  expect_false(any(!nzchar(baseline$value)))
+  expect_false(any(!nzchar(baseline$unit)))
+  expect_false(any(!nzchar(baseline$provenance_class)))
+
+  expect_true(all(c(
+    "catalogue", "id", "label", "ecological_process", "baseline_value",
+    "setting_1", "setting_2", "setting_3", "unit", "permitted_range",
+    "model_quantity", "direction", "timing", "parent_relationship",
+    "provenance_class", "source_or_rationale", "omitted_processes",
+    "inference_limit"
+  ) %in% names(catalogue)))
+  sensitivity <- catalogue[catalogue$catalogue == "sensitivity", ]
+  expect_setequal(sensitivity$id, woodhen_sensitivity_catalog()$id)
+  expect_false(any(!nzchar(sensitivity$baseline_value)))
+  expect_false(any(!nzchar(sensitivity$setting_1)))
+  expect_false(any(!nzchar(sensitivity$setting_2)))
+  expect_true(all(sensitivity$provenance_class == "bounded exploratory setting"))
+
+  expect_true(all(c(
+    "event_period", "reported_count", "comparison_count", "count_type",
+    "survey_coverage", "use_as_abundance_point", "source_label", "source_url",
+    "interpretation_note"
+  ) %in% names(recovery)))
+  expect_equal(
+    recovery$comparison_count[recovery$use_as_abundance_point],
+    c(221L, 443L, 598L, 551L, 778L, 1147L, 1638L)
+  )
+  expect_true(any(recovery$reported_count == "208 selected; primary paper reports 228"))
+  expect_true(any(recovery$reported_count == "1,147 selected; primary paper reports 1,108"))
+  expect_true(any(recovery$reported_count == "598 banded" & !recovery$use_as_abundance_point))
+
+  expected_markdown <- c(
+    "historical reconstruction", "not independent validation",
+    "working warning threshold", "not a universal minimum viable population",
+    "one territory-holding female represents one breeding pair",
+    "female-cohort trajectories", "whole birds", "material issue",
+    "internally inconsistent", "female-equivalent model units",
+    "208 and 228", "1,108 and 1,147", "threshold-sensitivity",
+    "Omitted processes", "Gate A2 accepted", "208 as the release marker",
+    "Retain the tuned 1,654-bird future starting state", "technical debt"
+  )
+  for (phrase in expected_markdown) {
+    expect_true(any(grepl(phrase, markdown, fixed = TRUE)), info = phrase)
+  }
 })
