@@ -245,7 +245,7 @@
               sendStatus(
                 portableMessage,
                 "portable_marked",
-                "Portable project download requested."
+                "Project copy download requested."
               );
             });
           }
@@ -297,7 +297,7 @@
       transaction.oncomplete = function () {
         if (!settled) {
           settled = true;
-          sendStatus(message, "portable_marked", "Portable project download requested.");
+          sendStatus(message, "portable_marked", "Project copy download requested.");
         }
       };
     }, fail);

@@ -6,18 +6,36 @@ start_ui <- function(id) {
     tags$section(
       class = "start-hero",
       tags$img(
-        src = "img/landing-woodhen-population.png",
-        alt = "Lord Howe Island woodhen standing among green island vegetation"
+        src = "img/lord-howe-island-nasa.webp",
+        alt = "NASA astronaut photograph of Lord Howe Island and its lagoon"
       ),
       div(
         class = "start-hero-copy",
         span(class = "section-eyebrow", "Practical 2: Woodhen investigation"),
         h1("Advise from evidence"),
-        p("Reconstruct the conservation record, test future pressures, and develop transparent management advice.")
+        p("Reconstruct the conservation record, test future pressures, and develop transparent management advice."),
+        p(
+          class = "start-image-credit",
+          tags$a(
+            href = "https://commons.wikimedia.org/wiki/File:Lord_Howe_ISS006-E-5731.png",
+            target = "_blank",
+            rel = "noopener noreferrer",
+            "Lord Howe Island from the International Space Station - NASA, public domain"
+          )
+        )
       )
     ),
     tags$section(
       class = "start-narrative",
+      div(
+        class = "start-narrative-heading",
+        actionButton(
+          ns("open_woodhen_background"),
+          "Woodhen background",
+          icon = icon("feather"),
+          class = "btn-default btn-sm"
+        )
+      ),
       render_markdown_content(file.path(practical2_app_dir, "content", "start.md"))
     ),
     tags$section(
@@ -25,7 +43,7 @@ start_ui <- function(id) {
       div(
         class = "section-heading-row",
         div(
-          span(class = "section-eyebrow", "Local-first project"),
+          span(class = "section-eyebrow", "Investigation project"),
           h2("Begin or recover your investigation")
         ),
         actionButton(
@@ -69,14 +87,14 @@ start_ui <- function(id) {
           h3("Move a project"),
           fileInput(
             ns("import_project"),
-            "Import portable project",
+            "Import a project copy",
             accept = c(".zip", "application/zip"),
             buttonLabel = "Choose project",
             placeholder = "No project chosen"
           ),
           downloadButton(
             ns("download_project"),
-            "Download portable project",
+            "Download project copy",
             icon = icon("download")
           )
         )
@@ -94,7 +112,7 @@ start_ui <- function(id) {
       uiOutput(
         ns("project_portable_status"),
         `aria-live` = "polite",
-        `aria-label` = "Portable project"
+        `aria-label` = "Project copy"
       ),
       uiOutput(
         ns("project_dirty_status"),
@@ -141,7 +159,7 @@ start_server <- function(id,
       upload <- input$import_project
       if (is.null(upload) || !is.character(upload$datapath) ||
           length(upload$datapath) != 1L) {
-        return(list(ok = FALSE, message = "Choose one portable project package."))
+            return(list(ok = FALSE, message = "Choose one downloaded project ZIP file."))
       }
       tryCatch(
         list(ok = TRUE, candidate = rPVA::read_woodhen_project_package(upload$datapath)),
@@ -191,13 +209,17 @@ start_server <- function(id,
       showModal(project_help_modal())
     })
 
+    observeEvent(input$open_woodhen_background, {
+      showModal(woodhen_background_modal())
+    })
+
     output$project_browser_status <- renderUI({
       status <- browser_status()
       project_status_ui("Autosave in this browser", status$value, status$state, status$icon)
     })
     output$project_portable_status <- renderUI({
       status <- portable_status()
-      project_status_ui("Portable project", status$value, status$state, status$icon)
+      project_status_ui("Project copy", status$value, status$state, status$icon)
     })
     output$project_dirty_status <- renderUI({
       status <- dirty_status()

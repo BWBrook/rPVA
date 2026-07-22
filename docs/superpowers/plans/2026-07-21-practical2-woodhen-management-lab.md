@@ -1,5 +1,11 @@
 # Practical 2 Woodhen Management Lab Implementation Plan
 
+> **Superseded on 2026-07-22:** This original six-gate plan remains as an
+> implementation-history record. Active work follows
+> `docs/superpowers/plans/2026-07-22-practical2-woodhen-management-lab-revised.md`,
+> with gate rationale and review boundaries in
+> `docs/superpowers/plans/2026-07-22-practical2-gate-justification-notes.md`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace the Practical 2 infrastructure canary with a complete, historically grounded Woodhen investigation and evidence app that supports the three-hour KPZ308 class, independent assessment work, portable cross-host projects, and selective evidence export.

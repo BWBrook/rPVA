@@ -987,7 +987,7 @@ compare_woodhen_1980_references <- function(runs) {
       runs = runs,
       interpretation = paste(
         "These cases share the 1980 decision context, starting state,",
-        "40-year horizon, seed 123, and 1,000 simulated futures."
+        "40-year horizon, and 1,000 simulated futures."
       )
     ),
     class = c("woodhen_1980_reference_comparison", "list")
@@ -995,7 +995,6 @@ compare_woodhen_1980_references <- function(runs) {
 }
 
 woodhen_calibration_history <- function() {
-  future <- woodhen_reference_spec("05_future_baseline")
   list(
     crisis_1980 = list(
       period = "1980-2020",
@@ -1012,13 +1011,10 @@ woodhen_calibration_history <- function() {
       heading = "2019-2024 rodent-eradication recovery check",
       reference_ids = "04_rodent_eradication",
       observed_history = "The observed historical milestone was over 1,600 birds by 2024.",
-      model_state = list(
-        total_birds = as.integer(2 * sum(future$n0)),
-        breeding_pairs = as.integer(sum(future$n0[-1L])),
-        label = paste(
-          "The supplied 2024 model state is exactly 1,654 birds and about",
-          "330 breeding pairs; it is not an independently precise empirical census."
-        )
+      observed_points = data.frame(
+        year = c(2019L, 2024L),
+        abundance = c(208L, 1600L),
+        label = c("208", ">1,600")
       ),
       warning = paste(
         "Short-horizon warning: this five-year recovery check must not be ranked",
@@ -1028,11 +1024,11 @@ woodhen_calibration_history <- function() {
     ),
     future_2025_2100 = list(
       period = "2025-2100",
-      heading = "2025-2100 locked future baseline",
+      heading = "2025-2100 common future comparison",
       reference_ids = "05_future_baseline",
       observed_history = paste(
-        "This no-change projection begins from the supplied 2024 model state",
-        "and establishes the common future anchor for Act 2."
+        "This no-change projection begins from the recovered 2024 population",
+        "and provides the common comparison for Phase 2."
       ),
       horizon = 75L
     )
@@ -1083,7 +1079,7 @@ woodhen_locked_anchor_result <- function(status, expected, observed, action) {
 
 woodhen_locked_anchor_status <- function(project) {
   expected <- woodhen_locked_anchor_expected_identity()
-  run_action <- "Run the locked future baseline."
+  run_action <- "Run the common future comparison."
   project_action <- "Start or import a current compatible project."
   if (is.null(project)) {
     return(woodhen_locked_anchor_result("missing", expected, NULL, run_action))
@@ -1140,7 +1136,11 @@ woodhen_locked_anchor_status <- function(project) {
     identical(run$provenance$catalog_version, expected$catalog_version) &&
     identical(run$provenance$model_version, expected$model_version)
   status <- if (validated && identity_matches) "ready" else "stale"
-  action <- if (identical(status, "ready")) "The locked future baseline is ready." else project_action
+  action <- if (identical(status, "ready")) {
+    "The common future comparison is ready."
+  } else {
+    project_action
+  }
   woodhen_locked_anchor_result(status, expected, observed, action)
 }
 
@@ -1389,7 +1389,7 @@ woodhen_validate_core_family <- function(family) {
   }, logical(1))
   if (!all(ordinary_controls)) {
     stop(
-      "Core investigations require the locked starting population, 75 years, 1,000 futures, and seed 123.",
+      "Core investigations require the supplied starting population, 75 years, 1,000 futures, and common simulation settings.",
       call. = FALSE
     )
   }
@@ -1527,7 +1527,7 @@ woodhen_run_investigation_family_project <- function(
   anchor <- woodhen_locked_anchor_status(project)
   if (!identical(anchor$status, "ready")) {
     stop(
-      "A ready current-library locked future baseline is required. ",
+      "Run the current common future comparison before starting Phase 2. ",
       anchor$action,
       call. = FALSE
     )

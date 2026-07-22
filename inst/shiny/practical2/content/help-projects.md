@@ -1,25 +1,22 @@
 ## Browser recovery
 
-The app keeps a validated project snapshot **autosaved in this browser**. This
-recovery copy belongs to the current browser and web origin. A copy saved under
-one host is not automatically available under another host, even on the same
-computer.
+The app keeps your current investigation **autosaved in this browser**. This is
+useful if you close the tab and return using the same browser and website. It
+will not automatically appear in a different browser, on another computer, or
+on the alternative off-campus website.
 
-Resume is always explicit. The app first lists available project metadata; it
-does not restore project contents until you choose a project and select
-**Resume selected project**.
+To continue, choose your project and select **Resume selected project**.
 
-## Portable projects
+## Downloadable project copies
 
-A portable project is the supported way to move work to another browser or
-host. Select **Download portable project**, keep the ZIP file, then import it in
-the other app. The status says **download requested** because the app cannot
-confirm where your browser saved the file.
+A downloadable project copy is the reliable way to move your work to another
+browser, another computer, or the alternative off-campus website. Select
+**Download project copy** and keep the ZIP file. Later, choose **Import a project
+copy** and select that ZIP file.
 
-Material changes can make the last portable copy out of date. Request a new
-download before changing browser or host, and before leaving work you need to
-retain.
+Download a fresh copy after important work and before leaving a computer. The
+app cannot confirm where your browser saved the file, so check your Downloads
+folder before you finish.
 
-Imported and restored content is treated as untrusted data. The live project
-changes only after its exact type, schema, identifiers, metadata, and content
-fingerprint have passed validation.
+Importing a copy does not overwrite the active investigation unless the file
+can be read successfully.

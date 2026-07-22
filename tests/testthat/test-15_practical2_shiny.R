@@ -113,13 +113,19 @@ test_that("installed Practical 2 shell contains its implemented module assets", 
     "content/help-calibrate.md",
     "content/help-investigate.md",
     "content/help-projects.md",
+    "content/help-woodhen-background.md",
+    "content/scenarios/01-no-intervention.md",
+    "content/scenarios/02-pig-control.md",
+    "content/scenarios/03-captive-pig.md",
+    "content/scenarios/04-rodent-eradication.md",
+    "content/scenarios/05-future-comparison.md",
     "content/start.md",
     "modules/mod_calibrate.R",
     "modules/mod_investigate.R",
     "modules/mod_start.R",
     "project_helpers.R",
     "ui_helpers.R",
-    "www/img/landing-woodhen-population.png",
+    "www/img/lord-howe-island-nasa.webp",
     "www/project-store.js",
     "www/styles.css"
   )
@@ -271,31 +277,33 @@ test_that("Start controls and statuses are namespaced and accessible", {
   )) {
     expect_match(html, paste0('id="', id, '"'), fixed = TRUE)
   }
-  expect_match(html, 'alt="Lord Howe Island woodhen', fixed = TRUE)
+  expect_match(html, 'alt="NASA astronaut photograph of Lord Howe Island', fixed = TRUE)
+  expect_match(html, 'id="start-open_woodhen_background"', fixed = TRUE)
   expect_match(html, 'aria-live="polite"', fixed = TRUE)
   expect_match(html, "Autosave in this browser", fixed = TRUE)
-  expect_match(html, "Portable project", fixed = TRUE)
+  expect_match(html, "Project copy", fixed = TRUE)
   expect_match(html, "Unsaved changes", fixed = TRUE)
 })
 
-test_that("Start narrative states the adviser, two-act, core-route, and extension contract", {
+test_that("Start narrative states the adviser, two-phase, core-route, and extension contract", {
   app_dir <- practical2_app_dir()
   start_text <- paste(readLines(file.path(app_dir, "content", "start.md"), warn = FALSE), collapse = "\n")
   help_text <- paste(readLines(file.path(app_dir, "content", "help-projects.md"), warn = FALSE), collapse = "\n")
 
   expect_match(start_text, "present-day conservation adviser", ignore.case = TRUE)
-  expect_match(start_text, "Act 1")
-  expect_match(start_text, "Act 2")
+  expect_match(start_text, "Phase 1")
+  expect_match(start_text, "Phase 2")
   expect_match(start_text, "three-hour core route", ignore.case = TRUE)
-  expect_match(start_text, "pass-level foundation", ignore.case = TRUE)
+  expect_match(start_text, "essential foundation", ignore.case = TRUE)
   expect_match(start_text, "independent work afterward", ignore.case = TRUE)
   expect_match(start_text, "Ways to deepen your investigation", fixed = TRUE)
-  expect_false(grepl("grade|grading|score|scoring", start_text, ignore.case = TRUE))
+  expect_false(grepl("pass-level|grade|grading|score|scoring", start_text, ignore.case = TRUE))
+  expect_false(grepl("local-first", paste(start_text, help_text), ignore.case = TRUE))
 
   expect_match(help_text, "autosaved in this browser", ignore.case = TRUE)
-  expect_match(help_text, "origin", ignore.case = TRUE)
-  expect_match(help_text, "portable", ignore.case = TRUE)
-  expect_match(help_text, "download requested", ignore.case = TRUE)
+  expect_match(help_text, "downloadable project copy", ignore.case = TRUE)
+  expect_match(help_text, "another computer", ignore.case = TRUE)
+  expect_false(grepl("untrusted data|schema|fingerprint|web origin", help_text, ignore.case = TRUE))
 })
 
 test_that("only Compare and Evidence remain quiet placeholder bands", {

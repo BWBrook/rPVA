@@ -124,6 +124,17 @@ textarea:focus-visible,
   line-height: 1.5;
 }
 
+.start-hero-copy .start-image-credit {
+  margin-top: 22px;
+  font-size: 12px;
+}
+
+.start-image-credit a {
+  color: #ffffff;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .section-eyebrow {
   display: block;
   color: var(--teal);
@@ -138,6 +149,12 @@ textarea:focus-visible,
 
 .start-narrative {
   max-width: 86ch;
+}
+
+.start-narrative-heading {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: -38px;
 }
 
 .start-narrative h2 {
@@ -347,8 +364,7 @@ textarea:focus-visible,
   line-height: 1.55;
 }
 
-.period-label,
-.reference-id {
+.period-label {
   color: var(--teal);
   font-size: 12px;
   font-weight: 700;
@@ -380,12 +396,12 @@ textarea:focus-visible,
 
 .reference-case-grid-one {
   grid-template-columns: minmax(0, 1fr);
-  max-width: 900px;
+  max-width: 1180px;
 }
 
 .reference-case-grid-three {
   grid-template-columns: minmax(0, 1fr);
-  max-width: 900px;
+  max-width: 1180px;
 }
 
 .reference-case {
@@ -414,25 +430,47 @@ textarea:focus-visible,
   white-space: normal;
 }
 
+.reference-case-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .reference-meaning,
 .reference-settings {
   line-height: 1.48;
 }
 
 .reference-settings {
-  min-height: 62px;
   color: var(--muted);
   font-size: 13px;
 }
 
 .reference-progress {
-  min-height: 38px;
+  display: grid;
+  gap: 5px;
+  min-height: 46px;
   margin: 11px 0 8px;
-  padding: 8px 10px;
-  border-left: 4px solid var(--teal);
-  background: #f1f8f8;
+  padding: 9px 10px;
+  background: #f5f8f7;
   font-variant-numeric: tabular-nums;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.reference-progress-track {
+  width: 100%;
+  height: 10px;
+  overflow: hidden;
+  border: 1px solid #b8c8c4;
+  background: #ffffff;
+}
+
+.reference-progress-fill {
+  height: 100%;
+  background: var(--teal);
+  transition: width 160ms linear;
 }
 
 .reference-state {
@@ -442,16 +480,23 @@ textarea:focus-visible,
 }
 
 .reference-result-summary {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  min-height: 112px;
-  margin: 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 350px;
+  margin: 0;
+  padding: 22px;
+  background: #f5f8f7;
 }
 
-.reference-result-summary > div {
+.reference-result-summary h4 {
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+
+.reference-result-summary > div:not(.shiny-plot-output) {
   min-width: 0;
-  padding: 4px 0 8px;
+  padding: 2px 0 9px;
   border-bottom: 1px solid var(--line);
 }
 
@@ -464,18 +509,47 @@ textarea:focus-visible,
 .reference-result-summary span {
   margin-top: 3px;
   color: var(--muted);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.reference-result-summary .reference-timing-note {
+  margin: auto 0 0;
+  color: var(--muted);
+  line-height: 1.45;
 }
 
 .reference-evidence-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  min-height: 230px;
+  grid-template-columns: repeat(2, minmax(300px, 1fr));
+  gap: 16px;
+  margin-top: 18px;
 }
 
 .reference-evidence-grid .shiny-plot-output {
   width: 100%;
   min-width: 0;
+}
+
+.reference-evidence-panel,
+.reference-intervention-panel {
+  min-width: 0;
+  border: 1px solid var(--line);
+  background: #ffffff;
+}
+
+.reference-intervention-panel {
+  margin-top: 16px;
+  padding: 18px;
+}
+
+.reference-intervention-panel h4 {
+  margin: 0 0 6px;
+}
+
+.reference-intervention-panel p {
+  margin: 0 0 10px;
+  color: var(--muted);
 }
 
 .reference-prompts {
@@ -499,7 +573,7 @@ textarea:focus-visible,
 }
 
 .historical-comparison {
-  max-width: 900px;
+  max-width: 1180px;
   margin-top: 20px;
   padding-top: 18px;
   border-top: 1px solid var(--line);
@@ -521,7 +595,7 @@ textarea:focus-visible,
 .anchor-status {
   display: grid;
   gap: 3px;
-  max-width: 900px;
+  max-width: 1180px;
   min-height: 62px;
   margin-top: 14px;
   padding: 10px 12px;
@@ -773,10 +847,6 @@ textarea:focus-visible,
     min-height: 0;
   }
 
-  .reference-evidence-grid {
-    min-height: 470px;
-  }
-
   .investigate-workspaces {
     grid-template-columns: 1fr;
   }
@@ -860,6 +930,11 @@ textarea:focus-visible,
 
   .start-hero-copy p {
     font-size: 16px;
+  }
+
+  .start-narrative-heading {
+    justify-content: flex-start;
+    margin-bottom: 0;
   }
 
   .section-heading-row {

@@ -5,20 +5,20 @@ Your job is to examine what the historical record can teach, test plausible
 future pressures and responses, and support advice with reproducible model
 evidence.
 
-## Two acts, one investigation
+## Two phases, one investigation
 
-**Act 1: Calibrate against history.** Reconstruct the 1980 management choices,
+**Phase 1: Calibrate against history.** Reconstruct the 1980 management choices,
 check the short recovery period after rodent eradication, and establish the
-2025 future baseline.
+common 2025-2100 comparison.
 
-**Act 2: Advise from the present.** Test ecological sensitivity, compare a
+**Phase 2: Advise from the present.** Test ecological sensitivity, compare a
 plausible threat with at least one intervention, and explain what the evidence
 does and does not support.
 
-The **three-hour core route** establishes a **pass-level foundation** for the
-practical. Independent work afterward is expected: refine questions, test
-additional assumptions, and connect the model evidence to the case-study
-literature.
+The **three-hour core route** captures the **essential foundation** of the
+practical. Independent work afterward is expected: refine your questions, test
+additional assumptions, and connect the model evidence to published knowledge
+about the Woodhen and its management.
 
 ## Ways to deepen your investigation
 

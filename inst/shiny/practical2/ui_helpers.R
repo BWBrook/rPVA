@@ -47,6 +47,21 @@ project_help_modal <- function() {
   )
 }
 
+woodhen_background_modal <- function() {
+  modalDialog(
+    title = "The Lord Howe Island woodhen",
+    div(
+      class = "help-modal-content",
+      render_markdown_content(file.path(
+        practical2_app_dir, "content", "help-woodhen-background.md"
+      ))
+    ),
+    footer = modalButton("Close"),
+    easyClose = TRUE,
+    size = "l"
+  )
+}
+
 pending_tab_ui <- function(title, next_step) {
   div(
     class = "page-shell pending-tab-shell",

@@ -116,7 +116,7 @@ woodhen_reference_catalog <- function() {
       "Compare with the common 40-year no-action case.",
       "Compare with the two other common 40-year cases.",
       "Interpret as a five-year recovery check, not a long-run rank.",
-      "Use as the immutable parent of all Act 2 investigations."
+      "Use as the unchanged comparison for all Phase 2 investigations."
     ),
     limitation = c(
       rep("A reference scenario is a modelled historical comparison, not a causal estimate.", 4L),

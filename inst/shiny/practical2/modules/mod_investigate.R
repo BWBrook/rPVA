@@ -377,7 +377,7 @@ investigate_ui <- function(id) {
     tags$header(
       class = "investigate-header",
       div(
-        span(class = "section-eyebrow", "Act 2: Advise from the present"),
+        span(class = "section-eyebrow", "Phase 2: Advise from the present"),
         h1("Investigate sensitivity and future advice"),
         p(
           "Branch from the exact 2025-2100 anchor, keep the comparison machinery",
@@ -736,9 +736,9 @@ investigate_server <- function(
       div(
         class = paste0("anchor-status is-", anchor$status),
         strong(switch(anchor$status,
-          ready = "Locked future baseline ready",
-          stale = "Locked future baseline is incompatible",
-          "Locked future baseline missing"
+          ready = "Common future comparison ready",
+          stale = "Common future comparison needs to be rerun",
+          "Common future comparison not yet run"
         )),
         span(anchor$action)
       )
@@ -768,7 +768,7 @@ investigate_server <- function(
         p(strong("Exact model mapping: "), investigate_mapping_text(row)),
         p(strong("Baseline and proposed settings: "), proposed),
         p(strong("Limitation: "), row$limitation[[1L]]),
-        p(class = "locked-machinery", "Locked: supplied starting population | 75 years | 1,000 futures | seed 123 | every non-target field")
+        p(class = "locked-machinery", "Held constant: starting population | 75 years | 1,000 futures | every setting except the factor being tested")
       )
     })
 
@@ -807,7 +807,7 @@ investigate_server <- function(
         p(strong("Intervention mapping: "), investigate_mapping_text(intervention)),
         p(strong("Intervention value: "), as.character(intervention_value)),
         p(strong("Intervention limitation: "), intervention$limitation[[1L]]),
-        p(class = "locked-machinery", "Locked: supplied starting population | 75 years | 1,000 futures | seed 123 | common stage structure")
+        p(class = "locked-machinery", "Held constant: starting population | 75 years | 1,000 futures | common age structure")
       )
     })
 

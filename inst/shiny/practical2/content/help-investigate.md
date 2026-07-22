@@ -1,9 +1,9 @@
 ## Common future anchor
 
-Both workspaces require the exact current locked future baseline from Calibrate.
+Both workspaces require the current common future comparison from Calibrate.
 Each completed family then reruns an identical baseline within that family's own
 comparison ancestry. This preserves the supplied 2024 starting population, 75
-projection years, 1,000 simulated futures, seed 123, stage structure, and all
+projection years, 1,000 simulated futures, stage structure, and all
 non-target settings.
 
 ## Sensitivity

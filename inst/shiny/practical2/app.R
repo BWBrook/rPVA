@@ -125,7 +125,7 @@ make_practical2_server <- function(
       "No active project yet.", "neutral", "circle-info"
     ))
     portable_status <- reactiveVal(status_value(
-      "No portable project download requested.", "neutral", "download"
+      "No project copy downloaded yet.", "neutral", "download"
     ))
     dirty_status <- reactiveVal(status_value(
       "No active project yet.", "neutral", "circle-info"
@@ -155,21 +155,21 @@ make_practical2_server <- function(
     refresh_portable_status <- function(candidate = project()) {
       if (is.null(candidate)) {
         portable_status(status_value(
-          "No portable project download requested.", "neutral", "download"
+          "No project copy downloaded yet.", "neutral", "download"
         ))
       } else if (is.null(portable_fingerprint())) {
         portable_status(status_value(
-          "No portable project download requested.", "neutral", "download"
+          "No project copy downloaded yet.", "neutral", "download"
         ))
       } else if (identical(portable_fingerprint(), candidate$project_fingerprint)) {
         portable_status(status_value(
-          "Portable project download requested for current content.",
+          "Project copy download requested for current content.",
           "current",
           "circle-check"
         ))
       } else {
         portable_status(status_value(
-          "Portable project download is out of date.",
+          "Downloaded project copy is out of date.",
           "warning",
           "triangle-exclamation"
         ))
@@ -388,14 +388,14 @@ make_practical2_server <- function(
       event <- events$import()
       if (!isTRUE(event$ok)) {
         showNotification(
-          paste("Portable project was not imported:", event$message),
+          paste("Project copy was not imported:", event$message),
           type = "error"
         )
         return()
       }
       pending_restore(NULL)
       activate_project(event$candidate, portable_request_fingerprint = NULL)
-      showNotification("Portable project imported after validation.", type = "message")
+      showNotification("Project copy imported.", type = "message")
     })
 
     observeEvent(events$download_requested(), {
@@ -463,7 +463,7 @@ make_practical2_server <- function(
           ))
         } else {
           browser_status(status_value(
-            "Browser autosave is unavailable; download a portable project.",
+            "Browser autosave is unavailable; download a project copy.",
             "warning",
             "triangle-exclamation"
           ))
@@ -473,7 +473,7 @@ make_practical2_server <- function(
         refresh_portable_status()
       } else {
         portable_status(status_value(
-          "Portable project download requested; browser recovery did not record it.",
+          "Project copy download requested; browser autosave did not record it.",
           "warning",
           "triangle-exclamation"
         ))

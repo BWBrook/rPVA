@@ -1,26 +1,72 @@
+calibrate_whole_birds <- function(value) {
+  format(round(as.numeric(value)), big.mark = ",", scientific = FALSE, trim = TRUE)
+}
+
+calibrate_abundance_ylim <- function(quantiles) {
+  upper <- max(
+    quantiles$q975,
+    quantiles$median[[1L]] * 1.6,
+    na.rm = TRUE
+  )
+  c(0, max(1, ceiling(upper * 1.05)))
+}
+
+calibrate_scenario_help_path <- function(reference_id) {
+  names <- c(
+    `01_no_mgmt` = "01-no-intervention.md",
+    `02_pig_control` = "02-pig-control.md",
+    `03_captive_pig` = "03-captive-pig.md",
+    `04_rodent_eradication` = "04-rodent-eradication.md",
+    `05_future_baseline` = "05-future-comparison.md"
+  )
+  file.path(practical2_app_dir, "content", "scenarios", unname(names[[reference_id]]))
+}
+
+calibrate_scenario_help_modal <- function(reference_id) {
+  catalog <- rPVA::woodhen_reference_catalog()
+  label <- catalog$label[catalog$id == reference_id][[1L]]
+  modalDialog(
+    title = label,
+    div(
+      class = "help-modal-content",
+      render_markdown_content(calibrate_scenario_help_path(reference_id))
+    ),
+    footer = modalButton("Close"),
+    easyClose = TRUE,
+    size = "m"
+  )
+}
+
 calibrate_reference_case_ui <- function(ns, reference_id) {
   catalog <- rPVA::woodhen_reference_catalog()
   row <- catalog[catalog$id == reference_id, , drop = FALSE]
   settings <- sprintf(
-    "%d years | 1,000 simulated futures | seed 123 | immutable reference settings",
+    "%d-year projection | 1,000 simulated futures | supplied scenario settings",
     row$horizon_years[[1L]]
   )
 
   tags$article(
     class = "reference-case",
-    `data-reference-id` = reference_id,
     div(
       class = "reference-case-heading",
       div(
-        span(class = "reference-id", reference_id),
         h3(row$label[[1L]])
       ),
-      actionButton(
-        ns(paste0("run_", reference_id)),
-        "Run reference case",
-        icon = icon("play"),
-        class = "btn-primary reference-run-action",
-        `aria-label` = paste("Run", row$label[[1L]], "reference case")
+      div(
+        class = "reference-case-actions",
+        actionButton(
+          ns(paste0("help_", reference_id)),
+          "Scenario details",
+          icon = icon("circle-info"),
+          class = "btn-default btn-sm"
+        ),
+        actionButton(
+          ns(paste0("run_", reference_id)),
+          "Run scenario",
+          icon = icon("play"),
+          class = "btn-primary reference-run-action",
+          `aria-label` = paste("Run", row$label[[1L]], "scenario")
+        )
       )
     ),
     p(class = "reference-meaning", row$biological_meaning[[1L]]),
@@ -31,20 +77,7 @@ calibrate_reference_case_ui <- function(ns, reference_id) {
       `aria-live` = "polite",
       `aria-atomic` = "true"
     ),
-    uiOutput(ns(paste0("result_", reference_id))),
-    div(
-      class = "reference-evidence-grid",
-      div(
-        role = "img",
-        `aria-label` = paste("Abundance trajectory evidence for", row$label[[1L]]),
-        plotOutput(ns(paste0("trajectory_", reference_id)), height = "230px")
-      ),
-      div(
-        role = "img",
-        `aria-label` = paste("Risk evidence for", row$label[[1L]]),
-        plotOutput(ns(paste0("risk_", reference_id)), height = "230px")
-      )
-    ),
+    uiOutput(ns(paste0("evidence_", reference_id))),
     div(
       class = "reference-prompts",
       textAreaInput(
@@ -91,7 +124,7 @@ calibrate_ui <- function(id) {
     tags$header(
       class = "calibrate-header",
       div(
-        span(class = "section-eyebrow", "Act 1: Calibrate against history"),
+        span(class = "section-eyebrow", "Phase 1: Calibrate against history"),
         h1("Audit the Woodhen management record"),
         p(
           "Run each reference case, compare only compatible horizons, and decide",
@@ -114,7 +147,7 @@ calibrate_ui <- function(id) {
       p(
         class = "comparison-rule",
         "These are the only directly ranked cases: they share the 1980 decision context,",
-        "starting state, 40-year horizon, seed 123, and 1,000 simulated futures."
+        "starting population, 40-year horizon, and 1,000 simulated futures."
       ),
       div(
         class = "reference-case-grid reference-case-grid-three",
@@ -131,7 +164,6 @@ calibrate_ui <- function(id) {
       span(class = "period-label", history$recovery_2019_2024$period),
       h2(id = ns("heading_2019"), history$recovery_2019_2024$heading),
       p(history$recovery_2019_2024$observed_history),
-      p(history$recovery_2019_2024$model_state$label),
       div(class = "short-horizon-warning", history$recovery_2019_2024$warning),
       div(
         class = "reference-case-grid reference-case-grid-one",
@@ -202,7 +234,7 @@ calibrate_server <- function(
         if (is.null(completed_run(reference_id, candidate))) {
           "Not run in this project."
         } else {
-          "Completed reference evidence restored from this project."
+          "Saved results loaded from this project."
         }
       }, character(1)), reference_ids)
       progress_state(progress)
@@ -242,7 +274,12 @@ calibrate_server <- function(
       local({
         reference_id <- id_value
         run_input <- paste0("run_", reference_id)
+        help_input <- paste0("help_", reference_id)
         save_input <- paste0("save_notes_", reference_id)
+
+        observeEvent(input[[help_input]], {
+          showModal(calibrate_scenario_help_modal(reference_id))
+        })
 
         observeEvent(input[[run_input]], {
           candidate <- project()
@@ -255,16 +292,32 @@ calibrate_server <- function(
           progress_history(list())
           set_reference_progress(reference_id, 0L, 1000L, record = FALSE)
           set_reference_status(reference_id, "Running simulated futures...")
-          action <- tryCatch(
-            rPVA:::run_woodhen_reference_project(
-              candidate,
-              reference_id,
-              progress = function(completed, total) {
-                set_reference_progress(reference_id, completed, total)
-              },
-              runner = scenario_runner
-            ),
-            error = function(error) error
+          action <- withProgress(
+            message = paste("Running", rPVA::woodhen_reference_catalog()$label[
+              rPVA::woodhen_reference_catalog()$id == reference_id
+            ]),
+            value = 0.02,
+            {
+              setProgress(0.02, detail = "Preparing 1,000 simulated futures")
+              tryCatch(
+                rPVA:::run_woodhen_reference_project(
+                  candidate,
+                  reference_id,
+                  progress = function(completed, total) {
+                    set_reference_progress(reference_id, completed, total)
+                    setProgress(
+                      0.04 + 0.90 * completed / total,
+                      detail = paste(
+                        format(completed, big.mark = ","), "of",
+                        format(total, big.mark = ","), "futures completed"
+                      )
+                    )
+                  },
+                  runner = scenario_runner
+                ),
+                error = function(error) error
+              )
+            }
           )
           if (inherits(action, "error")) {
             message <- paste("Reference run failed:", conditionMessage(action))
@@ -274,9 +327,9 @@ calibrate_server <- function(
           }
           set_reference_progress(reference_id, 1000L, 1000L, record = FALSE)
           message <- if (isTRUE(action$reused)) {
-            "Exact existing scenario and run reused; no duplicate was created."
+            "This scenario was already complete; the saved results are shown."
           } else {
-            "Reference run complete and ready for project activation."
+            "Scenario complete. Results saved to your investigation."
           }
           set_reference_status(reference_id, message)
           publish_update(list(
@@ -319,7 +372,7 @@ calibrate_server <- function(
             )
             return()
           }
-          set_reference_status(reference_id, "Explicit observations are ready for project activation.")
+          set_reference_status(reference_id, "Observations saved to your investigation.")
           publish_update(list(
             ok = TRUE,
             candidate = updated,
@@ -332,21 +385,35 @@ calibrate_server <- function(
 
         output[[paste0("progress_", reference_id)]] <- renderUI({
           state <- progress_state()[[reference_id]]
+          percent <- if (state[["total"]] > 0) {
+            round(100 * state[["completed"]] / state[["total"]])
+          } else {
+            0
+          }
           div(
             class = "reference-progress",
-            role = "progressbar",
-            `aria-valuemin` = "0",
-            `aria-valuemax` = as.character(state[["total"]]),
-            `aria-valuenow` = as.character(state[["completed"]]),
             `aria-live` = "polite",
-            `aria-label` = paste(
-              rPVA::woodhen_reference_catalog()$label[
-                rPVA::woodhen_reference_catalog()$id == reference_id
-              ],
-              "simulation progress"
+            div(
+              class = "reference-progress-track",
+              div(
+                class = "reference-progress-fill",
+                role = "progressbar",
+                `aria-valuemin` = "0",
+                `aria-valuemax` = as.character(state[["total"]]),
+                `aria-valuenow` = as.character(state[["completed"]]),
+                `aria-label` = paste(
+                  rPVA::woodhen_reference_catalog()$label[
+                    rPVA::woodhen_reference_catalog()$id == reference_id
+                  ],
+                  "simulation progress"
+                ),
+                style = paste0("width:", percent, "%")
+              )
             ),
-            paste(format(state[["completed"]], big.mark = ","), "of",
-              format(state[["total"]], big.mark = ","), "futures completed")
+            span(
+              paste(format(state[["completed"]], big.mark = ","), "of",
+                format(state[["total"]], big.mark = ","), "futures completed")
+            )
           )
         })
 
@@ -355,17 +422,70 @@ calibrate_server <- function(
           div(class = "reference-state", message)
         })
 
-        output[[paste0("result_", reference_id)]] <- renderUI({
+        output[[paste0("evidence_", reference_id)]] <- renderUI({
           run <- completed_run(reference_id)
           if (is.null(run)) return(NULL)
+          label <- rPVA::woodhen_reference_catalog()$label[
+            rPVA::woodhen_reference_catalog()$id == reference_id
+          ]
+          evidence_grid <- div(
+            class = "reference-evidence-grid",
+            div(
+              class = "reference-evidence-panel",
+              role = "img",
+              `aria-label` = paste("Abundance trajectory evidence for", label),
+              plotOutput(session$ns(paste0("trajectory_", reference_id)), height = "350px")
+            ),
+            div(
+              class = "reference-evidence-panel",
+              role = "img",
+              `aria-label` = paste("Risk evidence for", label),
+              plotOutput(session$ns(paste0("risk_", reference_id)), height = "350px")
+            ),
+            div(
+              class = "reference-evidence-panel",
+              role = "img",
+              `aria-label` = paste("Extinction timing evidence for", label),
+              plotOutput(session$ns(paste0("timing_", reference_id)), height = "350px")
+            ),
+            uiOutput(session$ns(paste0("summary_", reference_id)))
+          )
+          if (identical(reference_id, "03_captive_pig")) {
+            tagList(
+              evidence_grid,
+              div(
+                class = "reference-intervention-panel",
+                h4("Captive-breeding intervention: first decade"),
+                p("The close-up shows when birds were taken into captivity and when modelled releases occurred."),
+                plotOutput(session$ns(paste0("intervention_", reference_id)), height = "340px")
+              )
+            )
+          } else {
+            evidence_grid
+          }
+        })
+
+        output[[paste0("summary_", reference_id)]] <- renderUI({
+          run <- completed_run(reference_id)
+          req(run)
+          timing <- if (run$extinction_evidence$extinct_reps == 0L) {
+            "No simulated futures reached extinction."
+          } else {
+            paste0(
+              "Median extinction time among futures that went extinct: year ",
+              calibrate_whole_birds(run$extinction_evidence$conditional_median_year), "."
+            )
+          }
           evidence <- list(
-            div(strong("Extinction by horizon"),
+            div(strong("Extinction by the final year"),
               span(sprintf("%.1f%%", 100 * run$extinction_evidence$probability_by_horizon))),
             div(strong("Final median abundance"),
-              span(format(run$final_abundance$median, big.mark = ","))),
+              span(calibrate_whole_birds(run$final_abundance$median))),
             div(strong("95% simulation interval"),
-              span(sprintf("%s-%s", format(run$final_abundance$q025, big.mark = ","),
-                format(run$final_abundance$q975, big.mark = ","))))
+              span(sprintf("%s-%s",
+                calibrate_whole_birds(run$final_abundance$q025),
+                calibrate_whole_birds(run$final_abundance$q975)
+              )))
           )
           if (identical(reference_id, "05_future_baseline")) {
             evidence[[length(evidence) + 1L]] <- div(
@@ -373,18 +493,33 @@ calibrate_server <- function(
               span(sprintf("%.1f%%", 100 * run$quasi_extinction_50_pairs$probability_by_horizon))
             )
           }
-          div(class = "reference-result-summary", evidence)
+          div(
+            class = "reference-evidence-panel reference-result-summary",
+            h4("Key results"),
+            evidence,
+            p(class = "reference-timing-note", timing)
+          )
         })
 
         output[[paste0("trajectory_", reference_id)]] <- renderPlot({
           run <- completed_run(reference_id)
           req(run)
           quantiles <- run$annual_quantiles
+          abundance_ylim <- calibrate_abundance_ylim(quantiles)
+          if (identical(reference_id, "04_rodent_eradication")) {
+            observed <- rPVA:::woodhen_calibration_history()$recovery_2019_2024$observed_points
+            abundance_ylim[[2L]] <- max(abundance_ylim[[2L]], 1.08 * max(observed$abundance))
+          }
+          old_par <- par(no.readonly = TRUE)
+          on.exit(par(old_par), add = TRUE)
+          par(mar = c(4.2, 4.6, 3.2, 1.2), mgp = c(2.7, 0.8, 0), las = 1)
           plot(
             quantiles$year, quantiles$median,
             type = "l", lwd = 2, col = "#126a73",
             xlab = "Projection year", ylab = "Total birds",
-            main = "Abundance and uncertainty"
+            main = "Abundance through time",
+            ylim = abundance_ylim,
+            xaxs = "i", yaxs = "i"
           )
           polygon(
             c(quantiles$year, rev(quantiles$year)),
@@ -392,29 +527,120 @@ calibrate_server <- function(
             col = grDevices::adjustcolor("#7fb6b3", alpha.f = 0.35), border = NA
           )
           lines(quantiles$year, quantiles$median, lwd = 2, col = "#126a73")
+          if (identical(reference_id, "04_rodent_eradication")) {
+            points(observed$year - 2019L, observed$abundance,
+              pch = 21, bg = "#f2c14e", col = "#5f4300", cex = 1.25
+            )
+            text(observed$year - 2019L, observed$abundance,
+              labels = paste0(observed$year, ": ", observed$label),
+              pos = c(4, 2), offset = 0.7, cex = 0.85, col = "#5f4300"
+            )
+            legend("topleft", c("Model median", "95% simulation interval", "Survey milestone"),
+              lwd = c(2, NA, NA), pch = c(NA, 15, 21),
+              pt.bg = c(NA, grDevices::adjustcolor("#7fb6b3", alpha.f = 0.35), "#f2c14e"),
+              col = c("#126a73", grDevices::adjustcolor("#7fb6b3", alpha.f = 0.35), "#5f4300"),
+              bty = "n", cex = 0.78
+            )
+          } else {
+            legend("topleft", c("Median", "95% simulation interval"),
+              lwd = c(2, NA), pch = c(NA, 15),
+              pt.bg = c(NA, grDevices::adjustcolor("#7fb6b3", alpha.f = 0.35)),
+              col = c("#126a73", grDevices::adjustcolor("#7fb6b3", alpha.f = 0.35)),
+              bty = "n", cex = 0.8
+            )
+          }
         }, res = 96)
 
         output[[paste0("risk_", reference_id)]] <- renderPlot({
           run <- completed_run(reference_id)
           req(run)
           extinction <- run$extinction_evidence$cumulative
+          old_par <- par(no.readonly = TRUE)
+          on.exit(par(old_par), add = TRUE)
+          par(mar = c(4.2, 4.6, 3.2, 1.2), mgp = c(2.7, 0.8, 0), las = 1)
           plot(
             extinction$year, extinction$probability,
             type = "s", lwd = 2, col = "#a63d40", ylim = c(0, 1),
             xlab = "Projection year", ylab = "Cumulative probability",
-            main = if (identical(reference_id, "05_future_baseline")) {
-              "Future extinction and 50-pair risk"
-            } else {
-              "Extinction risk"
-            }
+            main = "Cumulative risk through time",
+            yaxt = "n", xaxs = "i", yaxs = "i"
           )
+          axis(2, at = seq(0, 1, by = 0.2), labels = sprintf("%.1f", seq(0, 1, by = 0.2)), las = 1)
+          abline(h = seq(0, 1, by = 0.2), col = "#d8dfdd", lty = 3)
+          lines(extinction$year, extinction$probability, type = "s", lwd = 2, col = "#a63d40")
           if (identical(reference_id, "05_future_baseline")) {
             quasi <- run$quasi_extinction_50_pairs$cumulative
             lines(quasi$year, quasi$probability, type = "s", lwd = 2, col = "#9a6a14")
             legend("topleft", c("Extinction", "Below 50 pairs"),
               col = c("#a63d40", "#9a6a14"), lwd = 2, bty = "n")
+          } else {
+            legend("topleft", "Extinction", col = "#a63d40", lwd = 2, bty = "n")
           }
         }, res = 96)
+
+        output[[paste0("timing_", reference_id)]] <- renderPlot({
+          run <- completed_run(reference_id)
+          req(run)
+          years <- run$extinction_evidence$first_extinction_year
+          years <- years[!is.na(years)]
+          horizon <- as.integer(run$horizon)
+          old_par <- par(no.readonly = TRUE)
+          on.exit(par(old_par), add = TRUE)
+          par(mar = c(4.2, 4.6, 3.2, 1.2), mgp = c(2.7, 0.8, 0), las = 1)
+          if (!length(years)) {
+            plot(NA,
+              xlim = c(0, horizon), ylim = c(0, 1),
+              xlab = "Year of extinction", ylab = "Number of simulated futures",
+              main = "When extinction occurred", yaxt = "n", xaxs = "i"
+            )
+            axis(2, at = 0)
+            text(horizon / 2, 0.52, "No simulated extinctions", cex = 1.05, col = "#4a5b59")
+            text(horizon / 2, 0.39, "All futures persisted to the final year", cex = 0.85, col = "#667572")
+          } else {
+            breaks <- seq(-0.5, horizon + 0.5, by = 1)
+            hist(years,
+              breaks = breaks, col = "#d9795f", border = "white",
+              xlim = c(0, horizon), xaxs = "i",
+              xlab = "Year of extinction", ylab = "Number of simulated futures",
+              main = "When extinction occurred"
+            )
+            abline(v = stats::median(years), col = "#7d2528", lwd = 2, lty = 2)
+            legend("topright", "Median among extinct futures",
+              col = "#7d2528", lwd = 2, lty = 2, bty = "n", cex = 0.8
+            )
+          }
+        }, res = 96)
+
+        if (identical(reference_id, "03_captive_pig")) {
+          output[[paste0("intervention_", reference_id)]] <- renderPlot({
+            run <- completed_run(reference_id)
+            req(run)
+            quantiles <- run$annual_quantiles
+            quantiles <- quantiles[quantiles$year <= 10L, , drop = FALSE]
+            old_par <- par(no.readonly = TRUE)
+            on.exit(par(old_par), add = TRUE)
+            par(mar = c(4.2, 4.6, 3.2, 1.2), mgp = c(2.7, 0.8, 0), las = 1)
+            plot(
+              quantiles$year, quantiles$median,
+              type = "n", xlim = c(0, 10), ylim = calibrate_abundance_ylim(quantiles),
+              xaxs = "i", yaxs = "i", xlab = "Years after 1980", ylab = "Total birds",
+              main = "Population response during the intervention decade"
+            )
+            polygon(
+              c(quantiles$year, rev(quantiles$year)),
+              c(quantiles$q025, rev(quantiles$q975)),
+              col = grDevices::adjustcolor("#7fb6b3", alpha.f = 0.35), border = NA
+            )
+            lines(quantiles$year, quantiles$median, lwd = 2, col = "#126a73")
+            abline(v = c(1, 2), col = "#7d2528", lwd = 2, lty = 3)
+            abline(v = c(2, 3, 4), col = "#315c88", lwd = 2, lty = 2)
+            legend("topleft",
+              c("Median abundance", "95% interval", "Captures (1981-82)", "Modelled releases (1982-84)"),
+              col = c("#126a73", grDevices::adjustcolor("#7fb6b3", alpha.f = 0.35), "#7d2528", "#315c88"),
+              lwd = c(2, 8, 2, 2), lty = c(1, 1, 3, 2), bty = "n", cex = 0.78
+            )
+          }, res = 96)
+        }
       })
     }
 
@@ -427,18 +653,20 @@ calibrate_server <- function(
       comparison <- rPVA:::compare_woodhen_1980_references(runs)
       rows <- lapply(seq_len(nrow(comparison$table)), function(index) {
         row <- comparison$table[index, ]
-        tags$tr(
-          tags$th(scope = "row", row$student_label),
-          tags$td(sprintf("%.1f%%", 100 * row$extinction_probability)),
-          tags$td(format(row$final_median_abundance, big.mark = ",")),
-          tags$td(sprintf("%s-%s", format(row$final_q025, big.mark = ","),
-            format(row$final_q975, big.mark = ",")))
+          tags$tr(
+            tags$th(scope = "row", row$student_label),
+            tags$td(sprintf("%.1f%%", 100 * row$extinction_probability)),
+            tags$td(calibrate_whole_birds(row$final_median_abundance)),
+            tags$td(sprintf("%s-%s",
+              calibrate_whole_birds(row$final_q025),
+              calibrate_whole_birds(row$final_q975)
+            ))
         )
       })
       div(
         class = "historical-comparison",
         h3("Compatible 1980 comparison"),
-        p(comparison$interpretation),
+        p("These three cases begin from the same 1980 population and run for the same 40 years, so their outcomes can be compared directly."),
         tags$table(
           class = "table table-condensed",
           tags$thead(tags$tr(
@@ -456,9 +684,9 @@ calibrate_server <- function(
       div(
         class = state_class,
         strong(switch(status$status,
-          ready = "Locked future baseline ready",
-          stale = "Locked future baseline is incompatible",
-          "Locked future baseline missing"
+          ready = "Common future comparison ready",
+          stale = "Common future comparison needs to be rerun",
+          "Common future comparison not yet run"
         )),
         span(status$action)
       )

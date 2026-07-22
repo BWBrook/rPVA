@@ -175,17 +175,30 @@ test_that("the historical comparison accepts exactly the three common 40-year ca
   expect_error(rPVA:::compare_woodhen_1980_references(runs[1:2]), "exactly")
 })
 
-test_that("calibration history distinguishes observed milestones from supplied model states", {
+test_that("calibration history presents observed milestones without false precision", {
   history <- rPVA:::woodhen_calibration_history()
   expect_identical(names(history), c("crisis_1980", "recovery_2019_2024", "future_2025_2100"))
   expect_identical(history$crisis_1980$reference_ids, c("01_no_mgmt", "02_pig_control", "03_captive_pig"))
   expect_identical(history$recovery_2019_2024$reference_ids, "04_rodent_eradication")
   expect_identical(history$future_2025_2100$reference_ids, "05_future_baseline")
   expect_match(history$recovery_2019_2024$observed_history, "over 1,600 birds by 2024", fixed = TRUE)
-  expect_identical(history$recovery_2019_2024$model_state$total_birds, 1654L)
-  expect_identical(history$recovery_2019_2024$model_state$breeding_pairs, 330L)
-  expect_match(history$recovery_2019_2024$model_state$label, "supplied 2024 model state", fixed = TRUE)
+  expect_identical(history$recovery_2019_2024$observed_points$year, c(2019L, 2024L))
+  expect_identical(history$recovery_2019_2024$observed_points$abundance, c(208L, 1600L))
+  expect_identical(history$recovery_2019_2024$observed_points$label, c("208", ">1,600"))
+  expect_false("model_state" %in% names(history$recovery_2019_2024))
   expect_match(history$recovery_2019_2024$warning, "Short-horizon warning", fixed = TRUE)
+})
+
+test_that("Calibrate display helpers avoid false precision and clipped uncertainty", {
+  env <- source_calibrate_app()
+  expect_identical(env$calibrate_whole_birds(171.025), "171")
+  expect_identical(env$calibrate_whole_birds(1386.075), "1,386")
+  limits <- env$calibrate_abundance_ylim(data.frame(
+    median = c(100, 80), q025 = c(70, 50), q975 = c(125, 110)
+  ))
+  expect_equal(limits[[1L]], 0)
+  expect_gte(limits[[2L]], 160)
+  expect_gte(limits[[2L]], 125)
 })
 
 test_that("locked-anchor status requires the exact current scenario and run", {
@@ -206,7 +219,7 @@ test_that("locked-anchor status requires the exact current scenario and run", {
   ready <- rPVA:::woodhen_locked_anchor_status(ready_action$project)
   expect_identical(ready$status, "ready")
   expect_identical(ready$expected, expected)
-  expect_match(rPVA:::woodhen_locked_anchor_status(empty)$action, "Run the locked future baseline", fixed = TRUE)
+  expect_match(rPVA:::woodhen_locked_anchor_status(empty)$action, "Run the common future comparison", fixed = TRUE)
 
   wrong_seed <- ready_action$project
   wrong_seed$runs[[1L]]$seed <- 999L
@@ -363,7 +376,7 @@ test_that("Calibrate state reconciles exactly when the authoritative project cha
       progress_state()[["05_future_baseline"]],
       c(completed = 1000L, total = 1000L)
     )
-    expect_match(status_state()[["05_future_baseline"]], "restored")
+    expect_match(status_state()[["05_future_baseline"]], "Saved results loaded")
 
     live(new_woodhen_project("Replacement project B"))
     session$flushReact()
@@ -399,7 +412,7 @@ test_that("Calibrate state reconciles exactly when the authoritative project cha
         `05_future_baseline` = 0L
       )
     )
-    expect_match(status_state()[["02_pig_control"]], "restored")
+    expect_match(status_state()[["02_pig_control"]], "Saved results loaded")
     expect_true(all(status_state()[setdiff(names(status_state()), "02_pig_control")] ==
       "Not run in this project."))
   })
@@ -495,21 +508,24 @@ test_that("Calibrate observations persist only explicit non-empty submissions", 
   })
 })
 
-test_that("Calibrate UI is chronological, accessible, responsive, and historically precise", {
+test_that("Calibrate UI is chronological, accessible, responsive, and student-facing", {
   env <- source_calibrate_app()
   html <- paste(as.character(env$calibrate_ui("calibrate")), collapse = "\n")
   app_dir <- calibrate_app_dir()
   help <- paste(readLines(file.path(app_dir, "content", "help-calibrate.md"), warn = FALSE), collapse = "\n")
+  module_source <- paste(readLines(file.path(app_dir, "modules", "mod_calibrate.R"), warn = FALSE), collapse = "\n")
   css <- paste(readLines(file.path(app_dir, "www", "styles.css"), warn = FALSE), collapse = "\n")
+  visible_text <- gsub("<[^>]+>", " ", html)
   headings <- c(
     "1980 crisis and 40-year management alternatives",
     "2019-2024 rodent-eradication recovery check",
-    "2025-2100 locked future baseline"
+    "2025-2100 common future comparison"
   )
   positions <- vapply(headings, function(heading) regexpr(heading, html, fixed = TRUE)[[1L]], integer(1))
   expect_true(all(positions > 0L) && identical(order(positions), 1:3))
   for (id in woodhen_reference_catalog()$id) {
     expect_match(html, paste0('id="calibrate-run_', id, '"'), fixed = TRUE)
+    expect_match(html, paste0('id="calibrate-help_', id, '"'), fixed = TRUE)
     expect_match(html, paste0('id="calibrate-interpretation_', id, '"'), fixed = TRUE)
     expect_match(html, paste0('id="calibrate-caveat_', id, '"'), fixed = TRUE)
     expect_match(html, paste0('id="calibrate-save_notes_', id, '"'), fixed = TRUE)
@@ -518,9 +534,12 @@ test_that("Calibrate UI is chronological, accessible, responsive, and historical
   expect_match(html, 'id="calibrate-progress_01_no_mgmt"', fixed = TRUE)
   expect_match(html, "Short-horizon warning", fixed = TRUE)
   expect_match(html, "over 1,600 birds by 2024", fixed = TRUE)
-  expect_match(html, "supplied 2024 model state", fixed = TRUE)
-  expect_match(html, "1,654 birds", fixed = TRUE)
-  expect_match(html, "about 330 breeding pairs", fixed = TRUE)
+  expect_match(html, 'id="calibrate-evidence_01_no_mgmt"', fixed = TRUE)
+  expect_match(module_source, 'paste0("timing_", reference_id)', fixed = TRUE)
+  expect_match(module_source, 'paste0("summary_", reference_id)', fixed = TRUE)
+  expect_match(module_source, 'paste0("intervention_", reference_id)', fixed = TRUE)
+  expect_false(grepl("supplied 2024 model state|1,654 birds|330 breeding pairs", visible_text))
+  expect_false(grepl("seed 123|immutable|01_no_mgmt|02_pig_control|03_captive_pig", visible_text))
   expect_false(grepl("canonical", paste(html, help), ignore.case = TRUE))
   expect_match(help, "supports, but does not prove", fixed = TRUE)
   expect_match(help, "exploratory future inference", fixed = TRUE)
@@ -528,6 +547,7 @@ test_that("Calibrate UI is chronological, accessible, responsive, and historical
   expect_match(css, ".calibration-period", fixed = TRUE)
   expect_match(css, ".reference-case-grid", fixed = TRUE)
   expect_match(css, ".reference-progress", fixed = TRUE)
-  expect_match(css, "grid-template-columns: 1fr", fixed = TRUE)
+  expect_match(css, ".reference-progress-track", fixed = TRUE)
+  expect_match(css, "minmax(300px, 1fr)", fixed = TRUE)
   expect_false(grepl("linear-gradient|radial-gradient", css))
 })
