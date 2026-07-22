@@ -109,7 +109,7 @@ test_that("both investigation routes require the exact current locked anchor", {
       rPVA:::woodhen_run_investigation_family_project(
         original, family, runner = investigate_test_runner
       ),
-      "locked future baseline|current compatible project",
+      "locked future baseline|common future comparison|current compatible project",
       info = case_name
     )
     expect_identical(cases[[case_name]], original)
@@ -168,11 +168,11 @@ test_that("UI builders resolve presets, bounded custom settings, and reject inva
   env <- source_investigate_app()
   expect_equal(
     env$investigate_sensitivity_values("K", "moderate", "high", 300, 200),
-    c(350, 250)
+    c(225, 160)
   )
   expect_equal(
     env$investigate_sensitivity_values("K", "custom", "high", 300, 200),
-    c(300, 250)
+    c(300, 160)
   )
   expect_error(
     env$investigate_sensitivity_values("K", "custom", "custom", 300, 300),
@@ -183,7 +183,7 @@ test_that("UI builders resolve presets, bounded custom settings, and reject inva
     "between 150 and 750"
   )
   expect_error(
-    env$investigate_sensitivity_values("K", "custom", "high", 500, 250),
+    env$investigate_sensitivity_values("K", "custom", "high", 325, 250),
     "baseline|two altered"
   )
 
@@ -199,8 +199,8 @@ test_that("UI builders resolve presets, bounded custom settings, and reject inva
     profile <- family$scenarios[[2L]]$temporal_profile[[1L]]
     if (identical(threat_id, "sea_level_rise_pathway")) {
       expect_identical(profile, list(shape = "linear", onset_year = 1L, end_year = 75L))
-      expect_equal(family$scenarios[[2L]]$spec$annual_profiles$K[[1L]], 500)
-      expect_equal(tail(family$scenarios[[2L]]$spec$annual_profiles$K, 1L), 350)
+      expect_equal(family$scenarios[[2L]]$spec$annual_profiles$K[[1L]], 325)
+      expect_equal(tail(family$scenarios[[2L]]$spec$annual_profiles$K, 1L), 225)
     } else {
       expect_identical(profile, list(shape = "step", onset_year = 1L, end_year = 1L))
     }
@@ -295,7 +295,7 @@ test_that("family actions are atomic, immutable, duplicate-free, and prompt-awar
   expect_length(reversed_rerun$project$observations, 1L)
   expect_identical(
     reversed_rerun$comparison$table$setting_value,
-    c(500, 250, 350)
+    c(325, 250, 350)
   )
 
   changed <- build_woodhen_sensitivity_family("K", c(300, 250))
@@ -369,7 +369,7 @@ test_that("Investigation module guards busy clicks and restores completed eviden
   shiny::isolate(busy(FALSE))
 
   project <- investigate_ready_project()
-  family <- build_woodhen_sensitivity_family("K_sd", c(75, 100))
+  family <- build_woodhen_sensitivity_family("K_sd", c(60, 85))
   completed <- rPVA:::woodhen_run_investigation_family_project(
     project, family, runner = investigate_test_runner, sample_trajectories = 3L
   )$project
@@ -383,7 +383,7 @@ test_that("Investigation module guards busy clicks and restores completed eviden
   )$project
   restored <- env$investigate_restored_controls(completed)
   expect_identical(restored$sensitivity$factor_id, "K_sd")
-  expect_equal(restored$sensitivity$values, c(75, 100))
+  expect_equal(restored$sensitivity$values, c(60, 85))
   expect_identical(restored$sensitivity$choices, c("moderate", "high"))
   expect_identical(restored$future$threat_id, "sea_level_rise_pathway")
   expect_equal(restored$future$threat_value, 325)
@@ -412,8 +412,8 @@ test_that("Investigation module guards busy clicks and restores completed eviden
       factor_id = "K_sd",
       sensitivity_first_choice = "moderate",
       sensitivity_second_choice = "high",
-      sensitivity_first_custom = 75,
-      sensitivity_second_custom = 100,
+      sensitivity_first_custom = 60,
+      sensitivity_second_custom = 85,
       run_sensitivity = investigate_action_value(1L)
     )
     expect_equal(reuse_calls, 0L)

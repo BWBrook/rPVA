@@ -2,6 +2,12 @@ The Lord Howe Island woodhen (*Hypotaenidia sylvestris*) is a flightless rail
 found nowhere except Lord Howe Island. The island is a small volcanic remnant
 about 630 km east of mainland Australia.
 
+Woodhens forage on the ground for invertebrates and other food. Adults form
+territory-holding pairs, while younger birds may remain as non-breeding
+"floaters" until a territory becomes available. This distinction matters in
+the model: habitat limits the number of breeding territories more directly
+than it limits the temporary number of young birds.
+
 ## From near-extinction to recovery
 
 Feral pigs damaged native vegetation and preyed on island wildlife after their

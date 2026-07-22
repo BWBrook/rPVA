@@ -7,6 +7,7 @@ start_ui <- function(id) {
       class = "start-hero",
       tags$img(
         src = "img/lord-howe-island-nasa.webp",
+        class = "start-island-image",
         alt = "NASA astronaut photograph of Lord Howe Island and its lagoon"
       ),
       div(
@@ -20,7 +21,7 @@ start_ui <- function(id) {
             href = "https://commons.wikimedia.org/wiki/File:Lord_Howe_ISS006-E-5731.png",
             target = "_blank",
             rel = "noopener noreferrer",
-            "Lord Howe Island from the International Space Station - NASA, public domain"
+            "View original island photograph"
           )
         )
       )
@@ -36,7 +37,28 @@ start_ui <- function(id) {
           class = "btn-default btn-sm"
         )
       ),
-      render_markdown_content(file.path(practical2_app_dir, "content", "start.md"))
+      div(
+        class = "start-narrative-grid",
+        div(
+          class = "start-narrative-copy",
+          render_markdown_content(file.path(practical2_app_dir, "content", "start.md"))
+        ),
+        tags$figure(
+          class = "start-woodhen-figure",
+          tags$img(
+            src = "img/lord-howe-woodhen-family.jpg",
+            alt = "Lord Howe Island woodhen with two chicks"
+          ),
+          tags$figcaption(
+            tags$a(
+              href = "https://www.lordhoweislandsignal.com.au/back-from-the-brink-lord-howe-woodhen-population-surges/",
+              target = "_blank",
+              rel = "noopener noreferrer",
+              "Woodhen with chicks - NPWS / Liam Murphy"
+            )
+          )
+        )
+      )
     ),
     tags$section(
       class = "project-band",

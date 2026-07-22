@@ -329,6 +329,7 @@ make_practical2_server <- function(
     observeEvent(events$resume(), {
       event <- events$resume()
       if (!isTRUE(event$ok)) {
+        browser_status(status_value(event$message, "warning", "triangle-exclamation"))
         showNotification(event$message, type = "warning")
         return()
       }
@@ -341,6 +342,9 @@ make_practical2_server <- function(
         project_fingerprint = record$project_fingerprint
       )
       pending_restore(pending)
+      browser_status(status_value(
+        "Restoring selected project from this browser...", "pending", "clock"
+      ))
       session$sendCustomMessage(
         "woodhen-project-store-restore",
         list(
@@ -373,9 +377,12 @@ make_practical2_server <- function(
         error = function(error) error
       )
       if (inherits(candidate, "error")) {
+        message <- paste("Browser project was not restored:", conditionMessage(candidate))
+        browser_status(status_value(message, "warning", "triangle-exclamation"))
         showNotification(
-          paste("Browser project was not restored:", conditionMessage(candidate)),
-          type = "error"
+          message,
+          type = "error",
+          duration = 12
         )
         return()
       }
@@ -408,6 +415,11 @@ make_practical2_server <- function(
       }
       portable_fingerprint(candidate$project_fingerprint)
       refresh_portable_status(candidate)
+      showNotification(
+        "Project copy downloaded. Look in your browser's Downloads folder.",
+        type = "message",
+        duration = 8
+      )
       request_id <- next_request_id("portable")
       record_key <- project_store_key(candidate$project_schema_version, candidate$project_id)
       track_request(request_id, list(

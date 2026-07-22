@@ -726,13 +726,16 @@ woodhen_result_provenance <- function(result, scenario) {
 compact_woodhen_run <- function(result, scenario, sample_trajectories = 100L) {
   woodhen_validate_scenario_record(scenario)
   provenance <- woodhen_result_provenance(result, scenario)
-  total_trajectories <- woodhen_total_trajectories(result)
-  reps <- as.integer(ncol(total_trajectories))
-  horizon <- as.integer(nrow(total_trajectories) - 1L)
+  model_state_trajectories <- woodhen_total_trajectories(result)
+  whole_bird_trajectories <- 2 * model_state_trajectories
+  reps <- as.integer(ncol(model_state_trajectories))
+  horizon <- as.integer(nrow(model_state_trajectories) - 1L)
   if (!is.numeric(result$Nend) || length(result$Nend) != reps) {
     stop("`result$Nend` must contain one final abundance per replicate.", call. = FALSE)
   }
-  final_trajectory_abundance <- as.numeric(total_trajectories[nrow(total_trajectories), ])
+  final_trajectory_abundance <- as.numeric(
+    model_state_trajectories[nrow(model_state_trajectories), ]
+  )
   if (!isTRUE(all.equal(
     as.numeric(result$Nend),
     final_trajectory_abundance,
@@ -756,8 +759,8 @@ compact_woodhen_run <- function(result, scenario, sample_trajectories = 100L) {
     holder_stages = seq.int(2L, dim(result$traj)[[2L]])
   )
   quasi_extinction$breeding_pair_trajectories <- NULL
-  final_abundance <- woodhen_final_abundance_evidence(result$Nend)
-  extinction_evidence <- woodhen_extinction_evidence(total_trajectories)
+  final_abundance <- woodhen_final_abundance_evidence(2 * result$Nend)
+  extinction_evidence <- woodhen_extinction_evidence(whole_bird_trajectories)
   summary <- summarize_pva_result(result, scenario = scenario$student_label)
   summary$PE <- extinction_evidence$probability_by_horizon
   summary$Nmed <- final_abundance$median
@@ -798,9 +801,9 @@ compact_woodhen_run <- function(result, scenario, sample_trajectories = 100L) {
       summary = summary,
       diagnostics = diagnostics,
       final_abundance = final_abundance,
-      annual_quantiles = woodhen_annual_quantiles(total_trajectories),
+      annual_quantiles = woodhen_annual_quantiles(whole_bird_trajectories),
       sampled_replicate_indices = indices,
-      trajectory_sample = woodhen_sample_trajectory_data(total_trajectories, indices),
+      trajectory_sample = woodhen_sample_trajectory_data(whole_bird_trajectories, indices),
       extinction_evidence = extinction_evidence,
       quasi_extinction_50_pairs = quasi_extinction,
       difference_from_parent = list(
@@ -994,7 +997,55 @@ compare_woodhen_1980_references <- function(runs) {
   )
 }
 
+woodhen_recovery_survey_record <- function() {
+  data.frame(
+    event = c(
+      "December 2018", "Late 2019 release", "November 2020", "March 2021",
+      "November-December 2021", "March 2022", "December 2022",
+      "April 2024 banding", "November-December 2024"
+    ),
+    projection_year = c(-1, 0, 1, 1.33, 2, 2.33, 3, 4.4, 5),
+    reported_count = c(
+      "221", "208 released", "443", "598", "551 plus 14 chicks", "778",
+      "1,147", "598 banded", "1,638 known minimum"
+    ),
+    abundance = as.integer(c(221, 208, 443, 598, 551, 778, 1147, NA, 1638)),
+    use_as_abundance_point = c(TRUE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, TRUE),
+    survey_context = c(
+      "Pre-eradication annual count; inaccessible birds may have been missed.",
+      "Birds released after captive management; this is not a whole-island census.",
+      "Comparable post-eradication survey.",
+      "Comparable autumn survey.",
+      "Different season and incomplete coverage; chicks were reported separately.",
+      "Autumn survey conducted over two weeks.",
+      "Three-week survey including Mt Gower.",
+      "Targeted banding sample before the full survey; not a population estimate.",
+      "Accessible-area count plus 77 Mt Gower birds carried forward from 2022."
+    ),
+    teaching_use = c(
+      "Pre-eradication context", "Model starting marker", rep("Plotted survey count", 5L),
+      "Context only", "Plotted known minimum"
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
 woodhen_calibration_history <- function() {
+  survey_record <- woodhen_recovery_survey_record()
+  release_marker <- survey_record[
+    survey_record$event == "Late 2019 release",
+    c("event", "projection_year", "abundance"),
+    drop = FALSE
+  ]
+  rownames(release_marker) <- NULL
+  observed_points <- survey_record[
+    survey_record$use_as_abundance_point & survey_record$projection_year > 0,
+    c("event", "projection_year", "reported_count", "abundance", "survey_context"),
+    drop = FALSE
+  ]
+  observed_points$plot_label <- paste0(observed_points$event, ": ", observed_points$reported_count)
+  rownames(observed_points) <- NULL
+
   list(
     crisis_1980 = list(
       period = "1980-2020",
@@ -1010,12 +1061,14 @@ woodhen_calibration_history <- function() {
       period = "2019-2024",
       heading = "2019-2024 rodent-eradication recovery check",
       reference_ids = "04_rodent_eradication",
-      observed_history = "The observed historical milestone was over 1,600 birds by 2024.",
-      observed_points = data.frame(
-        year = c(2019L, 2024L),
-        abundance = c(208L, 1600L),
-        label = c("208", ">1,600")
+      observed_history = paste(
+        "This historical reconstruction asks whether the model reproduces the",
+        "direction and approximate scale of the observed recovery, including the",
+        "2024 known minimum of 1,638 birds."
       ),
+      release_marker = release_marker,
+      observed_points = observed_points,
+      survey_record = survey_record,
       warning = paste(
         "Short-horizon warning: this five-year recovery check must not be ranked",
         "against the three 40-year cases."
@@ -1027,8 +1080,8 @@ woodhen_calibration_history <- function() {
       heading = "2025-2100 common future comparison",
       reference_ids = "05_future_baseline",
       observed_history = paste(
-        "This no-change projection begins from the recovered 2024 population",
-        "and provides the common comparison for Phase 2."
+        "This no-change projection begins from a model population close to the",
+        "observed 2024 scale and provides the common comparison for Phase 2."
       ),
       horizon = 75L
     )

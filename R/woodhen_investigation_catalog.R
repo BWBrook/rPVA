@@ -3,7 +3,7 @@ woodhen_investigation_catalog_version <- function() {
 }
 
 woodhen_reference_library_version <- function() {
-  "woodhen-reference-v1"
+  "woodhen-reference-v3"
 }
 
 woodhen_catalog_component <- function(affected_fields,
@@ -103,7 +103,7 @@ woodhen_reference_catalog <- function() {
       "Pig control releases lowland breeding territories.",
       "Captive releases supplement pig-control habitat recovery.",
       "A short historical check after rodent eradication improved recruitment.",
-      "The recovered 2024 population projected to 2100 with no further change."
+      "A model population close to the 2024 observed scale projected to 2100 with no further change."
     ),
     mapping = mapping,
     anchors = lapply(id, function(x) c(low = NA_real_, moderate = NA_real_, high = NA_real_)),
@@ -135,14 +135,14 @@ woodhen_reference_catalog <- function() {
 woodhen_sensitivity_catalog <- function() {
   ids <- c("K", "surv", "juvenile_surv", "fecund", "cat_freq", "cat_surv", "env_sd", "K_sd")
   anchors <- list(
-    c(low = 500, moderate = 350, high = 250),
+    c(low = 325, moderate = 225, high = 160),
     c(low = 1.00, moderate = 0.95, high = 0.90),
     c(low = 1.00, moderate = 0.85, high = 0.70),
     c(low = 1.00, moderate = 0.80, high = 0.60),
     c(low = 0.04, moderate = 0.07, high = 0.10),
     c(low = 0.50, moderate = 0.40, high = 0.30),
     c(low = 0.20, moderate = 0.25, high = 0.30),
-    c(low = 50, moderate = 75, high = 100)
+    c(low = 35, moderate = 60, high = 85)
   )
   ranges <- list(
     woodhen_catalog_range(150, 750),
@@ -234,8 +234,8 @@ woodhen_threat_catalog <- function() {
   )
   anchors <- list(
     c(low = 0.95, moderate = 0.90, high = 0.85),
-    c(low = 425, moderate = 350, high = 250),
-    c(low = 425, moderate = 350, high = 250),
+    c(low = 275, moderate = 225, high = 160),
+    c(low = 275, moderate = 225, high = 160),
     c(low = 0.07, moderate = 0.10, high = 0.15),
     c(low = 0.85, moderate = 0.70, high = 0.50),
     c(low = 0.225, moderate = 0.25, high = 0.30)

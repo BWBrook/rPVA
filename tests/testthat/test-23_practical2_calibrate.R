@@ -2,7 +2,7 @@ calibrate_test_result <- function(scenario, abundance_shift = 0, seed = scenario
   years <- as.integer(scenario$spec$years)
   reps <- as.integer(scenario$spec$reps)
   n_stage <- length(scenario$spec$n0)
-  start_total <- 2 * sum(scenario$spec$n0)
+  start_total <- sum(scenario$spec$n0)
   replicate_effect <- (seq_len(reps) %% 19L) - 9L
   total <- outer(0:years, replicate_effect, function(year, effect) {
     pmax(0, round(start_total + abundance_shift + 2 * year + effect))
@@ -181,12 +181,66 @@ test_that("calibration history presents observed milestones without false precis
   expect_identical(history$crisis_1980$reference_ids, c("01_no_mgmt", "02_pig_control", "03_captive_pig"))
   expect_identical(history$recovery_2019_2024$reference_ids, "04_rodent_eradication")
   expect_identical(history$future_2025_2100$reference_ids, "05_future_baseline")
-  expect_match(history$recovery_2019_2024$observed_history, "over 1,600 birds by 2024", fixed = TRUE)
-  expect_identical(history$recovery_2019_2024$observed_points$year, c(2019L, 2024L))
-  expect_identical(history$recovery_2019_2024$observed_points$abundance, c(208L, 1600L))
-  expect_identical(history$recovery_2019_2024$observed_points$label, c("208", ">1,600"))
+  expect_match(history$recovery_2019_2024$observed_history, "historical reconstruction", fixed = TRUE)
+  expect_match(history$recovery_2019_2024$observed_history, "1,638", fixed = TRUE)
+  expect_identical(
+    history$recovery_2019_2024$release_marker[c("event", "projection_year", "abundance")],
+    data.frame(event = "Late 2019 release", projection_year = 0, abundance = 208L)
+  )
+  expect_identical(
+    history$recovery_2019_2024$observed_points$abundance,
+    c(443L, 598L, 551L, 778L, 1147L, 1638L)
+  )
+  expect_identical(
+    history$recovery_2019_2024$observed_points$projection_year,
+    c(1, 1.33, 2, 2.33, 3, 5)
+  )
+  expect_true(all(c(
+    "event", "reported_count", "abundance", "survey_context", "plot_label"
+  ) %in% names(history$recovery_2019_2024$observed_points)))
+  expect_identical(
+    history$recovery_2019_2024$survey_record$abundance[
+      history$recovery_2019_2024$survey_record$use_as_abundance_point
+    ],
+    c(221L, 443L, 598L, 551L, 778L, 1147L, 1638L)
+  )
+  expect_true(any(
+    history$recovery_2019_2024$survey_record$reported_count == "598 banded" &
+      !history$recovery_2019_2024$survey_record$use_as_abundance_point
+  ))
   expect_false("model_state" %in% names(history$recovery_2019_2024))
   expect_match(history$recovery_2019_2024$warning, "Short-horizon warning", fixed = TRUE)
+})
+
+test_that("compact Calibrate evidence converts female-equivalent states to whole birds", {
+  scenario <- rPVA:::woodhen_reference_scenario("04_rodent_eradication")
+  result <- calibrate_test_result(scenario)
+  raw_final <- as.numeric(result$Nend)
+  raw_trajectory <- apply(result$traj, c(1L, 3L), sum)
+
+  compact <- compact_woodhen_run(result, scenario, sample_trajectories = 3L)
+
+  expect_identical(compact$final_abundance$values, 2 * raw_final)
+  expect_identical(compact$annual_quantiles$median, apply(
+    2 * raw_trajectory, 1L, stats::median
+  ))
+  sampled_first <- compact$sampled_replicate_indices[[1L]]
+  observed_sample <- compact$trajectory_sample$abundance[
+    compact$trajectory_sample$replicate_index == sampled_first
+  ]
+  expect_identical(observed_sample, 2 * raw_trajectory[, sampled_first])
+  expect_identical(
+    compact$quasi_extinction_50_pairs$threshold_pairs,
+    50L
+  )
+})
+
+test_that("Calibrate maps projection years onto the real decision calendar", {
+  env <- source_calibrate_app()
+
+  expect_identical(env$calibrate_calendar_years("01_no_mgmt", c(0L, 20L, 40L)), c(1980L, 2000L, 2020L))
+  expect_identical(env$calibrate_calendar_years("04_rodent_eradication", 0:5), 2019:2024)
+  expect_identical(env$calibrate_calendar_years("05_future_baseline", c(0L, 25L, 75L)), c(2025L, 2050L, 2100L))
 })
 
 test_that("Calibrate display helpers avoid false precision and clipped uncertainty", {
@@ -418,7 +472,7 @@ test_that("Calibrate state reconciles exactly when the authoritative project cha
   })
 })
 
-test_that("rendered progress semantics track actual completed futures", {
+test_that("progress callbacks track actual completed futures and reset with the project", {
   env <- source_calibrate_app()
   live <- shiny::reactiveVal(new_woodhen_project("Accessible progress"))
 
@@ -426,25 +480,31 @@ test_that("rendered progress semantics track actual completed futures", {
     project = shiny::reactive(live()), scenario_runner = calibrate_test_runner
   ), {
     session$flushReact()
-    initial <- output$progress_01_no_mgmt$html
-    expect_match(initial, 'role="progressbar"', fixed = TRUE)
-    expect_match(initial, 'aria-valuemin="0"', fixed = TRUE)
-    expect_match(initial, 'aria-valuemax="1000"', fixed = TRUE)
-    expect_match(initial, 'aria-valuenow="0"', fixed = TRUE)
-    expect_match(initial, 'aria-live="polite"', fixed = TRUE)
-    expect_match(initial, "0 of 1,000 futures completed", fixed = TRUE)
+    expect_identical(
+      progress_state()[["01_no_mgmt"]],
+      c(completed = 0L, total = 1000L)
+    )
 
     session$setInputs(run_01_no_mgmt = 1)
     session$flushReact()
-    completed <- output$progress_01_no_mgmt$html
-    expect_match(completed, 'aria-valuenow="1000"', fixed = TRUE)
-    expect_match(completed, "1,000 of 1,000 futures completed", fixed = TRUE)
+    expect_identical(
+      progress_history(),
+      list(
+        c(completed = 250L, total = 1000L),
+        c(completed = 1000L, total = 1000L)
+      )
+    )
+    expect_identical(
+      progress_state()[["01_no_mgmt"]],
+      c(completed = 1000L, total = 1000L)
+    )
 
     live(new_woodhen_project("Accessible replacement"))
     session$flushReact()
-    reset <- output$progress_01_no_mgmt$html
-    expect_match(reset, 'aria-valuenow="0"', fixed = TRUE)
-    expect_match(reset, "0 of 1,000 futures completed", fixed = TRUE)
+    expect_identical(
+      progress_state()[["01_no_mgmt"]],
+      c(completed = 0L, total = 1000L)
+    )
   })
 })
 
@@ -517,7 +577,7 @@ test_that("Calibrate UI is chronological, accessible, responsive, and student-fa
   css <- paste(readLines(file.path(app_dir, "www", "styles.css"), warn = FALSE), collapse = "\n")
   visible_text <- gsub("<[^>]+>", " ", html)
   headings <- c(
-    "1980 crisis and 40-year management alternatives",
+    "Reconstruct the Woodhen management story",
     "2019-2024 rodent-eradication recovery check",
     "2025-2100 common future comparison"
   )
@@ -531,23 +591,40 @@ test_that("Calibrate UI is chronological, accessible, responsive, and student-fa
     expect_match(html, paste0('id="calibrate-save_notes_', id, '"'), fixed = TRUE)
   }
   expect_match(html, 'aria-live="polite"', fixed = TRUE)
-  expect_match(html, 'id="calibrate-progress_01_no_mgmt"', fixed = TRUE)
+  expect_false(grepl('id="calibrate-progress_01_no_mgmt"', html, fixed = TRUE))
   expect_match(html, "Short-horizon warning", fixed = TRUE)
-  expect_match(html, "over 1,600 birds by 2024", fixed = TRUE)
+  expect_match(html, "historical reconstruction", fixed = TRUE)
+  expect_match(html, "1,638", fixed = TRUE)
+  expect_match(html, 'id="calibrate-open_recovery_record"', fixed = TRUE)
   expect_match(html, 'id="calibrate-evidence_01_no_mgmt"', fixed = TRUE)
   expect_match(module_source, 'paste0("timing_", reference_id)', fixed = TRUE)
   expect_match(module_source, 'paste0("summary_", reference_id)', fixed = TRUE)
   expect_match(module_source, 'paste0("intervention_", reference_id)', fixed = TRUE)
+  expect_match(module_source, "withProgress", fixed = TRUE)
+  expect_match(module_source, "setProgress", fixed = TRUE)
+  expect_match(module_source, 'ylab = "Number of birds"', fixed = TRUE)
+  expect_match(module_source, 'type = "l"', fixed = TRUE)
+  expect_false(grepl('type = "s"', module_source, fixed = TRUE))
+  expect_match(module_source, "Median extinction year", fixed = TRUE)
+  expect_match(module_source, 'sprintf("%s - %s"', fixed = TRUE)
+  expect_match(module_source, "calibrate_calendar_years", fixed = TRUE)
+  expect_match(module_source, "reference-intervention-figure", fixed = TRUE)
   expect_false(grepl("supplied 2024 model state|1,654 birds|330 breeding pairs", visible_text))
   expect_false(grepl("seed 123|immutable|01_no_mgmt|02_pig_control|03_captive_pig", visible_text))
   expect_false(grepl("canonical", paste(html, help), ignore.case = TRUE))
   expect_match(help, "supports, but does not prove", fixed = TRUE)
   expect_match(help, "exploratory future inference", fixed = TRUE)
+  expect_match(help, "plausibility check", fixed = TRUE)
+  expect_match(help, "not fully comparable", fixed = TRUE)
+  expect_match(help, "working warning threshold", fixed = TRUE)
+  expect_match(help, "not a universal biological tipping point", fixed = TRUE)
   expect_match(help, "must not be ranked", fixed = TRUE)
+  expect_match(module_source, "calibrate_recovery_record_modal", fixed = TRUE)
+  expect_match(module_source, "recovery-record-table", fixed = TRUE)
   expect_match(css, ".calibration-period", fixed = TRUE)
   expect_match(css, ".reference-case-grid", fixed = TRUE)
-  expect_match(css, ".reference-progress", fixed = TRUE)
-  expect_match(css, ".reference-progress-track", fixed = TRUE)
+  expect_false(grepl(".reference-progress", css, fixed = TRUE))
+  expect_match(css, ".recovery-record-table", fixed = TRUE)
   expect_match(css, "minmax(300px, 1fr)", fixed = TRUE)
   expect_false(grepl("linear-gradient|radial-gradient", css))
 })

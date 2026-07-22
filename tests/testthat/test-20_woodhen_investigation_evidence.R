@@ -107,7 +107,7 @@ test_that("a seeded locked baseline becomes reproducible compact evidence", {
     "quasi_extinction_50_pairs", "difference_from_parent", "provenance"
   ), ignore.order = TRUE)
   expect_equal(first$annual_quantiles$year, 0:75)
-  expect_equal(first$final_abundance$values, raw$Nend)
+  expect_equal(first$final_abundance$values, 2 * raw$Nend)
   expect_equal(first$quasi_extinction_50_pairs$threshold_pairs, 50L)
   expect_equal(first$difference_from_parent$status, "not_applicable")
   expect_s3_class(plot_woodhen_trajectories(first), "ggplot")
@@ -385,9 +385,9 @@ test_that("compact summaries preserve exact fractional quantiles without extinct
 
   compact <- compact_woodhen_run(result, baseline, sample_trajectories = 4L)
 
-  expect_identical(compact$summary$Nmed, 500.5)
-  expect_identical(compact$summary$Nlo95, 25.975)
-  expect_identical(compact$summary$Nhi95, 975.025)
+  expect_identical(compact$summary$Nmed, 2 * 500.5)
+  expect_identical(compact$summary$Nlo95, 2 * 25.975)
+  expect_identical(compact$summary$Nhi95, 2 * 975.025)
   expect_silent(rPVA:::woodhen_project_validate_run(compact))
 })
 
@@ -407,9 +407,9 @@ test_that("sensitivity comparison derives response and parent differences", {
   expect_s3_class(comparison, "woodhen_run_family_comparison")
   expect_equal(comparison$family_id, family$family_id)
   expect_false(comparison$awkward_comparison)
-  expect_equal(comparison$table$setting_value, c(500, 350, 250))
+  expect_equal(comparison$table$setting_value, c(325, 350, 250))
   expect_equal(comparison$table$parent_id[-1L], rep(runs[[1L]]$scenario_id, 2L))
-  expect_equal(comparison$table$delta_final_median_abundance, c(0, -100, -220))
+  expect_equal(comparison$table$delta_final_median_abundance, 2 * c(0, -100, -220))
   expect_true(all(vapply(comparison$runs[-1L], function(run) {
     identical(run$difference_from_parent$status, "computed") &&
       is.numeric(run$difference_from_parent$outcomes$final_median_abundance)

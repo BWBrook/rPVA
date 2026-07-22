@@ -1,3 +1,10 @@
+## A conservation recovery story
+
+The Lord Howe Island woodhen is a flightless rail found nowhere else. After
+falling to fewer than ten breeding pairs in the 1970s, it has become one of
+Australia's most striking conservation recovery stories, with more than 1,600
+birds reported by 2024.
+
 ## Your role
 
 You are a present-day conservation adviser for the Lord Howe Island woodhen.

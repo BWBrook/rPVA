@@ -31,7 +31,7 @@ test_that("reference catalogue is chronological and the future specification is 
   expect_equal(future$n0, c(497, 167, 82, 43, 24, 11, 3))
 
   future$K <- 250
-  expect_equal(woodhen_locked_future_spec()$K, 500)
+  expect_equal(woodhen_locked_future_spec()$K, 325)
 })
 
 test_that("scientific catalogues expose complete structured review metadata", {
@@ -112,17 +112,17 @@ test_that("every sensitivity family has one baseline and two isolated settings",
     }
   }
 
-  k_family <- build_woodhen_sensitivity_family("K", c(350, 250))
-  expect_equal(vapply(k_family$scenarios, function(x) x$spec$K, numeric(1)), c(500, 350, 250))
-  expect_equal(vapply(k_family$scenarios, function(x) x$spec$K_sd, numeric(1)), rep(50, 3))
+  k_family <- build_woodhen_sensitivity_family("K", c(225, 160))
+  expect_equal(vapply(k_family$scenarios, function(x) x$spec$K, numeric(1)), c(325, 225, 160))
+  expect_equal(vapply(k_family$scenarios, function(x) x$spec$K_sd, numeric(1)), rep(35, 3))
 })
 
 test_that("scenario fingerprints are deterministic and ignore record presentation metadata", {
   first <- build_woodhen_sensitivity_family(
-    "K", c(350, 250), created_at = "2026-07-21T01:00:00Z"
+    "K", c(225, 160), created_at = "2026-07-21T01:00:00Z"
   )
   second <- build_woodhen_sensitivity_family(
-    "K", c(350, 250), created_at = "2026-07-22T01:00:00Z"
+    "K", c(225, 160), created_at = "2026-07-22T01:00:00Z"
   )
 
   first_hashes <- vapply(first$scenarios, `[[`, character(1), "spec_fingerprint")
@@ -295,8 +295,8 @@ test_that("prospective composition is ordered and resolved scientific presets ar
   )
   threat_k <- family$scenarios[[2]]$spec$annual_profiles$K
   managed_k <- family$scenarios[[3]]$spec$annual_profiles$K
-  expect_equal(threat_k[[1]], 500)
-  expect_equal(tail(threat_k, 1), 350)
+  expect_equal(threat_k[[1]], 325)
+  expect_equal(tail(threat_k, 1), 225)
   expect_equal(managed_k[1:20], threat_k[1:20])
   expect_true(tail(managed_k, 1) > tail(threat_k, 1))
   expect_false(any(grepl("sea_level", names(family$scenarios[[2]]$spec), fixed = TRUE)))

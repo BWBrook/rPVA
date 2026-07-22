@@ -278,6 +278,11 @@ test_that("Start controls and statuses are namespaced and accessible", {
     expect_match(html, paste0('id="', id, '"'), fixed = TRUE)
   }
   expect_match(html, 'alt="NASA astronaut photograph of Lord Howe Island', fixed = TRUE)
+  expect_match(html, 'src="img/lord-howe-woodhen-family.jpg"', fixed = TRUE)
+  expect_match(html, 'alt="Lord Howe Island woodhen with two chicks"', fixed = TRUE)
+  expect_match(html, "View original island photograph", fixed = TRUE)
+  expect_match(html, "NPWS / Liam Murphy", fixed = TRUE)
+  expect_false(grepl("public domain", html, ignore.case = TRUE))
   expect_match(html, 'id="start-open_woodhen_background"', fixed = TRUE)
   expect_match(html, 'aria-live="polite"', fixed = TRUE)
   expect_match(html, "Autosave in this browser", fixed = TRUE)
@@ -291,6 +296,9 @@ test_that("Start narrative states the adviser, two-phase, core-route, and extens
   help_text <- paste(readLines(file.path(app_dir, "content", "help-projects.md"), warn = FALSE), collapse = "\n")
 
   expect_match(start_text, "present-day conservation adviser", ignore.case = TRUE)
+  expect_match(start_text, "found nowhere else", ignore.case = TRUE)
+  expect_match(start_text, "more than 1,600", ignore.case = TRUE)
+  expect_match(start_text, "conservation recovery", ignore.case = TRUE)
   expect_match(start_text, "Phase 1")
   expect_match(start_text, "Phase 2")
   expect_match(start_text, "three-hour core route", ignore.case = TRUE)
@@ -581,7 +589,21 @@ test_that("the first root Resume click requests browser restoration", {
       pending$project_fingerprint,
       stored$record$project_fingerprint
     )
+    expect_match(browser_status()$value, "Restoring selected project", fixed = TRUE)
   })
+})
+
+test_that("project download and restore outcomes remain visible in the page status", {
+  app_dir <- practical2_app_dir()
+  app_text <- paste(
+    readLines(file.path(app_dir, "app.R"), warn = FALSE),
+    collapse = "\n"
+  )
+
+  expect_match(app_text, "Restoring selected project", fixed = TRUE)
+  expect_match(app_text, "Browser project was not restored", fixed = TRUE)
+  expect_match(app_text, "Project copy downloaded", fixed = TRUE)
+  expect_match(app_text, "browser's Downloads folder", fixed = TRUE)
 })
 
 test_that("only the latest Resume response may replace the live project", {

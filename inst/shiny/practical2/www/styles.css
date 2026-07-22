@@ -89,11 +89,14 @@ textarea:focus-visible,
 
 .start-hero > img {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  top: 50%;
+  left: 50%;
+  width: auto;
+  height: 100vw;
+  min-width: 100%;
+  min-height: 100%;
   object-fit: cover;
-  object-position: center 45%;
+  transform: translate(-50%, -50%) rotate(90deg);
 }
 
 .start-hero::after {
@@ -148,13 +151,48 @@ textarea:focus-visible,
 }
 
 .start-narrative {
-  max-width: 86ch;
+  width: 100%;
 }
 
 .start-narrative-heading {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: -38px;
+  margin-bottom: 10px;
+}
+
+.start-narrative-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.75fr) minmax(280px, 0.8fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.start-narrative-copy {
+  max-width: 82ch;
+}
+
+.start-woodhen-figure {
+  margin: 0;
+}
+
+.start-woodhen-figure img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  object-position: 58% center;
+}
+
+.start-woodhen-figure figcaption {
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.start-woodhen-figure a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .start-narrative h2 {
@@ -386,6 +424,68 @@ textarea:focus-visible,
   line-height: 1.5;
 }
 
+.recovery-record-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  max-width: 92ch;
+  margin: 12px 0 4px;
+}
+
+.recovery-record-action p {
+  flex: 1 1 520px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.recovery-record-content {
+  overflow-x: auto;
+}
+
+.recovery-record-table {
+  width: 100%;
+  min-width: 760px;
+  margin: 16px 0;
+  table-layout: fixed;
+}
+
+.recovery-record-table th,
+.recovery-record-table td {
+  padding: 9px 10px;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+}
+
+.recovery-record-table thead th {
+  border-bottom: 2px solid var(--line);
+  color: var(--ink);
+}
+
+.recovery-record-table tbody th {
+  width: 18%;
+  color: var(--teal);
+}
+
+.recovery-record-table th:nth-child(2),
+.recovery-record-table td:nth-child(2) {
+  width: 17%;
+}
+
+.recovery-record-table th:nth-child(3),
+.recovery-record-table td:nth-child(3) {
+  width: 40%;
+}
+
+.recovery-record-note {
+  margin-bottom: 0;
+  padding-left: 12px;
+  border-left: 4px solid var(--gold);
+  color: var(--muted);
+}
+
 .reference-case-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -445,32 +545,6 @@ textarea:focus-visible,
 .reference-settings {
   color: var(--muted);
   font-size: 13px;
-}
-
-.reference-progress {
-  display: grid;
-  gap: 5px;
-  min-height: 46px;
-  margin: 11px 0 8px;
-  padding: 9px 10px;
-  background: #f5f8f7;
-  font-variant-numeric: tabular-nums;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.reference-progress-track {
-  width: 100%;
-  height: 10px;
-  overflow: hidden;
-  border: 1px solid #b8c8c4;
-  background: #ffffff;
-}
-
-.reference-progress-fill {
-  height: 100%;
-  background: var(--teal);
-  transition: width 160ms linear;
 }
 
 .reference-state {
@@ -550,6 +624,11 @@ textarea:focus-visible,
 .reference-intervention-panel p {
   margin: 0 0 10px;
   color: var(--muted);
+}
+
+.reference-intervention-figure .shiny-plot-output {
+  width: min(100%, 600px);
+  margin: 0 auto;
 }
 
 .reference-prompts {
@@ -935,6 +1014,14 @@ textarea:focus-visible,
   .start-narrative-heading {
     justify-content: flex-start;
     margin-bottom: 0;
+  }
+
+  .start-narrative-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .start-woodhen-figure {
+    max-width: 420px;
   }
 
   .section-heading-row {
