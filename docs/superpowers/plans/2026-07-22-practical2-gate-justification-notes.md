@@ -2,24 +2,84 @@
 
 ## Purpose
 
-This document explains why the revised gates exist, what each gate enables, what
-alternatives remain available, and which criticism belongs in its review. It is
-the interpretive companion to
+This document explains why each gate exists, what it enables, which alternatives
+remain available, and which criticism belongs in its review. It is the
+interpretive companion to
 `2026-07-22-practical2-woodhen-management-lab-revised.md`.
 
-The central division of labour is deliberate:
+The division of labour is deliberate:
 
 - **Codex owns engineering assurance:** code correctness, regression tests,
   state integrity, browser automation, export structure, container identity,
-  deployment safety, and rollback evidence.
-- **Barry owns the student-facing judgement:** ecology, pedagogy, language,
-  visualisation, workflow, cognitive load, and interface taste.
+  deployment safety, rollback evidence, and the final technical acceptance
+  record.
+- **Barry owns scientific judgement:** parameter meaning, biological mechanisms,
+  empirical and pedagogical provenance, ecological bounds, assumptions,
+  omissions, and whether model evidence supports the intended inference.
+- **Barry owns the student-facing judgement:** pedagogy, language, visualisation,
+  workflow, cognitive load, interface taste, and whether scaffolding supports
+  rather than replaces student thought.
 
-Barry is never expected to infer software quality from test counts or review
-backend design. Conversely, automated tests cannot establish that a plot teaches
-the right lesson or that student language is comprehensible.
+Passing tests cannot establish that a plot teaches the right lesson. Conversely,
+Barry is not expected to infer software quality from test counts or review
+backend architecture.
 
-## How To Review A Student-Facing Gate
+## Two-Checkpoint Student-Facing Gates
+
+Each substantially new student-facing surface uses two checkpoints.
+
+### Design Probe
+
+The design probe presents the complete visible teaching model using cached,
+representative, or stubbed evidence. It includes final-form controls, copy,
+contextual help, plots, tables, prompts, and visual hierarchy. Simulation wiring,
+project persistence, ancestry, and exhaustive tests may remain incomplete.
+
+This checkpoint answers the expensive questions early:
+
+- Does the student understand the scientific purpose before seeing controls?
+- Are baseline values, units, and held-constant assumptions visible?
+- Do the plots and tables expose the right comparison?
+- Is the language natural for a third-year ecology student?
+- Is the degree of scaffolding appropriate?
+- Is the page calm enough to use while thinking?
+
+The review package names every deliberately unfinished behaviour so Barry can
+judge the intended surface without mistaking a stub for a finished feature.
+
+### Working Implementation
+
+After design approval, Codex connects the surface to simulations, progress,
+project state, ancestry, evidence selection, exports, and focused tests. Barry's
+second look is brief: it confirms that the real workflow still matches the
+approved design and has not acquired confusing engineering leakage.
+
+## Required Codex Self-Review
+
+Before either student-facing checkpoint, Codex runs at least one representative
+workflow and inspects the rendered screen at the principal desktop resolutions.
+It does not treat a rendered DOM element or `ggplot` object as visual acceptance.
+
+The single focused self-review checks:
+
+- plot width and height are sufficient for interpretation;
+- uncertainty is not clipped;
+- probability axes span 0-1 with useful ticks;
+- bird counts are whole numbers and intervals avoid false precision;
+- tables avoid page-level horizontal scrolling where a clearer layout is
+  available;
+- labels describe ecology rather than internal IDs or objects;
+- explanation precedes controls;
+- realistic slow runs show continuous, honest progress;
+- help answers what the feature is, why it matters, and how to interpret it;
+- 1366x768 and 1440x900 work as the release viewports; and
+- the page makes sense to a student who completed Practical 1 but has never seen
+  the implementation plan.
+
+This is one walkthrough and one material self-repair, not a screenshot-polishing
+marathon.
+
+## How Barry Reviews A Student-Facing Gate
 
 Useful criticism is concrete and experience-based:
 
@@ -31,54 +91,82 @@ Useful criticism is concrete and experience-based:
 - “The page is too dense to scan during a practical.”
 - “This amount of scaffolding prevents independent thought.”
 
-Normally unnecessary criticism concerns internal matters Barry cannot observe
-or should not need to manage:
+Normally out of scope for Barry's review:
 
-- R function decomposition or module architecture;
+- R function decomposition or Shiny module architecture;
 - internal scenario IDs, storage schemas, fingerprints, and event contracts;
 - the number or organisation of automated tests;
-- library or framework choices that do not affect the student experience;
-- container-layer implementation; and
+- library choices that do not affect the student experience;
+- container layers, registry mechanics, and deployment scripts; and
 - source-file naming or code style.
 
-These internal matters become legitimate student-facing criticism if they leak
-into visible text, cause delay without feedback, lose evidence, constrain a
+These internal matters become legitimate student-facing criticism when they
+leak into visible text, cause delay without feedback, lose evidence, constrain a
 scientifically necessary action, or otherwise alter the experience.
 
-## Gate A: Scientific Engine And Risk Evidence
+## Gate A1: Scientific Engine And Risk Evidence
 
-**Why this gate exists:** Later interfaces are meaningless unless annual threats,
-interventions, extinction risk, and 50-pair risk are computed consistently.
+**Why this gate exists:** Later interfaces require consistent annual threats,
+interventions, extinction risk, and warning-threshold calculations.
 
-**What it sets up:** Every historical, sensitivity, prospective, and advanced
-scenario can use one validated scientific engine without changing Practical 1.
+**What it sets up:** Historical, sensitivity, prospective, and optional advanced
+scenarios can use one tested engine without changing Practical 1.
 
-**Alternatives:** A separate Practical 2 simulator would isolate risk but create
+**Alternatives:** A separate Practical 2 simulator would isolate code but create
 duplicated logic and divergent teaching results. Hand-calculated UI summaries
-would be faster initially but scientifically fragile. The shared validated
-engine is preferable.
+would be quicker initially but scientifically fragile. The shared engine remains
+the better implementation.
 
-**Review boundary:** Hard engineering. Barry is consulted only about biological
-meaning, such as whether stages 2 onward represent territory-holding pairs or
-whether a scenario bound is ecologically defensible.
+**Review boundary:** Hard engineering. Barry does not review API structure,
+profile validation, scalar-path equivalence, or tests here. Passing this gate
+does not approve the biological meaning of the catalogue; that is Gate A2.
+
+## Gate A2: Ecological Assumptions And Catalogue Audit
+
+**Why this gate exists:** Parameter values, sensitivity bounds, threats,
+interventions, temporal assumptions, stage meanings, and warning thresholds are
+scientific content even when their implementation is already tested.
+
+**What it sets up:** Gates F and G can use an explicitly reviewed ecological
+vocabulary and value set. Student help can distinguish empirical evidence,
+historical tuning, inherited practical settings, and bounded exploration.
+
+**Alternatives:** Barry could review controls after they appear in Investigate,
+but that would allow interface design to harden questionable assumptions. Reading
+the R catalogues directly would obscure provenance and model meaning. A compact
+human-readable audit is lower cost and earlier.
+
+**Barry should critique:** Every baseline value and unit; both proposed altered
+sensitivity settings; threat and intervention mechanisms; timing; source or
+rationale; omitted processes; the independence of historical observations; the
+biological conversion from model stages to breeding pairs; and the status of the
+50-pair value.
+
+**Out of scope for Barry:** Catalogue data structures, validators, profile
+objects, fingerprints, and unit-test implementation unless they impose a wrong
+biological constraint.
+
+**Epistemic rule:** The 50-pair value is a shared working warning threshold for
+this practical unless an empirical or management basis is documented. It is not
+described as a universal minimum viable population or proven tipping point.
 
 ## Gate B: Durable Projects And Compact Evidence
 
-**Why this gate exists:** Students will continue after class and may move between
-the SSO and off-campus hosts. Evidence must survive without relying on one
-browser or server workspace.
+**Why this gate exists:** Students continue after class and may move between SSO
+and off-campus hosts. Evidence must survive without relying on one browser or
+server workspace.
 
 **What it sets up:** Every later tab can add runs, notes, selections, and exports
 to one portable investigation record.
 
-**Alternatives:** Server accounts or cloud sync would improve convenience but
-add authentication, privacy, and operational complexity. Full raw trajectory
-storage would make packages large. Compact portable evidence is the appropriate
-first-release compromise.
+**Alternatives:** Server accounts or cloud sync would improve convenience but add
+authentication, privacy, and operational complexity. Full trajectory storage
+would make packages large. Compact portable evidence is the appropriate first
+release compromise.
 
 **Review boundary:** Hard engineering. Barry reviews only whether Create,
-Resume, Download, and Import are understandable and useful when they appear on
-Start and Evidence Studio.
+Resume, Download, and Import are understandable when they appear on Start and in
+the export workflow.
 
 ## Gate C: Start
 
@@ -86,210 +174,261 @@ Start and Evidence Studio.
 and expectations. Errors here distort every later task even when the software
 works perfectly.
 
-**What it sets up:** Students understand the Woodhen case, the two phases, the
+**What it sets up:** Students understand the Woodhen case, two phases,
 core-versus-extension philosophy, and how to preserve their work.
 
-**Alternatives:** The full background could live in a static handout, or the
-Start page could be minimal. The selected design keeps the page scannable while
-making deeper history available in context.
+**Alternatives:** The background could live only in a handout, or Start could be
+minimal. The chosen design keeps the page scannable while making deeper history
+available in context.
 
-**Barry should critique:** biological accuracy, tone, narrative emphasis, image
-suitability, expected student knowledge, cognitive load, and project-action
-language.
+**Barry should critique:** Biological accuracy, tone, narrative emphasis, image
+suitability, expected knowledge, cognitive load, and project-action language.
 
-**Barry need not critique:** autosave implementation, ZIP validation, modal
-plumbing, or JavaScript storage mechanics.
+**Out of scope for Barry:** Autosave internals, ZIP validation, modal plumbing,
+and JavaScript storage mechanics.
+
+**Checkpoint note:** Start, the 1980 reconstruction, and the recovery/future
+section receive separate labelled commits from this revision onward. The existing
+combined pre-review checkpoint remains as history rather than being rewritten.
 
 ## Gate D: Calibrate - 1980 Management Alternatives
 
-**Why this gate exists:** The first scientific lesson is a controlled comparison
-of decisions available during the 1980 crisis. Combining it with later recovery
-and future work made the original review too broad.
+**Why this gate exists:** The first scientific lesson is a controlled historical
+reconstruction of choices available during the 1980 crisis. It is narrower than
+the full Calibrate tab and therefore reviewable on its own.
 
 **What it sets up:** Students learn why comparable starting conditions and
 horizons matter, how interventions alter trajectories and risk, and why model
-agreement is evidence rather than proof.
+agreement is evidence of plausibility rather than proof.
 
-**Alternatives:** One combined plot could compare all scenarios more compactly,
-but separate scenario evidence teaches each mechanism before synthesis. The
-compatible comparison table then closes the loop. Tabs within each scenario
-remain available if the two-by-two evidence layout proves too long.
+**Alternatives:** Showing scenarios sequentially is simpler, but weakens direct
+comparison. A single combined plot is compact, but can conceal intervention
+timing and extinction evidence. The stable evidence grid balances these needs.
 
-**Barry should critique:** scenario assumptions, carrying-capacity explanation,
-intervention timing, plot selection and scaling, numerical precision,
-interpretive prompts, comparison logic, and visual density.
+**Barry should critique:** The management story, scenario assumptions, plot
+choice and scale, uncertainty, intervention timing, extinction evidence, and
+whether model/data agreement is described with appropriate caution.
 
-**Barry need not critique:** compact-run structures, progress callbacks, run
-identity, or project activation mechanics unless visible behaviour is wrong.
+**Out of scope for Barry:** Progress callbacks, module events, cached evidence,
+and insertion mechanics unless they cause visible failure.
 
-## Gate E: Calibrate - Rodent Recovery And Future Comparison
+## Gate E: Calibrate - Rodent Recovery And Common Future Comparison
 
-**Why this gate exists:** A five-year historical recovery check and a 75-year
-prospective comparison answer different questions from the 1980 decision cases.
-They deserve a separate conceptual review.
+**Why this gate exists:** The short recovery consistency check and 75-year future
+comparison serve different inferences and must not be visually conflated.
 
-**What it sets up:** Students see calibration against observed recovery and gain
-the common no-change future against which Phase 2 scenarios are compared.
+**What it sets up:** Students see what historical consistency can and cannot
+support, then begin Phase 2 from one shared future comparison.
 
-**Alternatives:** The rodent scenario could be excluded because its horizon is
-incompatible with 1980. That would lose the strongest recent empirical check.
-The future comparison could move to Investigate, but keeping it in Calibrate
-makes the historical-to-prospective transition explicit.
+**Alternatives:** The recovery run could be omitted because it is short, but it
+anchors the scenario to observed history. Combining it with the future case
+would blur reconstruction and projection.
 
-**Barry should critique:** legitimacy of the survey comparison, wording of
-historical compatibility, observed-data overlay, short-horizon warning,
-50-pair rationale, future framing, and plot readability.
+**Barry should critique:** Whether “Calibrate” is explained as reconstruction or
+plausibility checking rather than independent validation; whether 2019 and 2024
+observations are represented with their correct independence; survey overlay;
+warning-threshold rationale; future framing; and plot readability.
 
-**Barry need not critique:** the internal locked-anchor contract or exact
-versioning machinery.
+**Out of scope for Barry:** Run caching, project insertion, and plot-construction
+code.
 
-## Gate F: Investigate - One-Factor Sensitivity
+## Gate F: One-Factor Sensitivity
 
-**Why this gate exists:** Sensitivity analysis is compulsory and conceptually new
-for many students. It cannot be treated as merely another scenario selector.
+**Why this gate exists:** Sensitivity analysis is compulsory and likely the
+first time students independently alter model assumptions. The current draft's
+generic controls are not an acceptable teaching model.
 
-**What it sets up:** Students learn to change one assumption, hold others
-constant, anticipate direction, and interpret response and uncertainty.
+**What it sets up:** Students can ask how one uncertain assumption changes risk
+while holding the rest of the future constant, then retain useful evidence.
 
-**Alternatives:** A fixed precomputed sensitivity panel would be easier but would
-remove active inquiry. Fully free parameter editing would create confusion and
-fantasy scenarios. Named factors with bounded values preserve agency and
-discipline.
+**Alternatives:** A general parameter table offers flexibility but too much early
+cognitive load. A fixed demonstration is safer but limits ownership. One named
+factor with two alternatives is the appropriate compulsory structure.
 
-**Barry should critique:** factor choice, baseline visibility, value labels and
-units, explanation of held-constant assumptions, 50-pair teaching, plot/table
-interpretation, and whether the workflow fits prior Practical 1 knowledge.
+**Design-probe review:** Barry judges whether the varied quantity, units,
+baseline, held-constant assumptions, one-factor logic, response plot, warning
+threshold, prompts, and help are understandable. Simulation and persistence may
+still be stubbed and are not reviewed then.
 
-**Barry need not critique:** scenario builders, ancestry validation, or how the
-three runs are stored.
+**Working confirmation:** Barry checks only that the real 1,000-future workflow
+still looks and behaves like the approved probe. Codex owns ancestry, progress,
+round trips, and tests.
 
-## Gate G: Investigate - Threat And Intervention
+## Gate G: Threat And Intervention
 
-**Why this gate exists:** Prospective management advice requires a causal chain:
-baseline, threat, then intervention against that threatened future. This is more
-complex than sensitivity and warrants its own review.
+**Why this gate exists:** The compulsory prospective comparison must distinguish
+a threat from a management response and apply the response to the threatened
+future rather than silently replacing it.
 
-**What it sets up:** Students can test at least one plausible future pressure and
-compare management response, directly supporting C2-C4.
+**What it sets up:** Students can compare no change, threat, and intervention,
+then reason from relative improvement to qualified advice.
 
-**Alternatives:** Threat and intervention could be selected independently and
-compared afterward, but that obscures parentage and encourages invalid
-comparisons. A wizard would enforce sequence more strongly but might feel
-over-prescriptive. The planned explicit family keeps structure visible without
-locking students into one question.
+**Alternatives:** Independent scenario cards are easier to implement but obscure
+ancestry. A fully free multi-factor builder offers more headroom but invites
+fantasy scenarios before the core reasoning is secure.
 
-**Barry should critique:** ecological mappings, plausible bounds, causal logic,
-timing language, intervention meaning, comparison outputs, degree of freedom,
-and the limits placed on advice.
+**Design-probe review:** Barry judges mechanism credibility, baseline visibility,
+units, comparison logic, degree of choice, plot suite, prompts, and the caution
+that simulated improvement is not proof of real-world effectiveness.
 
-**Barry need not critique:** family IDs, versioning, or conflict-detection code.
-
-## Gate H: Investigate - Advanced Sandbox
-
-**Why this gate exists:** The compulsory route should support a basic defensible
-investigation, while higher-quality reports need room for timing, interacting
-pressures, alternative actions, and robustness checks.
-
-**What it sets up:** Ambitious students can develop distinctive analyses without
-leaving the Woodhen case or entering arbitrary code.
-
-**Alternatives:** Defer all advanced work for the first release; allow only one
-extra intervention; or expose fully free parameter editing. Deferral is valid if
-time threatens core quality. A bounded multi-factor layer is preferred if it
-can remain understandable and optional.
-
-**Barry should critique:** intellectual headroom, ecological realism, guardrail
-strength, discoverability, cognitive load, multi-factor warnings, and whether
-the sandbox supports individual work rather than arbitrary tinkering.
-
-**Barry need not critique:** temporal-profile representation or internal
-component-conflict algorithms.
+**Working confirmation:** Barry checks that real runs preserve the approved
+logic and remain readable. Codex owns validation, ancestry, persistence,
+progress, and tests.
 
 ## Gate I: Compare
 
-**Why this gate exists:** Running scenarios is not the same as synthesising
-evidence. Students need a workspace that privileges a chosen comparison rather
-than dumping their full history onto the screen.
+**Why this gate exists:** Students need to synthesize runs rather than merely
+generate them. Compare is also where incompatible evidence must become obvious.
 
-**What it sets up:** Students can compare compatible evidence, accumulate
-observations, identify caveats, and nominate material for their report dossier.
+**What it sets up:** Students can identify a defensible contrast, accumulate
+observations and caveats, and nominate evidence deliberately for the dossier.
 
-**Alternatives:** Evidence could be selected directly from Investigate, saving a
-tab but weakening synthesis. A spreadsheet-like run table would be powerful but
-repeat the crowded Practical 1 problem. The planned focused comparison with a
-compact library is more teachable.
+**Alternatives:** A full run-history table is easy but makes navigation dominate
+interpretation. Automatic comparison is convenient but removes student choice.
+The selected-workspace plus compact library preserves agency.
 
-**Barry should critique:** hierarchy, compatibility warnings, plot modes, note
-accumulation, evidence-selection behaviour, density, and whether the tab teaches
-reasoned comparison.
+**Design-probe review:** Barry judges hierarchy, plot modes, compatibility
+warnings, note accumulation, evidence nomination, and whether the interface
+supports synthesis rather than output collection. Stubbed state is declared.
 
-**Barry need not critique:** filtering implementation, provenance IDs, or
-round-trip serialization.
+**Working confirmation:** Barry checks that real project data did not distort the
+approved surface. Codex owns filtering, compatibility rules, provenance, and
+round trips.
 
-## Gate J: Evidence Studio And Guidance
+## Gate J1: Evidence Selection And Preview
 
-**Why this gate exists:** Students need reusable evidence and substantial advice
-for a 2,000-word assessment, but the app must not compose their report or erase
-the opportunity for judgement and mark separation.
+**Why this gate exists:** Selection is an intellectual act. Students should see
+exactly what they are preparing without the app deciding what their report must
+contain.
 
-**What it sets up:** Selective Word/CSV/PNG/Markdown outputs, a portable project
-copy, report-planning guidance, research encouragement, and explicit assessment
-alignment.
+**What it sets up:** J2 can generate artefacts from an intentional, previewed
+evidence set rather than exporting everything.
 
-**Alternatives:** PDF-only export is visually stable but difficult to reuse.
-Markdown-only export helps AI workflows but is unfamiliar to many students. A
-fixed report template would be convenient but overly prescriptive. Editable Word
-plus companion evidence best fits the intended use.
+**Alternatives:** Automatic export is simpler but rewards accumulation. A blank
+export builder offers freedom but little support. A restrained preview provides
+useful scaffolding without prescribing the report.
 
-**Barry should critique:** dossier usefulness, evidence selectivity, display-item
-advice, assessment-language fidelity, scaffolding level, research guidance,
-individuality, and whether the outputs support rather than write the report.
+**Design-probe review:** Barry judges selection friction, preview clarity,
+provenance visibility, sparse/excessive guidance, and whether the app leaves
+room for student judgement.
 
-**Barry need not critique:** document XML, Pandoc invocation, archive structure,
-or filename sanitisation.
+**Working confirmation:** Barry checks the live project selection behaves like
+the approved probe. Codex owns persistence and state integrity.
 
-## Gate K: Integrated Local Acceptance
+## Gate J2: Dossier And Essential Outputs
 
-**Why this gate exists:** Focused gates prove components; they do not prove the
-complete journey, cross-tab state, export/import round trip, or responsive
-layout.
+**Why this gate exists:** A sound selection interface does not guarantee that
+the resulting files are readable, editable, or useful in report preparation.
 
-**What it sets up:** A candidate credible enough to spend time building and
-deploying as an immutable container.
+**What it sets up:** Students can move a portable project between hosts and use
+an editable Word dossier, figures, and tables while retaining provenance.
 
-**Alternatives:** Run the full suite after every surface, which is slower and
-adds little decision value, or rely only on manual checks, which misses state
-and packaging failures. Focused tests during development plus one integrated
-acceptance is the 80/20 balance.
+**Alternatives:** PDF is visually stable but awkward for reuse. Markdown is
+machine-friendly but unfamiliar to many students. Word is the core human-facing
+format; PNG and CSV are useful companions. Markdown is secondary and must not
+delay release.
 
-**Review boundary:** Hard engineering. Barry receives only material visible
-regressions or decisions; test counts are evidence for Codex, not a requested
-review surface.
+**Barry should critique:** One realistic DOCX and representative PNG/CSV pair:
+usefulness, legibility, false precision, provenance, selection burden, and
+whether the files support rather than compose the report.
 
-## Gate L: Production Release
+**Out of scope for Barry:** OOXML structure, Pandoc invocation, temporary files,
+archive validation, and browser round-trip mechanics. Codex validates these.
 
-**Why this gate exists:** Local success does not prove container architecture,
-registry identity, ShinyProxy behaviour, SSO access, exports through the live
-route, or rollback readiness.
+## Gate J3: Report, Research, And Assessment Guidance
 
-**What it sets up:** Staff beta followed by controlled KPZ308 access, with
-Practical 1 remaining available and a precise rollback target.
+**Why this gate exists:** Guidance has a different pedagogical risk from either
+the Evidence Studio or file generation. It can be too vague or inadvertently
+write the assignment for students.
 
-**Alternatives:** Open directly to KPZ308 or continue using the canary. Direct
-opening is unnecessarily risky; retaining the canary does not deliver the real
-practical. Staff-only production beta is the appropriate final boundary.
+**What it sets up:** App and teaching documents consistently explain the locked
+criteria, approximately 2,000-word scope, evidence selectivity, literature
+research, uncertainty, display restraint, and ways to deepen the investigation.
 
-**Review boundary:** Codex owns image, digest, configuration, health, access, and
-rollback evidence. Barry performs the final human browser smoke because only a
-real user can confirm that the production teaching experience is acceptable.
+**Alternatives:** A fixed report template would be easy to follow but suppress
+individual judgement. Minimal advice preserves freedom but disadvantages students
+who need orientation. Structured questions and possibilities are the intended
+middle ground.
+
+**Barry should critique:** Language, criteria alignment, degree of prescription,
+research encouragement, display guidance, and whether the advice helps without
+becoming a report template.
+
+**Out of scope for Barry:** Content-contract implementation and Markdown loading
+mechanics.
+
+## Gate H: Optional Advanced Sandbox
+
+**Why this gate moved:** Building delayed profiles, compound threats, multiple
+interventions, and robustness controls before Compare and Evidence Studio risks
+spending scarce time on controls that do not create useful evidence.
+
+**What it sets up when included:** Ambitious students gain bounded intellectual
+headroom after the compulsory evidence journey is already complete.
+
+**Alternatives:** Defer the entire sandbox for the first release while preserving
+data-model hooks; implement only one or two high-value extensions revealed by
+Compare; or implement the full planned set later. None blocks core success.
+
+**Design-probe review if scheduled:** Barry judges whether the proposed subset
+enables meaningful Woodhen questions without encouraging fantasy scenarios,
+concealing interactions, or overwhelming the compulsory route.
+
+**Out of scope for Barry:** Profile validators, conflict algorithms, and ancestry
+serialization unless they prevent a scientifically defensible investigation.
+
+## Gate K: Integrated Local Acceptance And Classroom Dry Run
+
+**Why this gate exists:** Individually accepted tabs can still fail as a journey.
+Automated clicking also cannot show that reading, thinking, running, and recording
+fit the three-hour class.
+
+**What it sets up:** Production receives one integrated candidate with verified
+project portability, exports, desktop behaviour, and realistic classroom timing.
+
+**Alternatives:** Per-tab checks alone are faster but miss cross-tab state and
+timing. A full student pilot is stronger but may not be available before class.
+A fresh-project human-paced dry run is the minimum release evidence.
+
+**Codex owns:** Full suite, browser automation, fresh-context import, export
+validation, desktop checks, container scaffold, and the timing record.
+
+**Barry should critique:** Whether the recorded compulsory route is realistic for
+students, where interpretation time is needed, whether anything is repetitive,
+and which work belongs after class.
+
+**Mobile boundary:** 390x844 is a non-blocking catastrophic-failure check. The
+release requirement is the normal university laptop/desktop experience.
+
+## Gate L: Staff Beta And Production Release
+
+**Why this gate exists:** Local success does not establish registry identity,
+ShinyProxy launch, SSO access, per-user workspaces, export behaviour, or rollback
+safety.
+
+**What it sets up:** Staff beta first, then KPZ308 access to an immutable,
+recoverable production deployment without disturbing Practical 1 or KPZ314.
+
+**Alternatives:** Direct student release is quicker but removes the final
+environment-specific check. Mutable tags simplify commands but weaken rollback
+evidence. Immutable tags and a short staff beta remain preferable.
+
+**Codex owns:** Build architecture, source and OCI identity, digest equality,
+backup metadata, restart health, unchanged neighbouring apps, and rollback
+record.
+
+**Barry should critique:** The real SSO-launched student experience and exported
+artefacts. Barry is not asked to assess image layers, registry mechanics, YAML,
+or container logs unless they cause a visible failure.
 
 ## Review Economy
 
-The revised gates are deliberately numerous but lightweight. They are not
-meetings or formal reports. A gate can close with “approved, continue.” The
-extra boundaries prevent a technically mature but pedagogically weak interface
-from spreading across several tabs before Barry sees it.
+These checkpoints are not additional meetings or invitations to polish every
+surface repeatedly. A design probe is the earliest useful moment to reject a
+teaching model. The working confirmation is deliberately brief. Each gate gets
+one Codex self-review and one consolidated response to Barry; further work is
+justified only by a remaining material scientific, comprehension, or use problem.
 
-When time compresses, preserve Gates C-G, I-J, K, and L. Gate H is the primary
-candidate for scope reduction because advanced breadth must not displace the
-compulsory route, evidence workflow, or safe delivery.
+When time compresses, preserve A2, C-G, I, J1-J3, K, and L. Gate H is optional.
+Within J2, preserve the portable project, Word dossier, PNG, and CSV before
+spending time on Markdown convenience.
