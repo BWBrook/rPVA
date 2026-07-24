@@ -71,6 +71,79 @@ validate_investigate_project_update_event <- function(event, current_project) {
   event$candidate
 }
 
+validate_investigate_observation_update_event <- function(event, current_project) {
+  expected_fields <- c(
+    "ok", "candidate", "family_id", "route", "message",
+    "base_project_fingerprint", "event_id"
+  )
+  if (!is.list(event) || is.null(names(event)) || anyDuplicated(names(event)) ||
+      !setequal(names(event), expected_fields)) {
+    stop(
+      "A successful Investigate observation event must contain exactly: ",
+      paste(expected_fields, collapse = ", "), ".",
+      call. = FALSE
+    )
+  }
+  valid_text <- function(value) {
+    is.character(value) && length(value) == 1L && !is.na(value) && nzchar(value)
+  }
+  if (!identical(event$ok, TRUE) ||
+      !valid_text(event$family_id) ||
+      !valid_text(event$route) ||
+      !event$route %in% c("sensitivity", "future") ||
+      !valid_text(event$message) ||
+      !valid_text(event$base_project_fingerprint) ||
+      !is.numeric(event$event_id) || length(event$event_id) != 1L ||
+      !is.finite(event$event_id) || event$event_id < 1L ||
+      event$event_id != as.integer(event$event_id)) {
+    stop("Investigate observation event identity is invalid.", call. = FALSE)
+  }
+  rPVA::validate_woodhen_project(current_project)
+  if (!identical(
+    event$base_project_fingerprint,
+    current_project$project_fingerprint
+  )) {
+    stop(
+      "The active project changed after this Investigate observation was accepted.",
+      call. = FALSE
+    )
+  }
+  candidate <- event$candidate
+  rPVA::validate_woodhen_project(candidate)
+  if (!identical(candidate$project_id, current_project$project_id)) {
+    stop("An Investigate observation cannot replace a different project ID.", call. = FALSE)
+  }
+  stable_fields <- setdiff(
+    names(current_project),
+    c("modified_at", "observations", "project_fingerprint")
+  )
+  if (!identical(candidate[stable_fields], current_project[stable_fields]) ||
+      length(candidate$observations) != length(current_project$observations) + 1L ||
+      !identical(
+        head(candidate$observations, -1L),
+        current_project$observations
+      )) {
+    stop("An Investigate observation event may only append one observation.", call. = FALSE)
+  }
+  family_run_ids <- vapply(
+    current_project$runs[vapply(current_project$runs, function(run) {
+      identical(run$family_id, event$family_id)
+    }, logical(1))],
+    `[[`,
+    character(1),
+    "run_id"
+  )
+  appended <- tail(candidate$observations, 1L)[[1L]]
+  if (length(family_run_ids) != 3L ||
+      !identical(sort(appended$run_ids), sort(family_run_ids))) {
+    stop(
+      "The appended observation must be linked to the event's complete three-run family.",
+      call. = FALSE
+    )
+  }
+  candidate
+}
+
 ui <- navbarPage(
   title = "Practical 2 Woodhen Lab",
   id = "section",
@@ -260,6 +333,27 @@ make_practical2_server <- function(
       TRUE
     }
 
+    activate_investigate_observation_update <- function(event) {
+      if (!isTRUE(event$ok)) {
+        showNotification(event$message, type = "warning")
+        return(FALSE)
+      }
+      candidate <- tryCatch(
+        validate_investigate_observation_update_event(event, project()),
+        error = function(error) error
+      )
+      if (inherits(candidate, "error")) {
+        showNotification(
+          paste("Investigate observation rejected:", conditionMessage(candidate)),
+          type = "warning"
+        )
+        return(FALSE)
+      }
+      activate_project(candidate)
+      showNotification(event$message, type = "message")
+      TRUE
+    }
+
     events <- start_server(
       "start",
       project = reactive(project()),
@@ -291,6 +385,12 @@ make_practical2_server <- function(
 
     observeEvent(investigate_events$project_update(), {
       activate_investigate_update(investigate_events$project_update())
+    })
+
+    observeEvent(investigate_events$observation_update(), {
+      activate_investigate_observation_update(
+        investigate_events$observation_update()
+      )
     })
 
     observeEvent(investigate_events$navigate(), {

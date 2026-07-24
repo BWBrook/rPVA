@@ -227,6 +227,20 @@ start_server <- function(id,
       updateSelectInput(session, "resume_key", choices = choices)
     }, ignoreInit = FALSE)
 
+    observeEvent(project(), {
+      candidate <- project()
+      updateTextInput(
+        session,
+        "project_title",
+        value = candidate$title %||% ""
+      )
+      updateTextInput(
+        session,
+        "owner_label",
+        value = candidate$owner_label %||% ""
+      )
+    }, ignoreInit = FALSE)
+
     observeEvent(input$open_project_help, {
       showModal(project_help_modal())
     })

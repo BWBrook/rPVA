@@ -176,7 +176,7 @@ test_that("UI builders resolve presets, bounded custom settings, and reject inva
   )
   expect_error(
     env$investigate_sensitivity_values("K", "custom", "custom", 300, 300),
-    "distinct|two altered"
+    "different alternative"
   )
   expect_error(
     env$investigate_sensitivity_values("K", "custom", "high", 149, 250),
@@ -184,7 +184,7 @@ test_that("UI builders resolve presets, bounded custom settings, and reject inva
   )
   expect_error(
     env$investigate_sensitivity_values("K", "custom", "high", 325, 250),
-    "baseline|two altered"
+    "current no-change assumption"
   )
 
   threats <- woodhen_threat_catalog()$id
@@ -428,6 +428,49 @@ test_that("Investigation module guards busy clicks and restores completed eviden
   })
 })
 
+test_that("Investigation saves linked sensitivity observations through a distinct event", {
+  env <- source_investigate_app()
+  ready <- investigate_ready_project()
+  family <- build_woodhen_sensitivity_family("K", c(225, 160))
+  completed <- rPVA:::woodhen_run_investigation_family_project(
+    ready,
+    family,
+    runner = investigate_test_runner,
+    sample_trajectories = 3L
+  )$project
+  live <- shiny::reactiveVal(completed)
+
+  shiny::testServer(env$investigate_server, args = list(
+    project = shiny::reactive(live()),
+    scenario_runner = investigate_test_runner
+  ), {
+    session$setInputs(
+      sensitivity_interpretation = paste(
+        "Final abundance and warning-threshold risk responded differently",
+        "across the three territory settings."
+      ),
+      sensitivity_caveat = "Territory capacity does not represent spatial habitat quality.",
+      save_sensitivity_notes = investigate_action_value(1L)
+    )
+    event <- observation_update_state()
+    expect_true(event$ok)
+    expect_identical(event$family_id, family$family_id)
+    expect_identical(event$route, "sensitivity")
+    expect_identical(
+      event$base_project_fingerprint,
+      completed$project_fingerprint
+    )
+    expect_length(event$candidate$observations, length(completed$observations) + 1L)
+    appended <- tail(event$candidate$observations, 1L)[[1L]]
+    expect_identical(
+      sort(appended$run_ids),
+      sort(sensitivity_comparison()$table$run_id)
+    )
+    expect_match(appended$note, "Interpretation:")
+    expect_match(appended$note, "Caveat:")
+  })
+})
+
 test_that("Investigation module flushes disabled controls and rejects queued submissions", {
   env <- source_investigate_app()
   project <- investigate_ready_project()
@@ -584,7 +627,9 @@ test_that("Investigate UI and root integration are accessible and honest", {
   env <- source_investigate_app()
   html <- paste(as.character(env$investigate_ui("investigate")), collapse = "\n")
   app_text <- paste(readLines(file.path(env$practical2_app_dir, "app.R")), collapse = "\n")
-  help <- paste(readLines(file.path(env$practical2_app_dir, "content", "help-investigate.md")), collapse = "\n")
+  help <- paste(readLines(file.path(
+    env$practical2_app_dir, "content", "help-sensitivity.md"
+  )), collapse = "\n")
   css <- paste(readLines(file.path(env$practical2_app_dir, "www", "styles.css")), collapse = "\n")
   module_text <- paste(readLines(file.path(
     env$practical2_app_dir, "modules", "mod_investigate.R"
@@ -592,18 +637,29 @@ test_that("Investigate UI and root integration are accessible and honest", {
 
   for (id in c(
     "investigate-factor_id", "investigate-sensitivity_run_control",
-    "investigate-threat_id", "investigate-intervention_id",
-    "investigate-future_run_control", "investigate-go_calibrate"
+    "investigate-sensitivity_first_custom",
+    "investigate-sensitivity_second_custom",
+    "investigate-sensitivity_plot", "investigate-sensitivity_table",
+    "investigate-go_calibrate"
   )) expect_match(html, paste0('id="', id, '"'), fixed = TRUE)
   expect_match(html, 'aria-live="polite"', fixed = TRUE)
-  expect_match(html, "fewer than 50 breeding pairs", ignore.case = TRUE)
+  expect_match(html, "50-pair warning threshold", ignore.case = TRUE)
   expect_match(html, "75 years")
   expect_match(html, "1,000")
-  expect_match(help, "strictly fewer than 50", ignore.case = TRUE)
-  expect_match(help, "stages 2 onward", ignore.case = TRUE)
-  expect_match(help, "sea-level", ignore.case = TRUE)
-  expect_match(help, "not yet implemented", ignore.case = TRUE)
-  expect_match(css, "investigate-workspaces")
+  expect_match(html, "what stays the same", ignore.case = TRUE)
+  expect_match(html, "breeding territories", ignore.case = TRUE)
+  expect_match(html, "What are you testing?", fixed = TRUE)
+  expect_match(html, "What did the simulations show, and why?", fixed = TRUE)
+  expect_match(html, 'What does "below 50 pairs" mean?', fixed = TRUE)
+  expect_match(html, "quasi-extinction threshold", ignore.case = TRUE)
+  expect_false(grepl("Moderate anchor|High anchor|custom value", html))
+  expect_match(help, "strictly below 50", ignore.case = TRUE)
+  expect_match(help, "one-factor", ignore.case = TRUE)
+  expect_match(help, "sensitivity analysis", ignore.case = TRUE)
+  expect_match(help, "325 territories", ignore.case = TRUE)
+  expect_match(help, "not a universal minimum viable", ignore.case = TRUE)
+  expect_match(css, "sensitivity-setting-grid")
+  expect_match(css, "investigate-progress-track")
   expect_match(css, "@media \\(max-width: 780px\\)")
   expect_match(module_text, "session$onFlushed(", fixed = TRUE)
   expect_match(module_text, "prompt <- force(prompt)", fixed = TRUE)
@@ -611,8 +667,16 @@ test_that("Investigate UI and root integration are accessible and honest", {
   expect_match(module_text, "shiny::isolate(status_state())", fixed = TRUE)
   expect_match(module_text, "shiny::isolate(progress_state())", fixed = TRUE)
   expect_match(module_text, "shiny::isolate(progress_history_state())", fixed = TRUE)
-  expect_match(module_text, 'aria-disabled` = if (busy)', fixed = TRUE)
+  expect_match(
+    module_text,
+    'aria-disabled` = if (busy || design_probe)',
+    fixed = TRUE
+  )
   expect_match(module_text, "base_project_fingerprint", fixed = TRUE)
+  expect_match(module_text, "withProgress(", fixed = TRUE)
+  expect_match(module_text, "setProgress(", fixed = TRUE)
+  expect_match(module_text, "observation_update = reactive", fixed = TRUE)
+  expect_false(grepl("design_probe = TRUE", module_text, fixed = TRUE))
   expect_match(app_text, 'source(file.path("modules", "mod_investigate.R")', fixed = TRUE)
   expect_match(app_text, 'investigate_ui("investigate")', fixed = TRUE)
   expect_match(app_text, "investigate_events <- investigate_server", fixed = TRUE)

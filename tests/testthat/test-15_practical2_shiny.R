@@ -424,6 +424,39 @@ test_that("Start returns validated create and failed import events to the root",
   })
 })
 
+test_that("Start mirrors the active project identity into its visible fields", {
+  env <- source_practical2_app()
+  live <- shiny::reactiveVal(NULL)
+  sent <- new.env(parent = emptyenv())
+  env$updateTextInput <- function(session, inputId, label = NULL,
+                                  value = NULL, placeholder = NULL) {
+    sent[[inputId]] <- value
+    invisible(NULL)
+  }
+  neutral_status <- env$status_value("No active project yet.")
+
+  shiny::testServer(env$start_server, args = list(
+    project = shiny::reactive(live()),
+    inventory = function() list(),
+    browser_status = function() neutral_status,
+    portable_status = function() neutral_status,
+    dirty_status = function() neutral_status
+  ), {
+    live(new_woodhen_project(
+      "Imported Woodhen advice",
+      owner_label = "Study group"
+    ))
+    session$flushReact()
+    expect_identical(sent$project_title, "Imported Woodhen advice")
+    expect_identical(sent$owner_label, "Study group")
+
+    live(new_woodhen_project())
+    session$flushReact()
+    expect_identical(sent$project_title, "")
+    expect_identical(sent$owner_label, "")
+  })
+})
+
 test_that("the first root Create click activates a live project", {
   env <- source_practical2_app()
 
@@ -559,6 +592,63 @@ test_that("root rejects a stale Investigate event without activation side effect
     expect_identical(saved_fingerprint(), before$saved)
     expect_identical(portable_fingerprint(), before$portable)
   })
+})
+
+test_that("root accepts only one linked Investigate observation append", {
+  env <- source_practical2_app()
+  base <- rPVA:::run_woodhen_reference_project(
+    new_woodhen_project("Investigate observation base"),
+    "05_future_baseline",
+    runner = practical2_calibrate_runner,
+    sample_trajectories = 2L
+  )$project
+  family <- build_woodhen_sensitivity_family("K", c(225, 160))
+  current <- rPVA:::woodhen_run_investigation_family_project(
+    base,
+    family,
+    runner = practical2_calibrate_runner,
+    sample_trajectories = 2L
+  )$project
+  run_ids <- vapply(current$runs[vapply(current$runs, function(run) {
+    identical(run$family_id, family$family_id)
+  }, logical(1))], `[[`, character(1), "run_id")
+  candidate <- add_woodhen_observation(
+    current,
+    list(
+      title = "Sensitivity result observation",
+      note = "Interpretation: Habitat capacity changed the model response.",
+      run_ids = run_ids
+    )
+  )
+  event <- list(
+    ok = TRUE,
+    candidate = candidate,
+    family_id = family$family_id,
+    route = "sensitivity",
+    message = "Result observation saved.",
+    base_project_fingerprint = current$project_fingerprint,
+    event_id = 102L
+  )
+
+  expect_identical(
+    env$validate_investigate_observation_update_event(event, current),
+    candidate
+  )
+  changed <- candidate
+  changed$title <- "Unexpected project rewrite"
+  changed$project_fingerprint <- woodhen_project_fingerprint(changed)
+  changed_event <- event
+  changed_event$candidate <- changed
+  expect_error(
+    env$validate_investigate_observation_update_event(changed_event, current),
+    "only append one observation"
+  )
+  stale_event <- event
+  stale_event$base_project_fingerprint <- paste(rep("0", 64), collapse = "")
+  expect_error(
+    env$validate_investigate_observation_update_event(stale_event, current),
+    "active project changed"
+  )
 })
 
 test_that("the first root Resume click requests browser restoration", {

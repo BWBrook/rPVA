@@ -36,10 +36,13 @@ investigate_sensitivity_values <- function(factor_id,
   )
   baseline <- row$locked_baseline[[1L]]
   if (any(values == baseline)) {
-    stop("Altered sensitivity settings must differ from the locked baseline.", call. = FALSE)
+    stop(
+      "Alternative settings must differ from the current no-change assumption.",
+      call. = FALSE
+    )
   }
   if (anyDuplicated(values)) {
-    stop("Choose two distinct altered sensitivity settings.", call. = FALSE)
+    stop("Choose two different alternative settings.", call. = FALSE)
   }
   rPVA::build_woodhen_sensitivity_family(factor_id, values, seed = 123L)
   values
@@ -270,6 +273,156 @@ investigate_format_timing <- function(value, overall = FALSE) {
   }
 }
 
+investigate_sensitivity_probe_data <- function() {
+  data.frame(
+    setting_value = c(325, 225, 160),
+    setting_label = c(
+      "Current no-change assumption",
+      "225 breeding territories",
+      "160 breeding territories"
+    ),
+    final_median_abundance = c(2163, 1502, 1055),
+    final_q025 = c(1580, 986, 606),
+    final_q975 = c(2884, 2068, 1528),
+    extinction_probability = c(0, 0, 0),
+    quasi_extinction_probability = c(0, 0, 0.064),
+    quasi_extinction_conditional_median_year = c(NA, NA, 39),
+    reps = c(1000L, 1000L, 1000L),
+    stringsAsFactors = FALSE
+  )
+}
+
+investigate_sensitivity_display_data <- function(comparison = NULL) {
+  if (is.null(comparison)) return(investigate_sensitivity_probe_data())
+  table <- comparison$table
+  values <- as.numeric(table$setting_value)
+  data.frame(
+    setting_value = values,
+    setting_label = ifelse(
+      table$scenario_type == "locked_baseline",
+      "Current no-change assumption",
+      paste0(investigate_format_number(values, 0L), " breeding territories")
+    ),
+    final_median_abundance = table$final_median_abundance,
+    final_q025 = table$final_q025,
+    final_q975 = table$final_q975,
+    extinction_probability = table$extinction_probability,
+    quasi_extinction_probability = table$quasi_extinction_probability,
+    quasi_extinction_conditional_median_year =
+      table$quasi_extinction_conditional_median_year,
+    reps = table$reps,
+    stringsAsFactors = FALSE
+  )
+}
+
+investigate_sensitivity_probe_plot <- function(data) {
+  data <- data[order(data$setting_value), , drop = FALSE]
+  territory_breaks <- sort(unique(data$setting_value))
+  abundance_limit <- max(data$final_q975) * 1.08
+  percent_labels <- function(values) paste0(round(100 * values), "%")
+
+  abundance <- ggplot2::ggplot(
+    data,
+    ggplot2::aes(x = setting_value, y = final_median_abundance)
+  ) +
+    ggplot2::geom_errorbar(
+      ggplot2::aes(ymin = final_q025, ymax = final_q975),
+      width = 8,
+      linewidth = 0.8,
+      colour = "#4a7779"
+    ) +
+    ggplot2::geom_line(linewidth = 0.9, colour = "#006d77") +
+    ggplot2::geom_point(size = 3.1, colour = "#006d77") +
+    ggplot2::scale_x_continuous(breaks = territory_breaks) +
+    ggplot2::scale_y_continuous(
+      limits = c(0, abundance_limit),
+      labels = function(values) format(round(values), big.mark = ",", scientific = FALSE)
+    ) +
+    ggplot2::labs(
+      title = "Final abundance in 2100",
+      subtitle = "Median and 95% simulation interval",
+      x = "Breeding territories available",
+      y = "Number of birds"
+    ) +
+    ggplot2::theme_minimal(base_size = 12) +
+    ggplot2::theme(
+      panel.grid.minor = ggplot2::element_blank(),
+      plot.title = ggplot2::element_text(face = "bold")
+    )
+
+  risk <- ggplot2::ggplot(
+    data,
+    ggplot2::aes(x = setting_value, y = quasi_extinction_probability)
+  ) +
+    ggplot2::geom_line(linewidth = 0.9, colour = "#b23a48") +
+    ggplot2::geom_point(size = 3.1, colour = "#b23a48") +
+    ggplot2::geom_text(
+      ggplot2::aes(label = sprintf("%.1f%%", 100 * quasi_extinction_probability)),
+      vjust = -0.8,
+      size = 3.8,
+      colour = "#7d2631"
+    ) +
+    ggplot2::scale_x_continuous(breaks = territory_breaks) +
+    ggplot2::scale_y_continuous(
+      limits = c(0, 1),
+      breaks = seq(0, 1, 0.2),
+      labels = percent_labels,
+      expand = ggplot2::expansion(mult = c(0, 0.03))
+    ) +
+    ggplot2::labs(
+      title = "Risk of falling below 50 pairs",
+      subtitle = "Probability at any time from 2025 to 2100",
+      x = "Breeding territories available",
+      y = "Probability"
+    ) +
+    ggplot2::theme_minimal(base_size = 12) +
+    ggplot2::theme(
+      panel.grid.minor = ggplot2::element_blank(),
+      plot.title = ggplot2::element_text(face = "bold")
+    )
+
+  patchwork::wrap_plots(abundance, risk, widths = c(1.12, 1)) +
+    patchwork::plot_annotation(
+      title = "How breeding-territory capacity changes future outcomes",
+      caption = paste(
+        "Only breeding-territory capacity changes; each setting uses",
+        "1,000 simulated futures."
+      ),
+      theme = ggplot2::theme(
+        plot.title = ggplot2::element_text(size = 15, face = "bold"),
+        plot.caption = ggplot2::element_text(colour = "#4f5d5d")
+      )
+    )
+}
+
+investigate_sensitivity_probe_table <- function(data) {
+  crossing_text <- vapply(seq_len(nrow(data)), function(index) {
+    year <- data$quasi_extinction_conditional_median_year[[index]]
+    count <- round(data$quasi_extinction_probability[[index]] * data$reps[[index]])
+    if (is.na(year) || count == 0L) return("Not observed in these futures")
+    paste0(
+      "Around ", 2025 + round(year), " among the ", count,
+      " futures that crossed"
+    )
+  }, character(1))
+  data.frame(
+    Setting = data$setting_label,
+    `Final birds in 2100 (95% interval)` = paste0(
+      investigate_format_number(data$final_median_abundance, 0L), " (",
+      investigate_format_number(data$final_q025, 0L), " - ",
+      investigate_format_number(data$final_q975, 0L), ")"
+    ),
+    `Extinction by 2100` = investigate_format_probability(
+      data$extinction_probability
+    ),
+    `Below 50 pairs by 2100` = investigate_format_probability(
+      data$quasi_extinction_probability
+    ),
+    `When the 50-pair threshold was crossed` = crossing_text,
+    check.names = FALSE
+  )
+}
+
 investigate_mapping_text <- function(row) {
   mapping <- row$mapping[[1L]][[1L]]
   stages <- mapping$affected_stages
@@ -287,11 +440,11 @@ investigate_mapping_text <- function(row) {
 
 investigate_help_modal <- function() {
   modalDialog(
-    title = "Investigating sensitivity and future advice",
+    title = "How to use sensitivity analysis",
     div(
       class = "help-modal-content",
       render_markdown_content(file.path(
-        practical2_app_dir, "content", "help-investigate.md"
+        practical2_app_dir, "content", "help-sensitivity.md"
       ))
     ),
     footer = modalButton("Close"),
@@ -301,6 +454,29 @@ investigate_help_modal <- function() {
 }
 
 investigate_prompt_inputs <- function(ns, prefix) {
+  if (identical(prefix, "sensitivity")) {
+    return(tagList(
+      textAreaInput(
+        ns("sensitivity_research_question"),
+        "What are you testing? (optional)",
+        rows = 2,
+        placeholder = paste(
+          "For example: How does reducing breeding-territory capacity affect",
+          "projected abundance and the chance of falling below 50 breeding pairs?"
+        )
+      ),
+      textAreaInput(
+        ns("sensitivity_expected_direction"),
+        "Your prediction and reasoning (optional)",
+        rows = 2,
+        placeholder = paste(
+          "Which outcome do you expect to change: final abundance, 50-pair risk,",
+          "or both? State the direction and explain how access to breeding",
+          "territories could produce it."
+        )
+      )
+    ))
+  }
   tagList(
     textAreaInput(
       ns(paste0(prefix, "_research_question")),
@@ -320,25 +496,62 @@ investigate_prompt_inputs <- function(ns, prefix) {
   )
 }
 
-investigate_result_prompts <- function(ns, prefix) {
+investigate_result_prompts <- function(ns, prefix, design_probe = FALSE) {
+  save_button <- actionButton(
+    ns(paste0("save_", prefix, "_notes")),
+    if (identical(prefix, "sensitivity")) {
+      "Save observation to project"
+    } else {
+      "Save result observations"
+    },
+    icon = icon("note-sticky"),
+    class = "btn-default btn-sm"
+  )
+  if (design_probe) {
+    save_button <- tagAppendAttributes(
+      save_button,
+      disabled = "disabled",
+      `aria-disabled` = "true"
+    )
+  }
   div(
     class = "investigate-result-prompts",
     textAreaInput(
       ns(paste0(prefix, "_interpretation")),
-      "Optional interpretation",
-      rows = 2
+      if (identical(prefix, "sensitivity")) {
+        "What did the simulations show, and why? (optional)"
+      } else {
+        "Optional interpretation"
+      },
+      rows = 2,
+      placeholder = if (identical(prefix, "sensitivity")) {
+        paste(
+          "Describe the pattern across the three territory settings, including",
+          "uncertainty and 50-pair risk. Then explain which conclusion appears",
+          "sensitive to habitat capacity and which appears robust."
+        )
+      } else {
+        NULL
+      }
     ),
     textAreaInput(
       ns(paste0(prefix, "_caveat")),
-      "Optional caveat",
-      rows = 2
+      if (identical(prefix, "sensitivity")) {
+        "What limits this conclusion? (optional)"
+      } else {
+        "Optional caveat"
+      },
+      rows = 2,
+      placeholder = if (identical(prefix, "sensitivity")) {
+        paste(
+          "Identify one assumption, uncertainty or omitted process that limits",
+          "how confidently this result could guide management."
+        )
+      } else {
+        NULL
+      }
     ),
-    actionButton(
-      ns(paste0("save_", prefix, "_notes")),
-      "Save result observations",
-      icon = icon("note-sticky"),
-      class = "btn-default btn-sm"
-    )
+    save_button
   )
 }
 
@@ -352,25 +565,25 @@ investigate_disable_run_actions_js <- function(ns) {
   )
 }
 
-investigate_run_action <- function(ns, route, busy) {
+investigate_run_action <- function(ns, route, busy, design_probe = FALSE) {
   is_sensitivity <- identical(route, "sensitivity")
   button <- actionButton(
     ns(if (is_sensitivity) "run_sensitivity" else "run_future"),
-    if (is_sensitivity) "Run three-setting family" else "Run threat-intervention family",
+    if (is_sensitivity) "Run sensitivity comparison" else "Run threat-intervention family",
     icon = icon("play"),
     class = "btn-primary investigate-run-action",
     onclick = investigate_disable_run_actions_js(ns),
-    `aria-disabled` = if (busy) "true" else "false"
+    `aria-disabled` = if (busy || design_probe) "true" else "false"
   )
-  if (busy) tagAppendAttributes(button, disabled = "disabled") else button
+  if (busy || design_probe) {
+    tagAppendAttributes(button, disabled = "disabled")
+  } else {
+    button
+  }
 }
 
 investigate_ui <- function(id) {
   ns <- NS(id)
-  sensitivity <- rPVA::woodhen_sensitivity_catalog()
-  threats <- rPVA::woodhen_threat_catalog()
-  interventions <- rPVA::woodhen_intervention_catalog()
-  default_interventions <- investigate_compatible_interventions(threats$id[[1L]])
 
   div(
     class = "page-shell investigate-shell",
@@ -378,15 +591,15 @@ investigate_ui <- function(id) {
       class = "investigate-header",
       div(
         span(class = "section-eyebrow", "Phase 2: Advise from the present"),
-        h1("Investigate sensitivity and future advice"),
+        h1("Test an uncertain ecological assumption"),
         p(
-          "Branch from the exact 2025-2100 anchor, keep the comparison machinery",
-          "locked, and retain both response and management evidence."
+          "Sensitivity analysis asks whether your conclusion changes when one",
+          "plausible assumption changes and the rest of the future stays the same."
         )
       ),
       actionButton(
         ns("open_investigate_help"),
-        "Interpretation help",
+        "Sensitivity guide",
         icon = icon("circle-info"),
         class = "btn-default btn-sm"
       )
@@ -404,144 +617,191 @@ investigate_ui <- function(id) {
         )
       )
     ),
-    div(
-      class = "investigate-workspaces",
-      tags$section(
-        class = "investigate-workspace sensitivity-workspace",
-        `aria-labelledby` = ns("sensitivity_heading"),
-        span(class = "workspace-label", "Sensitivity"),
-        h2(id = ns("sensitivity_heading"), "Trace one ecological response"),
-        p(
-          "Run the locked baseline plus two altered settings while every",
-          "non-target field remains identical."
-        ),
+    tags$section(
+      class = "sensitivity-purpose-band",
+      `aria-labelledby` = ns("sensitivity_question_heading"),
+      span(class = "workspace-label", "Sensitivity question"),
+      h2(
+        id = ns("sensitivity_question_heading"),
+        "How strongly does future Woodhen status depend on breeding habitat?"
+      ),
+      p(
+        "The no-change future assumes Lord Howe Island can support 325",
+        "territory-holding breeding pairs. Compare that assumption with two",
+        "lower capacities and ask whether the conservation outlook changes."
+      ),
+      div(
+        class = "sensitivity-fair-comparison",
         div(
-          class = "investigate-control-grid",
-          selectInput(
-            ns("factor_id"), "Ecological factor",
-            choices = stats::setNames(sensitivity$id, sensitivity$label),
-            selected = "K"
-          ),
-          selectInput(
-            ns("sensitivity_first_choice"), "First altered setting",
-            choices = c("Moderate anchor" = "moderate", "High anchor" = "high", "Custom" = "custom"),
-            selected = "moderate"
-          ),
-          numericInput(
-            ns("sensitivity_first_custom"), "First custom value",
-            value = 350, min = 150, max = 750, step = 1
-          ),
-          selectInput(
-            ns("sensitivity_second_choice"), "Second altered setting",
-            choices = c("Moderate anchor" = "moderate", "High anchor" = "high", "Custom" = "custom"),
-            selected = "high"
-          ),
-          numericInput(
-            ns("sensitivity_second_custom"), "Second custom value",
-            value = 250, min = 150, max = 750, step = 1
+          class = "sensitivity-comparison-item is-changed",
+          icon("sliders"),
+          div(
+            strong("What changes"),
+            span("Only the number of breeding territories available.")
           )
         ),
-        uiOutput(ns("sensitivity_preview")),
+        div(
+          class = "sensitivity-comparison-item",
+          icon("lock"),
+          div(
+            strong("What stays the same"),
+            span(paste(
+              "The 2025 starting population, vital rates, environmental and",
+              "catastrophe settings, 75 years, and 1,000 simulated futures."
+            ))
+          )
+        )
+      ),
+      p(
+        class = "sensitivity-territory-note",
+        strong("Important: "),
+        "breeding-territory capacity limits territory holders, not every bird.",
+        "Young and non-territory-holding birds remain in the total abundance,",
+        "so bird numbers can be much higher than the number of territories."
+      )
+    ),
+    tags$section(
+      class = "sensitivity-workspace",
+      `aria-labelledby` = ns("sensitivity_heading"),
+      div(
+        class = "sensitivity-workspace-heading",
+        div(
+          span(class = "workspace-label", "Set up the comparison"),
+          h2(id = ns("sensitivity_heading"), "Compare three habitat capacities"),
+          p(
+            "The current no-change assumption is retained as a reference.",
+            "Choose two lower values, then make a prediction before you run."
+          )
+        ),
+        selectInput(
+          ns("factor_id"), "Ecological assumption to test",
+          choices = c("Breeding-territory capacity" = "K"),
+          selected = "K"
+        )
+      ),
+      div(
+        class = "sensitivity-setting-grid",
+        div(
+          class = "sensitivity-setting is-baseline",
+          span(class = "setting-kicker", "Current no-change assumption"),
+          strong("325"),
+          span("breeding territories"),
+          tags$small("Kept as the common reference")
+        ),
+        div(
+          class = "sensitivity-setting",
+          span(class = "setting-kicker", "Alternative 1"),
+          numericInput(
+            ns("sensitivity_first_custom"),
+            "Breeding territories",
+            value = 225, min = 150, max = 750, step = 1
+          ),
+          tags$small("A 31% reduction from the no-change assumption")
+        ),
+        div(
+          class = "sensitivity-setting",
+          span(class = "setting-kicker", "Alternative 2"),
+          numericInput(
+            ns("sensitivity_second_custom"),
+            "Breeding territories",
+            value = 160, min = 150, max = 750, step = 1
+          ),
+          tags$small("About half the no-change capacity")
+        )
+      ),
+      uiOutput(ns("sensitivity_preview")),
+      div(
+        class = "sensitivity-prediction-band",
+        h3("Pause before running: what do you expect?"),
+        p(
+          "A prediction makes the comparison a test of reasoning, not just a",
+          "button press. These notes are optional and can be revised later."
+        ),
         div(
           class = "investigate-prompts",
           investigate_prompt_inputs(ns, "sensitivity")
-        ),
-        uiOutput(ns("sensitivity_run_control")),
-        uiOutput(ns("sensitivity_progress")),
-        uiOutput(ns("sensitivity_status"), `aria-live` = "polite", `aria-atomic` = "true"),
-        uiOutput(ns("sensitivity_completion")),
-        div(
-          class = "investigate-plot",
-          role = "img",
-          `aria-label` = "Sensitivity response across three settings",
-          plotOutput(ns("sensitivity_plot"), height = "300px")
-        ),
-        div(class = "investigate-table-scroll", tableOutput(ns("sensitivity_table"))),
-        investigate_result_prompts(ns, "sensitivity")
+        )
       ),
-      tags$section(
-        class = "investigate-workspace future-workspace",
-        `aria-labelledby` = ns("future_heading"),
-        span(class = "workspace-label", "Future advice"),
-        h2(id = ns("future_heading"), "Test a threat and compatible action"),
-        p(
-          "Run an exact family: locked baseline, named threat, then one",
-          "intervention applied to that threatened future."
-        ),
+      div(
+        class = "sensitivity-run-band",
         div(
-          class = "investigate-control-grid",
-          selectInput(
-            ns("threat_id"), "Plausible threat",
-            choices = stats::setNames(threats$id, threats$label),
-            selected = threats$id[[1L]]
-          ),
-          selectInput(
-            ns("threat_choice"), "Threat severity",
-            choices = c(
-              "Low anchor" = "low", "Moderate anchor" = "moderate",
-              "High anchor" = "high", "Custom" = "custom"
-            ),
-            selected = "moderate"
-          ),
-          numericInput(
-            ns("threat_custom"), "Custom threat value",
-            value = threats$anchors[[1L]][["moderate"]],
-            min = threats$custom_range[[1L]][["min"]],
-            max = threats$custom_range[[1L]][["max"]],
-            step = investigate_control_step(threats$custom_range[[1L]])
-          ),
-          selectInput(
-            ns("intervention_id"), "Compatible intervention",
-            choices = stats::setNames(
-              default_interventions,
-              interventions$label[match(default_interventions, interventions$id)]
-            ),
-            selected = default_interventions[[1L]]
-          ),
-          selectInput(
-            ns("intervention_choice"), "Intervention intensity",
-            choices = c(
-              "Low anchor" = "low", "Moderate anchor" = "moderate",
-              "High anchor" = "high", "Custom" = "custom"
-            ),
-            selected = "moderate"
-          ),
-          numericInput(
-            ns("intervention_custom"), "Custom intervention value",
-            value = 0.5, min = 0, max = 1, step = 0.01
+          uiOutput(ns("sensitivity_run_control")),
+          p(
+            "The comparison runs 1,000 futures for each setting and may take",
+            "about a minute. Progress remains visible throughout."
           )
         ),
-        uiOutput(ns("future_preview")),
-        div(
-          class = "investigate-prompts",
-          investigate_prompt_inputs(ns, "future")
+        uiOutput(ns("sensitivity_progress")),
+        uiOutput(
+          ns("sensitivity_status"),
+          `aria-live` = "polite",
+          `aria-atomic` = "true"
         ),
-        uiOutput(ns("future_run_control")),
-        uiOutput(ns("future_progress")),
-        uiOutput(ns("future_status"), `aria-live` = "polite", `aria-atomic` = "true"),
-        uiOutput(ns("future_completion")),
-        div(
-          class = "investigate-plot",
-          role = "img",
-          `aria-label` = "Baseline threat and intervention comparison",
-          plotOutput(ns("future_plot"), height = "340px")
-        ),
-        div(class = "investigate-table-scroll", tableOutput(ns("future_table"))),
-        investigate_result_prompts(ns, "future")
+        uiOutput(ns("sensitivity_completion"))
       )
     ),
-    tags$details(
-      class = "investigate-advanced-placeholder",
-      tags$summary("Advanced exploration"),
+    tags$section(
+      class = "sensitivity-results",
+      `aria-labelledby` = ns("sensitivity_results_heading"),
+      div(
+        class = "sensitivity-results-heading",
+        div(
+          span(class = "workspace-label", "Read the response"),
+          h2(
+            id = ns("sensitivity_results_heading"),
+            "Look for conclusions that change across the three settings"
+          )
+        ),
+        uiOutput(ns("sensitivity_result_context"))
+      ),
       p(
-        "Multi-factor scenarios and timing controls are not yet implemented.",
-        "They remain optional headroom for a later build stage."
+        "The left panel shows how the final population responds. The right",
+        "panel asks whether the same change also alters the chance of crossing",
+        "the working 50-pair warning threshold."
+      ),
+      div(
+        class = "investigate-threshold-note",
+        h3("What does \"below 50 pairs\" mean?"),
+        p(
+          "In each simulated future, the app records whether the population ever",
+          "falls below 50 territory-holding breeding pairs between 2025 and 2100.",
+          "In PVA, this is a quasi-extinction threshold: it flags a serious decline",
+          "before complete extinction."
+        ),
+        p(
+          "The same working warning level is used across scenarios so their risks",
+          "can be compared consistently. It is not a universal minimum viable",
+          "population or a proven biological tipping point."
+        )
+      ),
+      div(
+        class = "investigate-plot sensitivity-response-plot",
+        role = "img",
+        `aria-label` = paste(
+          "Final abundance and probability of falling below 50 breeding pairs",
+          "across three breeding-territory settings"
+        ),
+        plotOutput(ns("sensitivity_plot"), height = "450px")
+      ),
+      div(
+        class = "sensitivity-table-region",
+        h3("Comparison record"),
+        p(
+          "The timing column describes only those simulated futures that",
+          "actually crossed the threshold. It is not a prediction that every",
+          "future will cross at that time."
+        ),
+        div(class = "investigate-table-scroll", tableOutput(ns("sensitivity_table")))
+      ),
+      div(
+        class = "sensitivity-observation-band",
+        h3("Record what the comparison means"),
+        p(
+          "Separate the pattern you observed from a limitation or uncertainty.",
+          "That distinction will matter when you turn model output into advice."
+        ),
+        investigate_result_prompts(ns, "sensitivity")
       )
-    ),
-    p(
-      class = "investigate-threshold-note",
-      "Risk uses strictly fewer than 50 breeding pairs, stages 2 onward,",
-      "across 75 years (elapsed years 0-75) and 1,000 simulated futures."
     )
   )
 }
@@ -553,10 +813,11 @@ investigate_server <- function(
   moduleServer(id, function(input, output, session) {
     busy <- reactiveVal(FALSE)
     project_update_state <- reactiveVal(NULL)
+    observation_update_state <- reactiveVal(NULL)
     navigation_state <- reactiveVal(NULL)
     event_counter <- reactiveVal(0L)
     status_state <- reactiveVal(c(
-      sensitivity = "Choose settings and run the complete family.",
+      sensitivity = "Choose two alternative territory capacities, then run the comparison.",
       future = "Choose a threat and compatible intervention."
     ))
     progress_state <- reactiveVal(list(
@@ -751,24 +1012,30 @@ investigate_server <- function(
       )
       values <- tryCatch(investigate_sensitivity_values(
         input$factor_id,
-        investigate_or(input$sensitivity_first_choice, "moderate"),
-        investigate_or(input$sensitivity_second_choice, "high"),
+        "custom",
+        "custom",
         investigate_or(input$sensitivity_first_custom, row$anchors[[1L]][["moderate"]]),
         investigate_or(input$sensitivity_second_custom, row$anchors[[1L]][["high"]])
       ), error = function(error) error)
-      proposed <- if (inherits(values, "error")) {
-        conditionMessage(values)
-      } else {
-        paste(investigate_format_number(c(row$locked_baseline[[1L]], values)), collapse = " | ")
+      if (inherits(values, "error")) {
+        return(div(
+          class = "investigate-preview is-invalid",
+          icon("triangle-exclamation"),
+          strong("Adjust the comparison: "),
+          conditionMessage(values)
+        ))
       }
       div(
         class = "investigate-preview",
-        h3(row$label[[1L]]),
-        p(row$biological_meaning[[1L]]),
-        p(strong("Exact model mapping: "), investigate_mapping_text(row)),
-        p(strong("Baseline and proposed settings: "), proposed),
-        p(strong("Limitation: "), row$limitation[[1L]]),
-        p(class = "locked-machinery", "Held constant: starting population | 75 years | 1,000 futures | every setting except the factor being tested")
+        icon("circle-check"),
+        div(
+          strong("Fair comparison ready"),
+          span(paste0(
+            "325, ", investigate_format_number(values[[1L]], 0L), " and ",
+            investigate_format_number(values[[2L]], 0L),
+            " breeding territories; every other model assumption is unchanged."
+          ))
+        )
       )
     })
 
@@ -868,17 +1135,41 @@ investigate_server <- function(
           ))
           return(NULL)
         }
-        action <- tryCatch(
-          rPVA:::woodhen_run_investigation_family_project(
-            candidate,
-            family,
-            prompt = prompt,
-            progress = function(scenario, scenarios, completed, total) {
-              set_progress(route, scenario, scenarios, completed, total)
-            },
-            runner = scenario_runner
-          ),
-          error = function(error) error
+        action <- withProgress(
+          message = if (identical(route, "sensitivity")) {
+            "Running sensitivity comparison"
+          } else {
+            "Running threat-intervention comparison"
+          },
+          value = 0.01,
+          {
+            setProgress(
+              0.01,
+              detail = paste("Preparing", length(family$scenarios), "comparable settings")
+            )
+            tryCatch(
+              rPVA:::woodhen_run_investigation_family_project(
+                candidate,
+                family,
+                prompt = prompt,
+                progress = function(scenario, scenarios, completed, total) {
+                  set_progress(route, scenario, scenarios, completed, total)
+                  overall <- ((scenario - 1L) * total + completed) /
+                    (scenarios * total)
+                  setProgress(
+                    0.02 + 0.96 * overall,
+                    detail = paste0(
+                      "Setting ", scenario, " of ", scenarios, ": ",
+                      format(completed, big.mark = ","), " of ",
+                      format(total, big.mark = ","), " futures"
+                    )
+                  )
+                },
+                runner = scenario_runner
+              ),
+              error = function(error) error
+            )
+          }
         )
         if (inherits(action, "error")) {
           message <- paste(
@@ -923,8 +1214,8 @@ investigate_server <- function(
       }
       values <- tryCatch(investigate_sensitivity_values(
         input$factor_id,
-        input$sensitivity_first_choice,
-        input$sensitivity_second_choice,
+        "custom",
+        "custom",
         input$sensitivity_first_custom,
         input$sensitivity_second_custom
       ), error = function(error) error)
@@ -946,7 +1237,7 @@ investigate_server <- function(
       }
       run_route("sensitivity", family, list(
         research_question = investigate_or(input$sensitivity_research_question, ""),
-        biological_reason = investigate_or(input$sensitivity_biological_reason, ""),
+        biological_reason = "",
         expected_direction = investigate_or(input$sensitivity_expected_direction, "")
       ), batch_started = TRUE)
     })
@@ -996,17 +1287,72 @@ investigate_server <- function(
 
     output$sensitivity_progress <- renderUI({
       state <- progress_state()$sensitivity
+      scenario <- as.integer(state[["scenario"]])
+      scenarios <- as.integer(state[["scenarios"]])
+      per_scenario <- as.integer(state[["total"]])
+      completed <- as.integer(state[["completed"]])
+      overall_completed <- if (scenario < 1L) {
+        0L
+      } else {
+        (scenario - 1L) * per_scenario + completed
+      }
+      overall_total <- scenarios * per_scenario
+      percent <- round(100 * overall_completed / overall_total)
+      first_value <- investigate_or(input$sensitivity_first_custom, 225)
+      second_value <- investigate_or(input$sensitivity_second_custom, 160)
+      labels <- c(
+        "No-change: 325 territories",
+        paste0(investigate_format_number(first_value, 0L), " territories"),
+        paste0(investigate_format_number(second_value, 0L), " territories")
+      )
+      step_class <- vapply(seq_len(scenarios), function(index) {
+        if (scenario > index || (scenario == index && completed >= per_scenario)) {
+          "is-complete"
+        } else if (scenario == index && completed < per_scenario) {
+          "is-active"
+        } else {
+          "is-pending"
+        }
+      }, character(1))
       div(
         class = "investigate-progress",
-        role = "progressbar",
-        `aria-valuemin` = "0",
-        `aria-valuemax` = as.character(state[["total"]]),
-        `aria-valuenow` = as.character(state[["completed"]]),
-        `aria-label` = "Sensitivity family simulation progress",
-        paste0(
-          "Scenario ", state[["scenario"]], "/", state[["scenarios"]],
-          ": ", format(state[["completed"]], big.mark = ","), "/",
-          format(state[["total"]], big.mark = ","), " futures"
+        div(
+          class = "investigate-progress-heading",
+          strong(if (scenario < 1L) {
+            "Ready to simulate three comparable settings"
+          } else if (overall_completed >= overall_total) {
+            "Sensitivity comparison complete"
+          } else {
+            paste0("Simulating setting ", scenario, " of ", scenarios)
+          }),
+          span(paste0(format(overall_completed, big.mark = ","), " of ",
+            format(overall_total, big.mark = ","), " futures"))
+        ),
+        div(
+          class = "investigate-progress-track",
+          role = "progressbar",
+          `aria-valuemin` = "0",
+          `aria-valuemax` = as.character(overall_total),
+          `aria-valuenow` = as.character(overall_completed),
+          `aria-label` = "Sensitivity comparison simulation progress",
+          div(
+            class = "investigate-progress-fill",
+            style = paste0("width: ", percent, "%")
+          )
+        ),
+        div(
+          class = "investigate-progress-steps",
+          lapply(seq_along(labels), function(index) {
+            span(
+              class = paste("investigate-progress-step", step_class[[index]]),
+              icon(if (identical(step_class[[index]], "is-complete")) {
+                "circle-check"
+              } else {
+                "circle"
+              }),
+              labels[[index]]
+            )
+          })
         )
       )
     })
@@ -1043,10 +1389,27 @@ investigate_server <- function(
       div(class = "investigate-completion", icon("circle-check"), state)
     })
 
+    output$sensitivity_result_context <- renderUI({
+      if (is.null(sensitivity_comparison())) {
+        div(
+          class = "sensitivity-result-context is-example",
+          icon("eye"),
+          span("Representative completed comparison for this design review")
+        )
+      } else {
+        div(
+          class = "sensitivity-result-context is-current",
+          icon("circle-check"),
+          span("Results from your current project")
+        )
+      }
+    })
+
     output$sensitivity_plot <- renderPlot({
       comparison <- sensitivity_comparison()
-      req(comparison)
-      rPVA::plot_woodhen_sensitivity_response(comparison)
+      investigate_sensitivity_probe_plot(
+        investigate_sensitivity_display_data(comparison)
+      )
     }, res = 96)
     output$future_plot <- renderPlot({
       comparison <- future_comparison()
@@ -1086,7 +1449,9 @@ investigate_server <- function(
     }
 
     output$sensitivity_table <- renderTable({
-      result_table(sensitivity_comparison())
+      investigate_sensitivity_probe_table(
+        investigate_sensitivity_display_data(sensitivity_comparison())
+      )
     }, striped = TRUE, bordered = FALSE, spacing = "s", rownames = FALSE)
     output$future_table <- renderTable({
       result_table(future_comparison())
@@ -1126,11 +1491,13 @@ investigate_server <- function(
         return()
       }
       set_status(route, "Result observation ready for project activation.")
-      publish(project_update_state, list(
+      publish(observation_update_state, list(
         ok = TRUE,
         candidate = saved$project,
+        family_id = comparison$family_id,
         route = route,
-        message = "Result observation saved."
+        message = "Result observation saved.",
+        base_project_fingerprint = project()$project_fingerprint
       ))
     }
 
@@ -1149,6 +1516,7 @@ investigate_server <- function(
 
     list(
       project_update = reactive(project_update_state()),
+      observation_update = reactive(observation_update_state()),
       navigate = reactive(navigation_state()),
       progress_state = reactive(progress_state()),
       progress_history = reactive(progress_history_state()),
