@@ -7,9 +7,18 @@ source("project_helpers.R", local = TRUE)
 source(file.path("modules", "mod_start.R"), local = TRUE)
 source(file.path("modules", "mod_calibrate.R"), local = TRUE)
 source(file.path("modules", "mod_investigate.R"), local = TRUE)
+source(file.path("modules", "mod_compare.R"), local = TRUE)
 
 status_value <- function(value, state = "neutral", icon = "circle-info") {
   list(value = value, state = state, icon = icon)
+}
+
+should_confirm_manual_browser_save <- function(request, status) {
+  is.list(request) &&
+    identical(request$kind, "save") &&
+    identical(request$source, "manual") &&
+    is.list(status) &&
+    identical(status$status, "saved")
 }
 
 validate_investigate_project_update_event <- function(event, current_project) {
@@ -147,10 +156,13 @@ validate_investigate_observation_update_event <- function(event, current_project
 ui <- navbarPage(
   title = "Practical 2 Woodhen Lab",
   id = "section",
-  header = tags$head(
-    tags$meta(name = "viewport", content = "width=device-width, initial-scale=1"),
-    tags$link(rel = "stylesheet", type = "text/css", href = "styles.css"),
-    tags$script(src = "project-store.js")
+  header = tagList(
+    tags$head(
+      tags$meta(name = "viewport", content = "width=device-width, initial-scale=1"),
+      tags$link(rel = "stylesheet", type = "text/css", href = "styles.css"),
+      tags$script(src = "project-store.js")
+    ),
+    uiOutput("project_save_bar")
   ),
   tabPanel("Start", value = "start", start_ui("start")),
   tabPanel(
@@ -166,10 +178,7 @@ ui <- navbarPage(
   tabPanel(
     "Compare",
     value = "compare",
-    pending_tab_ui(
-      "Compare project evidence",
-      "The persistent comparison workspace will be added here."
-    )
+    compare_ui("compare")
   ),
   tabPanel(
     "Evidence Studio",
@@ -267,7 +276,10 @@ make_practical2_server <- function(
       }
     }
 
-    queue_project_save <- function(candidate) {
+    queue_project_save <- function(candidate, source = "automatic") {
+      if (!source %in% c("automatic", "manual")) {
+        stop("Browser-save source must be automatic or manual.", call. = FALSE)
+      }
       snapshot_json <- rPVA:::woodhen_project_browser_snapshot(candidate)
       saved_at <- format(
         as.POSIXct(Sys.time(), tz = "UTC"),
@@ -281,7 +293,11 @@ make_practical2_server <- function(
         portable_request_fingerprint = portable_fingerprint()
       )
       request_id <- next_request_id("save")
-      track_request(request_id, list(kind = "save", record = record))
+      track_request(request_id, list(
+        kind = "save",
+        source = source,
+        record = record
+      ))
       browser_status(status_value(
         "Browser autosave is pending.", "pending", "clock"
       ))
@@ -297,6 +313,67 @@ make_practical2_server <- function(
       )
       invisible(request_id)
     }
+
+    output$project_save_bar <- renderUI({
+      candidate <- project()
+      status <- browser_status()
+      if (is.null(candidate)) {
+        return(div(
+          class = "project-save-bar",
+          div(
+            class = "project-save-bar-inner",
+            div(
+              class = "project-save-copy",
+              strong("No active project"),
+              span("Create, resume, or import a project before saving.")
+            ),
+            actionButton(
+              "save_project",
+              "Save in this browser",
+              icon = icon("floppy-disk"),
+              class = "btn-default btn-sm",
+              disabled = "disabled",
+              `aria-disabled` = "true"
+            )
+          )
+        ))
+      }
+      div(
+        class = "project-save-bar",
+        div(
+          class = "project-save-bar-inner",
+          div(
+            class = "project-save-copy",
+            strong(paste("Active project:", candidate$title)),
+            span(
+              paste0(
+                status$value,
+                " Saves completed runs and observations already added to the",
+                " project; it does not download a file."
+              )
+            )
+          ),
+          actionButton(
+            "save_project",
+            "Save in this browser",
+            icon = icon("floppy-disk"),
+            class = "btn-default btn-sm"
+          )
+        )
+      )
+    })
+
+    observeEvent(input$save_project, {
+      candidate <- project()
+      if (is.null(candidate)) {
+        showNotification(
+          "Create, resume, or import a project before saving.",
+          type = "warning"
+        )
+        return()
+      }
+      queue_project_save(candidate, source = "manual")
+    }, ignoreInit = TRUE)
 
     activate_project <- function(
         candidate,
@@ -371,6 +448,10 @@ make_practical2_server <- function(
       "investigate",
       project = reactive(project()),
       scenario_runner = investigate_scenario_runner
+    )
+    compare_events <- compare_server(
+      "compare",
+      project = reactive(project())
     )
 
     observeEvent(calibrate_events$project_update(), {
@@ -569,6 +650,13 @@ make_practical2_server <- function(
             "Autosaved in this browser.", "current", "circle-check"
           ))
           refresh_dirty_status()
+          if (should_confirm_manual_browser_save(request, status)) {
+            showNotification(
+              "Project saved in this browser.",
+              type = "message",
+              duration = 6
+            )
+          }
         } else if (identical(status$status, "superseded")) {
           browser_status(status_value(
             "A newer browser autosave is pending.", "pending", "clock"

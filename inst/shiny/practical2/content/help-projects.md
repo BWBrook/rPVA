@@ -1,11 +1,20 @@
 ## Browser recovery
 
-The app keeps your current investigation **autosaved in this browser**. This is
-useful if you close the tab and return using the same browser and website. It
-will not automatically appear in a different browser, on another computer, or
-on the alternative off-campus website.
+The app keeps your current investigation **autosaved in this browser**. It
+queues an autosave after you create or resume a project, complete a run, or add
+a saved observation. Typed notes remain drafts until you use their local save
+action. This is useful if you close the tab and return using the same browser
+and website.
+
+You can also select **Save in this browser** at the top of any tab for
+reassurance after an important completed run or saved note. This stores the
+current project in this browser; it does not download a file. It does not turn
+unfinished text in a note box into a saved observation.
 
 To continue, choose your project and select **Resume selected project**.
+
+Browser storage will not automatically appear in a different browser, on
+another computer, or on the alternative off-campus website.
 
 ## Downloadable project copies
 

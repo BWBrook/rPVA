@@ -1129,8 +1129,10 @@ investigate_sensitivity_probe_plot <- function(data) {
     ggplot2::geom_line(linewidth = 0.9, colour = "#b23a48") +
     ggplot2::geom_point(size = 3.1, colour = "#b23a48") +
     ggplot2::geom_text(
-      ggplot2::aes(label = sprintf("%.1f%%", 100 * quasi_extinction_probability)),
-      vjust = -0.8,
+      ggplot2::aes(
+        label = sprintf("%.1f%%", 100 * quasi_extinction_probability),
+        vjust = ifelse(quasi_extinction_probability > 0.9, 1.5, -0.8)
+      ),
       size = 3.8,
       colour = "#7d2631"
     ) +
@@ -2326,12 +2328,47 @@ investigate_ui <- function(id) {
   )
 }
 
+investigate_progress_heading <- function(
+    route,
+    scenario,
+    scenarios,
+    overall_completed,
+    overall_total,
+    is_busy,
+    has_comparison,
+    sensitivity_label = NULL) {
+  if (scenario < 1L) {
+    if (identical(route, "sensitivity")) {
+      return(paste(
+        "Ready to simulate three",
+        tolower(sensitivity_label),
+        "settings"
+      ))
+    }
+    return("Ready to simulate three comparable futures")
+  }
+  if (overall_completed >= overall_total) {
+    if (isTRUE(is_busy)) return("Summarising and plotting results")
+    if (!isTRUE(has_comparison)) return("Comparison not completed")
+    if (identical(route, "sensitivity")) {
+      return(paste(sensitivity_label, "comparison complete"))
+    }
+    return("Threat and management comparison complete")
+  }
+  if (identical(route, "sensitivity")) {
+    return(paste0("Simulating setting ", scenario, " of ", scenarios))
+  }
+  paste0("Simulating scenario ", scenario, " of ", scenarios)
+}
+
 investigate_server <- function(
     id,
     project,
     scenario_runner = rPVA::run_woodhen_investigation_scenario) {
   moduleServer(id, function(input, output, session) {
     busy <- reactiveVal(FALSE)
+    processing_notice_active <- reactiveVal(FALSE)
+    processing_notice_id <- session$ns("processing-results")
     project_update_state <- reactiveVal(NULL)
     observation_update_state <- reactiveVal(NULL)
     navigation_state <- reactiveVal(NULL)
@@ -2365,8 +2402,36 @@ investigate_server <- function(
       status_state(status)
     }
 
+    show_processing_notice <- function() {
+      if (isTRUE(shiny::isolate(processing_notice_active()))) {
+        return(invisible(processing_notice_id))
+      }
+      processing_notice_active(TRUE)
+      showNotification(
+        paste(
+          "Simulations complete. Summarising and plotting results.",
+          "Please wait for the results to appear."
+        ),
+        duration = NULL,
+        closeButton = FALSE,
+        id = processing_notice_id,
+        type = "message",
+        session = session
+      )
+      invisible(processing_notice_id)
+    }
+
+    clear_processing_notice <- function() {
+      if (isTRUE(shiny::isolate(processing_notice_active()))) {
+        removeNotification(processing_notice_id, session = session)
+        processing_notice_active(FALSE)
+      }
+      invisible(NULL)
+    }
+
     release_batch_after_flush <- function() {
       session$onFlushed(function() {
+        clear_processing_notice()
         if (isTRUE(shiny::isolate(busy()))) busy(FALSE)
       }, once = TRUE)
       invisible(NULL)
@@ -2845,13 +2910,26 @@ investigate_server <- function(
                   set_progress(route, scenario, scenarios, completed, total)
                   overall <- ((scenario - 1L) * total + completed) /
                     (scenarios * total)
+                  final_simulation <- scenario == scenarios &&
+                    completed >= total
+                  if (final_simulation) {
+                    set_status(
+                      route,
+                      "Simulations complete. Summarising and plotting results."
+                    )
+                    show_processing_notice()
+                  }
                   setProgress(
                     0.02 + 0.96 * overall,
-                    detail = paste0(
-                      "Setting ", scenario, " of ", scenarios, ": ",
-                      format(completed, big.mark = ","), " of ",
-                      format(total, big.mark = ","), " futures"
-                    )
+                    detail = if (final_simulation) {
+                      "Summarising and plotting results"
+                    } else {
+                      paste0(
+                        "Setting ", scenario, " of ", scenarios, ": ",
+                        format(completed, big.mark = ","), " of ",
+                        format(total, big.mark = ","), " futures"
+                      )
+                    }
                   )
                 },
                 runner = scenario_runner
@@ -3024,13 +3102,19 @@ investigate_server <- function(
         class = "investigate-progress",
         div(
           class = "investigate-progress-heading",
-          strong(if (scenario < 1L) {
-            paste("Ready to simulate three", tolower(model$label), "settings")
-          } else if (overall_completed >= overall_total) {
-            paste(model$label, "comparison complete")
-          } else {
-            paste0("Simulating setting ", scenario, " of ", scenarios)
-          }),
+          strong(investigate_progress_heading(
+            route = "sensitivity",
+            scenario = scenario,
+            scenarios = scenarios,
+            overall_completed = overall_completed,
+            overall_total = overall_total,
+            is_busy = busy(),
+            has_comparison = !identical(
+              completion_state()$sensitivity,
+              FALSE
+            ),
+            sensitivity_label = model$label
+          )),
           span(paste0(format(overall_completed, big.mark = ","), " of ",
             format(overall_total, big.mark = ","), " futures"))
         ),
@@ -3108,13 +3192,15 @@ investigate_server <- function(
         class = "investigate-progress",
         div(
           class = "investigate-progress-heading",
-          strong(if (scenario < 1L) {
-            "Ready to simulate three comparable futures"
-          } else if (overall_completed >= overall_total) {
-            "Threat and management comparison complete"
-          } else {
-            paste0("Simulating scenario ", scenario, " of ", scenarios)
-          }),
+          strong(investigate_progress_heading(
+            route = "future",
+            scenario = scenario,
+            scenarios = scenarios,
+            overall_completed = overall_completed,
+            overall_total = overall_total,
+            is_busy = busy(),
+            has_comparison = !identical(completion_state()$future, FALSE)
+          )),
           span(paste0(format(overall_completed, big.mark = ","), " of ",
             format(overall_total, big.mark = ","), " futures"))
         ),

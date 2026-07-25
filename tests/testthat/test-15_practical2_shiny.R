@@ -111,6 +111,7 @@ test_that("installed Practical 2 shell contains its implemented module assets", 
     "README.md",
     "app.R",
     "content/help-calibrate.md",
+    "content/help-compare.md",
     "content/help-investigate.md",
     "content/help-projects.md",
     "content/help-woodhen-background.md",
@@ -121,6 +122,7 @@ test_that("installed Practical 2 shell contains its implemented module assets", 
     "content/scenarios/05-future-comparison.md",
     "content/start.md",
     "modules/mod_calibrate.R",
+    "modules/mod_compare.R",
     "modules/mod_investigate.R",
     "modules/mod_start.R",
     "project_helpers.R",
@@ -141,6 +143,7 @@ test_that("helpers and implemented modules source from the installed app directo
     c(
       "start_ui", "start_server", "calibrate_ui", "calibrate_server",
       "investigate_ui", "investigate_server",
+      "compare_ui", "compare_server",
       "pending_tab_ui", "project_help_modal",
       "project_store_key", "project_store_record", "make_practical2_server"
     ),
@@ -262,6 +265,7 @@ test_that("shell exposes exactly five visible stable tab values", {
   expect_match(html, ">Investigate<")
   expect_match(html, ">Compare<")
   expect_match(html, ">Evidence Studio<")
+  expect_match(html, 'id="project_save_bar"', fixed = TRUE)
 })
 
 test_that("Start controls and statuses are namespaced and accessible", {
@@ -309,24 +313,67 @@ test_that("Start narrative states the adviser, two-phase, core-route, and extens
   expect_false(grepl("local-first", paste(start_text, help_text), ignore.case = TRUE))
 
   expect_match(help_text, "autosaved in this browser", ignore.case = TRUE)
+  expect_match(help_text, "completed run or saved note", ignore.case = TRUE)
+  expect_match(help_text, "Save in this browser", fixed = TRUE)
+  expect_match(help_text, "does not download", ignore.case = TRUE)
   expect_match(help_text, "downloadable project copy", ignore.case = TRUE)
   expect_match(help_text, "another computer", ignore.case = TRUE)
   expect_false(grepl("untrusted data|schema|fingerprint|web origin", help_text, ignore.case = TRUE))
 })
 
-test_that("only Compare and Evidence remain quiet placeholder bands", {
+test_that("manual browser save queues the current authoritative project", {
+  env <- source_practical2_app()
+
+  shiny::testServer(env$make_practical2_server(), {
+    session$setInputs(
+      `start-create_project` = practical2_action_button_value(0),
+      `start-resume_project` = practical2_action_button_value(0)
+    )
+    session$flushReact()
+    session$setInputs(
+      `start-project_title` = "Manual save contract",
+      `start-create_project` = practical2_action_button_value(1)
+    )
+    session$flushReact()
+    candidate <- project()
+    requests_before <- length(pending_requests())
+
+    session$setInputs(save_project = practical2_action_button_value(1))
+    session$flushReact()
+
+    expect_identical(length(pending_requests()), requests_before + 1L)
+    latest <- pending_requests()[[tail(names(pending_requests()), 1L)]]
+    expect_identical(latest$kind, "save")
+    expect_identical(latest$source, "manual")
+    expect_identical(
+      latest$record$project_fingerprint,
+      candidate$project_fingerprint
+    )
+    expect_identical(browser_status()$state, "pending")
+    expect_true(env$should_confirm_manual_browser_save(
+      latest,
+      list(status = "saved")
+    ))
+    expect_false(env$should_confirm_manual_browser_save(
+      within(latest, source <- "automatic"),
+      list(status = "saved")
+    ))
+  })
+})
+
+test_that("Compare is implemented and only Evidence remains a quiet placeholder band", {
   env <- source_practical2_app()
   html <- paste(as.character(env$ui), collapse = "\n")
 
-  expect_equal(length(gregexpr('class="pending-tab-band"', html, fixed = TRUE)[[1L]]), 2L)
+  expect_equal(length(gregexpr('class="pending-tab-band"', html, fixed = TRUE)[[1L]]), 1L)
   expect_match(html, "This workspace arrives in the next build stage", fixed = TRUE)
-  expect_true(file.exists(file.path(
-    practical2_app_dir(), "modules", "mod_investigate.R"
-  )))
-  expect_false(any(file.exists(file.path(
+  expect_true(all(file.exists(file.path(
     practical2_app_dir(), "modules",
-    c("mod_compare.R", "mod_evidence.R")
+    c("mod_investigate.R", "mod_compare.R")
   ))))
+  expect_false(file.exists(file.path(
+    practical2_app_dir(), "modules", "mod_evidence.R"
+  )))
 })
 
 test_that("root server owns replacement and module exposes reactive events", {
@@ -335,6 +382,7 @@ test_that("root server owns replacement and module exposes reactive events", {
   module_text <- paste(readLines(file.path(app_dir, "modules", "mod_start.R"), warn = FALSE), collapse = "\n")
   calibrate_text <- paste(readLines(file.path(app_dir, "modules", "mod_calibrate.R"), warn = FALSE), collapse = "\n")
   investigate_text <- paste(readLines(file.path(app_dir, "modules", "mod_investigate.R"), warn = FALSE), collapse = "\n")
+  compare_text <- paste(readLines(file.path(app_dir, "modules", "mod_compare.R"), warn = FALSE), collapse = "\n")
 
   expect_match(app_text, "project <- reactiveVal(NULL)", fixed = TRUE)
   expect_match(app_text, "rPVA::validate_woodhen_project(candidate)", fixed = TRUE)
@@ -345,6 +393,7 @@ test_that("root server owns replacement and module exposes reactive events", {
   expect_match(app_text, "investigate_events <- investigate_server", fixed = TRUE)
   expect_match(app_text, "observeEvent(investigate_events$project_update()", fixed = TRUE)
   expect_match(app_text, "observeEvent(investigate_events$navigate()", fixed = TRUE)
+  expect_match(app_text, "compare_events <- compare_server", fixed = TRUE)
   expect_match(module_text, "moduleServer(id", fixed = TRUE)
   expect_match(module_text, "create_event <- eventReactive", fixed = TRUE)
   expect_match(module_text, "resume_event <- eventReactive", fixed = TRUE)
@@ -357,7 +406,11 @@ test_that("root server owns replacement and module exposes reactive events", {
   expect_match(calibrate_text, "project_update", fixed = TRUE)
   expect_match(investigate_text, "moduleServer(id", fixed = TRUE)
   expect_match(investigate_text, "project_update", fixed = TRUE)
-  expect_false(grepl("assign\\(", paste(app_text, module_text, calibrate_text, investigate_text)))
+  expect_match(compare_text, "moduleServer(id", fixed = TRUE)
+  expect_false(grepl(
+    "assign\\(",
+    paste(app_text, module_text, calibrate_text, investigate_text, compare_text)
+  ))
 })
 
 test_that("failed project candidates preserve the live project", {

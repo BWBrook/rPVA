@@ -722,6 +722,7 @@ test_that("Investigation keeps the cross-route guard through the post-work flush
   }
   family <- build_woodhen_sensitivity_family("K", c(350, 250))
   busy_after_work <- NA
+  notice_after_work <- NA
 
   shiny::testServer(env$investigate_server, args = list(
     project = shiny::reactive(project), scenario_runner = runner
@@ -736,10 +737,12 @@ test_that("Investigation keeps the cross-route guard through the post-work flush
     shiny::isolate(run_route("sensitivity", family, list()))
     session$onFlushed(function() {
       busy_after_work <<- shiny::isolate(busy())
+      notice_after_work <<- shiny::isolate(processing_notice_active())
     }, once = TRUE)
     session$setInputs(run_future = investigate_action_value(1L))
 
     expect_true(busy_after_work)
+    expect_true(notice_after_work)
     expect_equal(calls, 3L)
     expect_true(project_update_state()$ok)
     expect_identical(project_update_state()$route, "sensitivity")
@@ -754,7 +757,50 @@ test_that("Investigation keeps the cross-route guard through the post-work flush
     )
     session$flushReact()
     expect_false(shiny::isolate(busy()))
+    expect_false(shiny::isolate(processing_notice_active()))
   })
+})
+
+test_that("completed simulations remain visibly busy until results are ready", {
+  env <- source_investigate_app()
+
+  expect_identical(
+    env$investigate_progress_heading(
+      route = "sensitivity",
+      scenario = 3L,
+      scenarios = 3L,
+      overall_completed = 3000L,
+      overall_total = 3000L,
+      is_busy = TRUE,
+      has_comparison = FALSE,
+      sensitivity_label = "Breeding-territory capacity"
+    ),
+    "Summarising and plotting results"
+  )
+  expect_identical(
+    env$investigate_progress_heading(
+      route = "future",
+      scenario = 3L,
+      scenarios = 3L,
+      overall_completed = 3000L,
+      overall_total = 3000L,
+      is_busy = FALSE,
+      has_comparison = TRUE
+    ),
+    "Threat and management comparison complete"
+  )
+  expect_identical(
+    env$investigate_progress_heading(
+      route = "future",
+      scenario = 3L,
+      scenarios = 3L,
+      overall_completed = 3000L,
+      overall_total = 3000L,
+      is_busy = FALSE,
+      has_comparison = FALSE
+    ),
+    "Comparison not completed"
+  )
 })
 
 test_that("Investigate UI and root integration are accessible and honest", {
@@ -837,7 +883,7 @@ test_that("Investigate UI and root integration are accessible and honest", {
   expect_match(app_text, 'investigate_ui("investigate")', fixed = TRUE)
   expect_match(app_text, "investigate_events <- investigate_server", fixed = TRUE)
   expect_match(app_text, "observeEvent(investigate_events$project_update()", fixed = TRUE)
-  expect_equal(length(gregexpr('class="pending-tab-band"', paste(as.character(env$ui), collapse = "\n"), fixed = TRUE)[[1L]]), 2L)
+  expect_equal(length(gregexpr('class="pending-tab-band"', paste(as.character(env$ui), collapse = "\n"), fixed = TRUE)[[1L]]), 1L)
 })
 
 test_that("Gate G2 rat-return family changes recruitment without changing adult survival", {
