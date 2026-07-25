@@ -45,21 +45,25 @@ Compare displays a context-only warning, do not rank the final values or claim
 that their difference estimates a management effect. Return to a matched
 family for that purpose.
 
-## Retain evidence selectively
+## Add useful material to your Evidence Portfolio
 
-For one claim, a strong minimum evidence set is usually:
+The three actions on Compare are independent:
 
-1. one plot that exposes the relevant pattern;
-2. one compact table that verifies the magnitude;
-3. your interpretation; and
-4. a caveat that limits the claim appropriately.
+- **Add current plot** saves the evidence view displayed now.
+- **Add comparison table** saves the numerical record for the same matched
+  family.
+- **Save note to portfolio** saves your interpretation, caveat, or both.
 
-Ask whether abundance and warning risk support the same interpretation, what
-uncertainty is represented by the simulations, what is omitted, and what
-result or assumption would change your advice.
+Each action gives immediate feedback and preserves the source runs with the
+saved item. You can add any material that may help your investigation; this is
+not the point where you must decide what belongs in the final report.
 
-Selecting a plot or table marks it for the comparison note you are building;
-selection alone does not save it. **Save comparison notes** will bundle the
-selected evidence with your interpretation and caveat, then make that bundle
-available in **Evidence Studio**. Evidence Studio is where you will review and
-trim the material before exporting your dossier.
+In **Evidence Studio**, you can inspect the accumulated portfolio, change its
+order, remove an item you no longer need, and make a separate selection for a
+particular export. Leaving an item out of one export does not remove it from
+the project.
+
+**Browse project runs** lists completed matched comparisons. Choose **Use this
+comparison** to make one family active, then add its plot, table, or a new note
+from the main Compare page. Individual runs remain visible as context but are
+not treated as complete comparisons.

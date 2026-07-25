@@ -151,8 +151,8 @@ pre-empt the interface decision may continue in parallel.
 | E | Student-facing | Calibrate: recovery and future | Accepted for the 2026 delivery |
 | F | Two-checkpoint student-facing | Investigate: sensitivity | Accepted; working implementation checked |
 | G | Two-checkpoint student-facing | Investigate: threat and intervention | Accepted; working implementation checked |
-| I | Two-checkpoint student-facing | Compare | Design probe next |
-| J1 | Two-checkpoint student-facing | Evidence selection and preview | Not started |
+| I | Two-checkpoint student-facing | Compare | Accepted for the 2026 delivery |
+| J1 | Two-checkpoint student-facing | Evidence portfolio and export preview | Accepted for the 2026 delivery |
 | J2 | Artefact review | Dossier and essential outputs | Not started |
 | J3 | Student-facing | Report, research, and assessment guidance | Not started |
 | H | Optional student-facing extension | Investigate: advanced sandbox | Deferred behind core |
@@ -248,6 +248,11 @@ code remains accepted unless this review identifies a material biological error.
 
 **Codex acceptance evidence:** Round-trip and state-validation tests pass. No
 student-controlled code is executed during import.
+
+**Performance checkpoint:** Commit `24b6171` removed the avoidable full
+revalidation cycle from fresh trusted browser snapshots. Barry confirmed that
+browser saves and restores no longer impose the previous roughly 30-second
+friction.
 
 **Barry review:** None required. Project movement is reviewed as a visible
 workflow at Gate J2 and an end-to-end behaviour at Gate K.
@@ -497,8 +502,8 @@ grid, and a focused commit.
 
 ## Gate I: Compare
 
-**Type:** Two-checkpoint student-facing. **Status:** Design probe is the next
-core task.
+**Type:** Two-checkpoint student-facing. **Status:** Accepted for the 2026
+delivery.
 
 **Files:**
 
@@ -552,9 +557,10 @@ selection, and a focused commit.
 
 ---
 
-## Gate J1: Evidence Selection And Preview
+## Gate J1: Evidence Portfolio And Export Preview
 
-**Type:** Two-checkpoint student-facing. **Status:** Core work after Gate I.
+**Type:** Two-checkpoint student-facing. **Status:** Accepted for the 2026
+delivery.
 
 **Files:**
 
@@ -566,30 +572,32 @@ selection, and a focused commit.
 - `tests/testthat/helper-practical2-design-fixtures.R`
 - Create `tests/testthat/test-27_practical2_evidence.R`
 
-### J1a - Design Probe
+### J1a - Superseded Design Probe
 
-- [ ] Populate the complete visible Evidence Studio with a deliberately mixed
-  representative set of plots, tables, observations, and caveats.
-- [ ] Let the student choose a restrained evidence set and preview exactly what
-  is being prepared, including scenario identity and provenance.
-- [ ] Show sparse, balanced, and excessive selections so the selectivity prompts
-  can be judged without automatically choosing evidence for the student.
-- [ ] Run the shared rendered-output self-review at both desktop sizes and state
-  which export and persistence actions remain stubbed.
-- [ ] **Barry design review:** assess hierarchy, selection friction, preview
-  usefulness, scaffolding, and whether the surface rewards judgement rather than
-  indiscriminate accumulation.
+- [x] The first probe tested sparse, focused, and excessive evidence selections.
+- [x] Barry's browser review rejected that teaching model because it asked
+  students to curate their final report while they were still accumulating
+  exploratory evidence.
+- [x] The replacement design treats Evidence Studio as a permissive working
+  portfolio. Final report selectivity belongs in Gate J3.
 
 ### J1b - Working Implementation
 
-- [ ] Write failing tests for evidence nomination, removal, preview, provenance,
-  sparse-project guidance, and project round trips.
-- [ ] Wire the approved surface to project state and Compare selections.
-- [ ] Run representative sparse and substantial projects through the working
-  preview and repeat the rendered desktop review.
-- [ ] **Barry confirmation:** verify briefly that the working version still
-  matches the approved J1a design.
-- [ ] Apply one consolidated material revision if needed and create a focused
+- [x] Replace Compare checkboxes with explicit actions to add the current plot,
+  comparison table, or student note directly to the portfolio.
+- [x] Persist typed portfolio items with exact source-run ancestry, view identity,
+  observation linkage, stable ordering, and safe remove/reorder operations.
+- [x] Keep the portfolio permissive: no item-count judgement, report-quality
+  score, or sparse/focused/excessive classification.
+- [x] Separate a session-local export selection from the persisted portfolio so
+  excluding an item from one export never removes it from the project.
+- [x] Preview saved plots, tables, and student-authored notes using ecological
+  labels and retained scientific provenance.
+- [x] Run one representative Compare-to-Portfolio workflow through browser
+  autosave, resume, preview, reorder, removal, and export selection.
+- [x] **Barry confirmation:** verify briefly that the working version still
+  matches the revised portfolio design.
+- [x] Apply one consolidated material revision if needed and create a focused
   Gate J1 commit.
 
 **Technical check:**

@@ -112,6 +112,7 @@ test_that("installed Practical 2 shell contains its implemented module assets", 
     "app.R",
     "content/help-calibrate.md",
     "content/help-compare.md",
+    "content/help-evidence.md",
     "content/help-investigate.md",
     "content/help-projects.md",
     "content/help-woodhen-background.md",
@@ -123,6 +124,7 @@ test_that("installed Practical 2 shell contains its implemented module assets", 
     "content/start.md",
     "modules/mod_calibrate.R",
     "modules/mod_compare.R",
+    "modules/mod_evidence.R",
     "modules/mod_investigate.R",
     "modules/mod_start.R",
     "project_helpers.R",
@@ -144,7 +146,7 @@ test_that("helpers and implemented modules source from the installed app directo
       "start_ui", "start_server", "calibrate_ui", "calibrate_server",
       "investigate_ui", "investigate_server",
       "compare_ui", "compare_server",
-      "pending_tab_ui", "project_help_modal",
+      "evidence_ui", "evidence_server", "pending_tab_ui", "project_help_modal",
       "project_store_key", "project_store_record", "make_practical2_server"
     ),
     exists,
@@ -361,19 +363,18 @@ test_that("manual browser save queues the current authoritative project", {
   })
 })
 
-test_that("Compare is implemented and only Evidence remains a quiet placeholder band", {
+test_that("Compare and the Evidence Portfolio replace all placeholder bands", {
   env <- source_practical2_app()
   html <- paste(as.character(env$ui), collapse = "\n")
 
-  expect_equal(length(gregexpr('class="pending-tab-band"', html, fixed = TRUE)[[1L]]), 1L)
-  expect_match(html, "This workspace arrives in the next build stage", fixed = TRUE)
+  expect_false(grepl('class="pending-tab-band"', html, fixed = TRUE))
+  expect_match(html, "Build one defensible comparison", fixed = TRUE)
+  expect_match(html, "Your evidence portfolio", fixed = TRUE)
+  expect_false(grepl("Design probe only", html, fixed = TRUE))
   expect_true(all(file.exists(file.path(
     practical2_app_dir(), "modules",
-    c("mod_investigate.R", "mod_compare.R")
+    c("mod_investigate.R", "mod_compare.R", "mod_evidence.R")
   ))))
-  expect_false(file.exists(file.path(
-    practical2_app_dir(), "modules", "mod_evidence.R"
-  )))
 })
 
 test_that("root server owns replacement and module exposes reactive events", {
@@ -755,16 +756,18 @@ test_that("project restore summaries make recovered content explicit", {
   expect_identical(
     env$project_content_summary(list(
       runs = list(list(), list()),
-      observations = list(list())
+      observations = list(list()),
+      evidence_items = list(list(), list(), list())
     )),
-    "2 completed runs and 1 saved observation"
+    "2 completed runs, 1 saved observation, and 3 portfolio items"
   )
   expect_identical(
     env$project_content_summary(list(
       runs = list(),
-      observations = list()
+      observations = list(),
+      evidence_items = list()
     )),
-    "0 completed runs and 0 saved observations"
+    "0 completed runs, 0 saved observations, and 0 portfolio items"
   )
 })
 
@@ -961,6 +964,403 @@ test_that("portable storage failure does not alter browser autosave state", {
     expect_identical(browser_status(), browser_before)
     expect_match(portable_status()$value, "download requested", ignore.case = TRUE)
   })
+})
+
+practical2_portfolio_project <- function() {
+  family <- build_woodhen_sensitivity_family("K", c(500, 150), seed = 123L)
+  project <- new_woodhen_project("Portfolio transaction")
+  for (scenario in family$scenarios) {
+    project <- add_woodhen_scenario(project, scenario)
+    project <- add_woodhen_run(
+      project,
+      practical2_calibrate_runner(scenario, sample_trajectories = 2L)
+    )
+  }
+  project
+}
+
+practical2_add_from_project_fixture <- function() {
+  project <- practical2_portfolio_project()
+  investigation_run_ids <- vapply(project$runs, `[[`, character(1), "run_id")
+  reference <- rPVA:::run_woodhen_reference_project(
+    project,
+    "04_rodent_eradication",
+    runner = practical2_calibrate_runner,
+    sample_trajectories = 2L
+  )
+  project <- reference$project
+  reference_run_id <- reference$run$run_id
+  project <- add_woodhen_observation(project, list(
+    title = "Rodent eradication interpretation",
+    note = "The short recovery check is broadly consistent with survey evidence.",
+    run_ids = reference_run_id
+  ))
+  calibrate_observation_id <- tail(project$observations, 1L)[[1L]]$observation_id
+  project <- add_woodhen_observation(project, list(
+    title = "Sensitivity result observation",
+    note = "Lower breeding capacity increased warning risk.",
+    run_ids = investigation_run_ids
+  ))
+  investigate_observation_id <- tail(project$observations, 1L)[[1L]]$observation_id
+  list(
+    project = project,
+    reference_run_id = reference_run_id,
+    investigation_run_ids = investigation_run_ids,
+    calibrate_observation_id = calibrate_observation_id,
+    investigate_observation_id = investigate_observation_id
+  )
+}
+
+practical2_add_from_project_event <- function(project,
+                                              requests,
+                                              event_id = 1L) {
+  list(
+    action = "add_from_project",
+    requests = requests,
+    base_project_fingerprint = project$project_fingerprint,
+    event_id = event_id,
+    message = "Project evidence added to the portfolio."
+  )
+}
+
+test_that("root references an existing project observation without copying it", {
+  env <- source_practical2_app()
+  fixture <- practical2_add_from_project_fixture()
+  project <- fixture$project
+  before <- project$observations
+  request <- list(
+    source_run_ids = fixture$reference_run_id,
+    observation_id = fixture$calibrate_observation_id,
+    view_id = "saved_observation",
+    title = "Rodent eradication interpretation"
+  )
+  event <- practical2_add_from_project_event(project, list(request))
+
+  expect_named(
+    event,
+    c(
+      "action", "requests", "base_project_fingerprint",
+      "event_id", "message"
+    )
+  )
+  expect_named(
+    event$requests[[1L]],
+    c("source_run_ids", "observation_id", "view_id", "title")
+  )
+  expect_false(any(c("note", "source_family_id", "kind") %in% names(
+    event$requests[[1L]]
+  )))
+
+  candidate <- NULL
+  expect_no_error(
+    candidate <- env$apply_evidence_portfolio_event(
+      event,
+      project,
+      now = as.POSIXct("2026-07-25 06:00:00", tz = "UTC")
+    )
+  )
+  if (is.null(candidate)) return()
+
+  expect_identical(candidate$observations, before)
+  expect_length(candidate$evidence_items, 1L)
+  expect_identical(candidate$evidence_items[[1L]]$kind, "observation")
+  expect_identical(
+    candidate$evidence_items[[1L]]$observation_id,
+    fixture$calibrate_observation_id
+  )
+  expect_identical(
+    candidate$evidence_items[[1L]]$source_run_ids,
+    fixture$reference_run_id
+  )
+})
+
+test_that("root adds a reference result set atomically and idempotently", {
+  env <- source_practical2_app()
+  fixture <- practical2_add_from_project_fixture()
+  project <- fixture$project
+  views <- c(
+    "calibration_trajectory", "calibration_risk",
+    "calibration_timing", "calibration_summary"
+  )
+  titles <- c(
+    "Rodent eradication - population trajectory",
+    "Rodent eradication - extinction and warning risk",
+    "Rodent eradication - extinction timing",
+    "Rodent eradication - result summary"
+  )
+  requests <- lapply(seq_along(views), function(index) list(
+    source_run_ids = fixture$reference_run_id,
+    observation_id = NULL,
+    view_id = views[[index]],
+    title = titles[[index]]
+  ))
+  event <- practical2_add_from_project_event(project, requests)
+  now <- as.POSIXct("2026-07-25 06:00:00", tz = "UTC")
+
+  first <- NULL
+  expect_no_error(
+    first <- env$apply_evidence_portfolio_event(event, project, now = now)
+  )
+  if (is.null(first)) return()
+
+  expect_identical(
+    vapply(first$evidence_items, `[[`, character(1), "view_id"),
+    views
+  )
+  expect_identical(
+    vapply(first$evidence_items, `[[`, character(1), "kind"),
+    c("plot", "plot", "plot", "table")
+  )
+  expect_true(all(vapply(first$evidence_items, function(item) {
+    identical(item$source_run_ids, fixture$reference_run_id)
+  }, logical(1))))
+
+  repeated <- practical2_add_from_project_event(first, requests, event_id = 2L)
+  second <- env$apply_evidence_portfolio_event(
+    repeated,
+    first,
+    now = now + 60
+  )
+  expect_identical(second, first)
+})
+
+test_that("root rejects stale or mismatched Add from project requests", {
+  env <- source_practical2_app()
+  fixture <- practical2_add_from_project_fixture()
+  project <- fixture$project
+  valid <- list(
+    source_run_ids = fixture$reference_run_id,
+    observation_id = fixture$calibrate_observation_id,
+    view_id = "saved_observation",
+    title = "Rodent eradication interpretation"
+  )
+
+  stale <- practical2_add_from_project_event(project, list(valid))
+  stale$base_project_fingerprint <- paste(rep("0", 64), collapse = "")
+  expect_error(
+    env$apply_evidence_portfolio_event(stale, project),
+    "changed"
+  )
+
+  mismatched <- valid
+  mismatched$source_run_ids <- fixture$investigation_run_ids
+  expect_error(
+    env$apply_evidence_portfolio_event(
+      practical2_add_from_project_event(project, list(mismatched)),
+      project
+    ),
+    "observation|linked|runs",
+    ignore.case = TRUE
+  )
+
+  mixed_family <- valid
+  mixed_family$observation_id <- NULL
+  mixed_family$view_id <- "calibration_summary"
+  mixed_family$title <- "Mixed result summary"
+  mixed_family$source_run_ids <- c(
+    fixture$reference_run_id,
+    fixture$investigation_run_ids[[1L]]
+  )
+  expect_error(
+    env$apply_evidence_portfolio_event(
+      practical2_add_from_project_event(project, list(mixed_family)),
+      project
+    ),
+    "family"
+  )
+
+  wrong_note_view <- valid
+  wrong_note_view$view_id <- "calibration_summary"
+  expect_error(
+    env$apply_evidence_portfolio_event(
+      practical2_add_from_project_event(project, list(wrong_note_view)),
+      project
+    ),
+    "saved observation|saved note|view",
+    ignore.case = TRUE
+  )
+
+  investigation_as_calibration <- valid
+  investigation_as_calibration$source_run_ids <- fixture$investigation_run_ids
+  investigation_as_calibration["observation_id"] <- list(NULL)
+  investigation_as_calibration$view_id <- "calibration_summary"
+  investigation_as_calibration$title <- "Invalid calibration summary"
+  expect_error(
+    env$apply_evidence_portfolio_event(
+      practical2_add_from_project_event(
+        project,
+        list(investigation_as_calibration)
+      ),
+      project
+    ),
+    "reference|calibrat",
+    ignore.case = TRUE
+  )
+
+  incomplete_comparison <- valid
+  incomplete_comparison["observation_id"] <- list(NULL)
+  incomplete_comparison$view_id <- "comparison_table"
+  incomplete_comparison$title <- "Incomplete comparison"
+  expect_error(
+    env$apply_evidence_portfolio_event(
+      practical2_add_from_project_event(project, list(incomplete_comparison)),
+      project
+    ),
+    "Add from project|complete|comparison|kind",
+    ignore.case = TRUE
+  )
+})
+
+test_that("root applies validated Compare plot, table, and note portfolio events", {
+  env <- source_practical2_app()
+  project <- practical2_portfolio_project()
+  run_ids <- vapply(project$runs, `[[`, character(1), "run_id")
+  family_id <- unique(vapply(project$runs, `[[`, character(1), "family_id"))
+  base_event <- list(
+    ok = TRUE,
+    action = "add",
+    kind = "plot",
+    source_family_id = family_id,
+    source_run_ids = run_ids,
+    view_id = "risk",
+    title = "Capacity - warning risk",
+    note = NULL,
+    base_project_fingerprint = project$project_fingerprint,
+    event_id = 1L,
+    message = "Plot added."
+  )
+  now <- as.POSIXct("2026-07-25 04:00:00", tz = "UTC")
+
+  with_plot <- env$apply_compare_portfolio_event(base_event, project, now = now)
+  expect_length(with_plot$evidence_items, 1L)
+  expect_identical(with_plot$evidence_items[[1L]]$kind, "plot")
+  expect_identical(with_plot$evidence_items[[1L]]$source_run_ids, run_ids)
+
+  table_event <- base_event
+  table_event$kind <- "table"
+  table_event$view_id <- "comparison_table"
+  table_event$title <- "Capacity - comparison table"
+  table_event$base_project_fingerprint <- with_plot$project_fingerprint
+  table_event$event_id <- 2L
+  with_table <- env$apply_compare_portfolio_event(
+    table_event,
+    with_plot,
+    now = now + 60
+  )
+  expect_length(with_table$evidence_items, 2L)
+
+  note_event <- base_event
+  note_event$kind <- "observation"
+  note_event$view_id <- "comparison_note"
+  note_event$title <- "Capacity - comparison note"
+  note_event$note <- paste(
+    "Interpretation: Capacity altered warning risk.",
+    "Caveat: The threshold is a working warning level.",
+    sep = "\n"
+  )
+  note_event$base_project_fingerprint <- with_table$project_fingerprint
+  note_event$event_id <- 3L
+  with_note <- env$apply_compare_portfolio_event(
+    note_event,
+    with_table,
+    now = now + 120
+  )
+  expect_length(with_note$observations, 1L)
+  expect_length(with_note$evidence_items, 3L)
+  expect_identical(
+    with_note$evidence_items[[3L]]$observation_id,
+    with_note$observations[[1L]]$observation_id
+  )
+  expect_error(
+    env$apply_compare_portfolio_event(base_event, with_note, now = now + 180),
+    "changed"
+  )
+  invalid <- base_event
+  invalid$source_run_ids <- "woodhen_run_missing"
+  expect_error(
+    env$apply_compare_portfolio_event(invalid, project, now = now),
+    "Unknown run"
+  )
+})
+
+test_that("root applies Evidence Portfolio reorder and remove events without deleting runs", {
+  env <- source_practical2_app()
+  project <- practical2_portfolio_project()
+  run_ids <- vapply(project$runs, `[[`, character(1), "run_id")
+  family_id <- unique(vapply(project$runs, `[[`, character(1), "family_id"))
+  now <- as.POSIXct("2026-07-25 04:00:00", tz = "UTC")
+  for (spec in list(
+    list(
+      kind = "plot", source_family_id = family_id,
+      source_run_ids = run_ids, view_id = "risk",
+      title = "Risk", observation_id = NULL
+    ),
+    list(
+      kind = "table", source_family_id = family_id,
+      source_run_ids = run_ids, view_id = "comparison_table",
+      title = "Table", observation_id = NULL
+    )
+  )) {
+    project <- add_woodhen_evidence_item(project, spec, now = now)
+    now <- now + 60
+  }
+  ids <- vapply(project$evidence_items, `[[`, character(1), "evidence_id")
+  reorder <- list(
+    action = "reorder",
+    evidence_ids = rev(ids),
+    base_project_fingerprint = project$project_fingerprint,
+    event_id = 1L,
+    message = "Portfolio order updated."
+  )
+  reordered <- env$apply_evidence_portfolio_event(reorder, project, now = now)
+  expect_identical(reordered$evidence_ids, rev(ids))
+  expect_length(reordered$runs, length(project$runs))
+
+  remove <- list(
+    action = "remove",
+    evidence_id = ids[[1L]],
+    base_project_fingerprint = reordered$project_fingerprint,
+    event_id = 2L,
+    message = "Evidence item removed."
+  )
+  removed <- env$apply_evidence_portfolio_event(remove, reordered, now = now + 60)
+  expect_identical(
+    vapply(removed$evidence_items, `[[`, character(1), "evidence_id"),
+    ids[[2L]]
+  )
+  expect_length(removed$runs, length(project$runs))
+  expect_error(
+    env$apply_evidence_portfolio_event(remove, removed, now = now + 120),
+    "changed"
+  )
+})
+
+test_that("root server observes Compare and Evidence Portfolio mutations", {
+  app_text <- paste(
+    readLines(file.path(practical2_app_dir(), "app.R"), warn = FALSE),
+    collapse = "\n"
+  )
+
+  expect_match(
+    app_text,
+    "observeEvent(compare_events$portfolio_event()",
+    fixed = TRUE
+  )
+  expect_match(
+    app_text,
+    "apply_compare_portfolio_event(event, project())",
+    fixed = TRUE
+  )
+  expect_match(
+    app_text,
+    "observeEvent(evidence_events$portfolio_event()",
+    fixed = TRUE
+  )
+  expect_match(
+    app_text,
+    "apply_evidence_portfolio_event(event, project())",
+    fixed = TRUE
+  )
 })
 
 test_that("Practical 2 static styles carry the approved responsive and focus boundaries", {

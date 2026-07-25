@@ -8,6 +8,7 @@ source(file.path("modules", "mod_start.R"), local = TRUE)
 source(file.path("modules", "mod_calibrate.R"), local = TRUE)
 source(file.path("modules", "mod_investigate.R"), local = TRUE)
 source(file.path("modules", "mod_compare.R"), local = TRUE)
+source(file.path("modules", "mod_evidence.R"), local = TRUE)
 
 status_value <- function(value, state = "neutral", icon = "circle-info") {
   list(value = value, state = state, icon = icon)
@@ -16,12 +17,20 @@ status_value <- function(value, state = "neutral", icon = "circle-info") {
 project_content_summary <- function(candidate) {
   run_count <- length(candidate$runs)
   observation_count <- length(candidate$observations)
-  paste(
+  portfolio_count <- length(candidate$evidence_items)
+  paste0(
     run_count,
-    if (run_count == 1L) "completed run" else "completed runs",
-    "and",
+    if (run_count == 1L) " completed run" else " completed runs",
+    ", ",
     observation_count,
-    if (observation_count == 1L) "saved observation" else "saved observations"
+    if (observation_count == 1L) {
+      " saved observation"
+    } else {
+      " saved observations"
+    },
+    ", and ",
+    portfolio_count,
+    if (portfolio_count == 1L) " portfolio item" else " portfolio items"
   )
 }
 
@@ -165,6 +174,296 @@ validate_investigate_observation_update_event <- function(event, current_project
   candidate
 }
 
+practical2_event_text <- function(value) {
+  is.character(value) && length(value) == 1L && !is.na(value) && nzchar(value)
+}
+
+practical2_event_id <- function(value) {
+  is.numeric(value) && length(value) == 1L && is.finite(value) &&
+    value >= 1L && value == as.integer(value)
+}
+
+apply_compare_portfolio_event <- function(event,
+                                          current_project,
+                                          now = Sys.time()) {
+  expected <- c(
+    "ok", "action", "kind", "source_family_id", "source_run_ids",
+    "view_id", "title", "note", "base_project_fingerprint",
+    "event_id", "message"
+  )
+  if (!is.list(event) || is.null(names(event)) || anyDuplicated(names(event)) ||
+      !setequal(names(event), expected)) {
+    stop(
+      "A Compare portfolio event must contain exactly: ",
+      paste(expected, collapse = ", "), ".",
+      call. = FALSE
+    )
+  }
+  rPVA::validate_woodhen_project(current_project)
+  if (!identical(event$ok, TRUE) || !identical(event$action, "add") ||
+      !practical2_event_text(event$kind) ||
+      !event$kind %in% c("plot", "table", "observation") ||
+      !practical2_event_text(event$source_family_id) ||
+      !practical2_event_text(event$view_id) ||
+      !practical2_event_text(event$title) ||
+      !practical2_event_text(event$message) ||
+      !practical2_event_id(event$event_id)) {
+    stop("Compare portfolio event identity is invalid.", call. = FALSE)
+  }
+  if (!identical(
+    event$base_project_fingerprint,
+    current_project$project_fingerprint
+  )) {
+    stop(
+      "The active project changed after this Compare action was accepted.",
+      call. = FALSE
+    )
+  }
+  if (!is.character(event$source_run_ids) ||
+      length(event$source_run_ids) < 1L || anyNA(event$source_run_ids) ||
+      any(!nzchar(event$source_run_ids)) ||
+      anyDuplicated(event$source_run_ids)) {
+    stop("Compare source run IDs are invalid.", call. = FALSE)
+  }
+  known_run_ids <- vapply(
+    current_project$runs,
+    `[[`,
+    character(1),
+    "run_id"
+  )
+  unknown <- setdiff(event$source_run_ids, known_run_ids)
+  if (length(unknown)) {
+    stop("Unknown run ID in Compare event: ", unknown[[1L]], call. = FALSE)
+  }
+  source_runs <- current_project$runs[
+    match(event$source_run_ids, known_run_ids)
+  ]
+  if (length(source_runs) != 3L ||
+      any(!vapply(source_runs, function(run) {
+        identical(run$family_id, event$source_family_id)
+      }, logical(1)))) {
+    stop(
+      "Compare evidence must name one complete three-run family.",
+      call. = FALSE
+    )
+  }
+  note_kind <- identical(event$kind, "observation")
+  if (note_kind && !practical2_event_text(event$note)) {
+    stop("A comparison note requires non-empty student-authored text.", call. = FALSE)
+  }
+  if (!note_kind && !is.null(event$note)) {
+    stop("Plot and table events cannot carry note text.", call. = FALSE)
+  }
+
+  candidate <- current_project
+  observation_id <- NULL
+  if (note_kind) {
+    candidate <- rPVA::add_woodhen_observation(
+      candidate,
+      list(
+        title = event$title,
+        note = event$note,
+        run_ids = event$source_run_ids
+      ),
+      now = now
+    )
+    observation_id <- tail(candidate$observations, 1L)[[1L]]$observation_id
+  }
+  rPVA::add_woodhen_evidence_item(
+    candidate,
+    list(
+      kind = event$kind,
+      source_family_id = event$source_family_id,
+      source_run_ids = event$source_run_ids,
+      view_id = event$view_id,
+      title = event$title,
+      observation_id = observation_id
+    ),
+    now = now
+  )
+}
+
+apply_evidence_portfolio_event <- function(event,
+                                           current_project,
+                                           now = Sys.time()) {
+  if (!is.list(event) || is.null(names(event)) || anyDuplicated(names(event))) {
+    stop("An Evidence Portfolio event must be one named list.", call. = FALSE)
+  }
+  action <- event$action
+  expected <- if (identical(action, "remove")) {
+    c(
+      "action", "evidence_id", "base_project_fingerprint",
+      "event_id", "message"
+    )
+  } else if (identical(action, "reorder")) {
+    c(
+      "action", "evidence_ids", "base_project_fingerprint",
+      "event_id", "message"
+    )
+  } else if (identical(action, "add_from_project")) {
+    c(
+      "action", "requests", "base_project_fingerprint",
+      "event_id", "message"
+    )
+  } else {
+    stop("Evidence Portfolio action is unsupported.", call. = FALSE)
+  }
+  if (!setequal(names(event), expected) ||
+      !practical2_event_text(event$message) ||
+      !practical2_event_id(event$event_id)) {
+    stop("Evidence Portfolio event identity is invalid.", call. = FALSE)
+  }
+  rPVA::validate_woodhen_project(current_project)
+  if (!identical(
+    event$base_project_fingerprint,
+    current_project$project_fingerprint
+  )) {
+    stop(
+      "The active project changed after this Evidence Portfolio action was accepted.",
+      call. = FALSE
+    )
+  }
+  if (identical(action, "add_from_project")) {
+    if (!is.list(event$requests) || length(event$requests) < 1L) {
+      stop("Add from project requires at least one evidence request.", call. = FALSE)
+    }
+    known_run_ids <- vapply(
+      current_project$runs,
+      `[[`,
+      character(1),
+      "run_id"
+    )
+    known_observation_ids <- vapply(
+      current_project$observations,
+      `[[`,
+      character(1),
+      "observation_id"
+    )
+    candidate <- current_project
+    for (request in event$requests) {
+      required <- c(
+        "source_run_ids", "observation_id", "view_id", "title"
+      )
+      if (!is.list(request) || is.null(names(request)) ||
+          anyDuplicated(names(request)) || !setequal(names(request), required) ||
+          !is.character(request$source_run_ids) ||
+          length(request$source_run_ids) < 1L ||
+          anyNA(request$source_run_ids) ||
+          any(!nzchar(request$source_run_ids)) ||
+          anyDuplicated(request$source_run_ids) ||
+          !practical2_event_text(request$view_id) ||
+          !practical2_event_text(request$title)) {
+        stop(
+          "An Add from project request is invalid or does not identify one run family.",
+          call. = FALSE
+        )
+      }
+      unknown <- setdiff(request$source_run_ids, known_run_ids)
+      if (length(unknown)) {
+        stop("Unknown run ID in project evidence request: ", unknown[[1L]], call. = FALSE)
+      }
+      source_runs <- current_project$runs[
+        match(request$source_run_ids, known_run_ids)
+      ]
+      family_ids <- unique(vapply(
+        source_runs,
+        `[[`,
+        character(1),
+        "family_id"
+      ))
+      if (length(family_ids) != 1L) {
+        stop("Project evidence requests cannot mix run families.", call. = FALSE)
+      }
+      note_kind <- !is.null(request$observation_id)
+      if (note_kind) {
+        if (!practical2_event_text(request$observation_id)) {
+          stop("A saved-note request requires one observation ID.", call. = FALSE)
+        }
+        if (!identical(request$view_id, "saved_observation")) {
+          stop(
+            "A saved observation must use the saved-observation evidence view.",
+            call. = FALSE
+          )
+        }
+        observation_index <- match(
+          request$observation_id,
+          known_observation_ids
+        )
+        if (is.na(observation_index)) {
+          stop("Unknown observation ID in project evidence request.", call. = FALSE)
+        }
+        if (!identical(
+          current_project$observations[[observation_index]]$run_ids,
+          request$source_run_ids
+        )) {
+          stop(
+            "Saved observation runs must match the linked evidence request.",
+            call. = FALSE
+          )
+        }
+      } else if (!request$view_id %in% c(
+        "calibration_trajectory", "calibration_risk",
+        "calibration_timing", "calibration_summary",
+        "calibration_comparison_table"
+      )) {
+        stop(
+          "Add from project only accepts saved notes or Calibrate result views.",
+          call. = FALSE
+        )
+      }
+      kind <- if (note_kind) {
+        "observation"
+      } else if (request$view_id %in% c(
+        "calibration_summary", "calibration_comparison_table"
+      )) {
+        "table"
+      } else {
+        "plot"
+      }
+      candidate <- rPVA::add_woodhen_evidence_item(
+        candidate,
+        list(
+          kind = kind,
+          source_family_id = family_ids[[1L]],
+          source_run_ids = request$source_run_ids,
+          view_id = request$view_id,
+          title = request$title,
+          observation_id = request$observation_id
+        ),
+        now = now
+      )
+    }
+    return(candidate)
+  }
+  typed_ids <- vapply(
+    current_project$evidence_items,
+    `[[`,
+    character(1),
+    "evidence_id"
+  )
+  if (identical(action, "remove")) {
+    return(rPVA::remove_woodhen_evidence_item(
+      current_project,
+      event$evidence_id,
+      now = now
+    ))
+  }
+  if (!is.character(event$evidence_ids) || anyNA(event$evidence_ids) ||
+      any(!nzchar(event$evidence_ids)) || anyDuplicated(event$evidence_ids) ||
+      !setequal(event$evidence_ids, typed_ids)) {
+    stop(
+      "A portfolio reorder must contain every typed evidence ID exactly once.",
+      call. = FALSE
+    )
+  }
+  legacy_ids <- setdiff(current_project$evidence_ids, typed_ids)
+  rPVA::select_woodhen_evidence(
+    current_project,
+    c(event$evidence_ids, legacy_ids),
+    now = now
+  )
+}
+
 ui <- navbarPage(
   title = "Practical 2 Woodhen Lab",
   id = "section",
@@ -195,10 +494,7 @@ ui <- navbarPage(
   tabPanel(
     "Evidence Studio",
     value = "evidence",
-    pending_tab_ui(
-      "Build an evidence dossier",
-      "Evidence selection and deliberate exports will be added here."
-    )
+    evidence_ui("evidence")
   )
 )
 
@@ -471,6 +767,10 @@ make_practical2_server <- function(
       "compare",
       project = reactive(project())
     )
+    evidence_events <- evidence_server(
+      "evidence",
+      project = reactive(project())
+    )
 
     observeEvent(calibrate_events$project_update(), {
       event <- calibrate_events$project_update()
@@ -490,6 +790,42 @@ make_practical2_server <- function(
       activate_investigate_observation_update(
         investigate_events$observation_update()
       )
+    })
+
+    observeEvent(compare_events$portfolio_event(), {
+      event <- compare_events$portfolio_event()
+      candidate <- tryCatch(
+        apply_compare_portfolio_event(event, project()),
+        error = function(error) error
+      )
+      if (inherits(candidate, "error")) {
+        showNotification(
+          paste("Portfolio item was not saved:", conditionMessage(candidate)),
+          type = "warning",
+          duration = 10
+        )
+        return()
+      }
+      activate_project(candidate)
+      showNotification(event$message, type = "message", duration = 7)
+    })
+
+    observeEvent(evidence_events$portfolio_event(), {
+      event <- evidence_events$portfolio_event()
+      candidate <- tryCatch(
+        apply_evidence_portfolio_event(event, project()),
+        error = function(error) error
+      )
+      if (inherits(candidate, "error")) {
+        showNotification(
+          paste("Portfolio change was not saved:", conditionMessage(candidate)),
+          type = "warning",
+          duration = 10
+        )
+        return()
+      }
+      activate_project(candidate)
+      showNotification(event$message, type = "message", duration = 7)
     })
 
     observeEvent(investigate_events$navigate(), {

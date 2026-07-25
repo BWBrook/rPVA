@@ -255,6 +255,40 @@ test_that("Calibrate display helpers avoid false precision and clipped uncertain
   expect_gte(limits[[2L]], 125)
 })
 
+test_that("Calibrate evidence previews reuse student-facing calendars and rounding", {
+  env <- source_calibrate_app()
+  recovery <- calibrate_test_runner(
+    rPVA:::woodhen_reference_scenario("04_rodent_eradication"),
+    sample_trajectories = 2L
+  )
+  summary <- env$calibrate_summary_table(recovery)
+  expect_identical(names(summary), c("Metric", "Result"))
+  expect_match(
+    summary$Result[summary$Metric == "2024 known minimum"],
+    "1,638 birds",
+    fixed = TRUE
+  )
+
+  runs <- lapply(
+    c("01_no_mgmt", "02_pig_control", "03_captive_pig"),
+    function(id) calibrate_test_runner(
+      rPVA:::woodhen_reference_scenario(id),
+      sample_trajectories = 2L
+    )
+  )
+  comparison <- env$calibrate_comparison_table(runs)
+  expect_identical(nrow(comparison), 3L)
+  expect_false(any(grepl("\\.[0-9]", comparison[["95% interval (birds)"]])))
+
+  path <- tempfile(fileext = ".png")
+  on.exit(unlink(path), add = TRUE)
+  grDevices::png(path, width = 900, height = 700)
+  on.exit(if (grDevices::dev.cur() > 1L) grDevices::dev.off(), add = TRUE)
+  expect_silent(env$calibrate_plot_trajectory(recovery))
+  grDevices::dev.off()
+  expect_gt(file.info(path)$size, 1000)
+})
+
 test_that("locked-anchor status requires the exact current scenario and run", {
   expected <- rPVA:::woodhen_locked_anchor_expected_identity()
   empty <- new_woodhen_project()

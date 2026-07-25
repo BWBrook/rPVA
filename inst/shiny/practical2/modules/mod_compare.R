@@ -330,6 +330,210 @@ compare_probe_family <- function(family_id) {
   catalog[[family_id]]
 }
 
+compare_live_evidence <- function(comparison) {
+  runs <- comparison$runs
+  table <- comparison$table
+  labels <- vapply(seq_along(runs), function(index) {
+    if (identical(runs[[index]]$scenario_type, "locked_baseline")) {
+      "Common future"
+    } else {
+      runs[[index]]$student_label
+    }
+  }, character(1))
+  summary <- data.frame(
+    scenario = labels,
+    period = "2025-2100",
+    horizon = table$horizon,
+    final_median_abundance = table$final_median_abundance,
+    final_q025 = table$final_q025,
+    final_q975 = table$final_q975,
+    extinction_probability = table$extinction_probability,
+    warning_probability = table$quasi_extinction_probability,
+    crossed_reps = vapply(
+      runs,
+      function(run) run$quasi_extinction_50_pairs$crossed_reps,
+      integer(1)
+    ),
+    conditional_median_crossing_year =
+      table$quasi_extinction_conditional_median_year,
+    reps = table$reps,
+    stringsAsFactors = FALSE
+  )
+  abundance <- do.call(rbind, lapply(seq_along(runs), function(index) {
+    values <- runs[[index]]$annual_quantiles
+    data.frame(
+      scenario = labels[[index]],
+      projection_year = values$year,
+      calendar_year = 2025L + values$year,
+      q025 = values$q025,
+      median = values$median,
+      q975 = values$q975,
+      stringsAsFactors = FALSE
+    )
+  }))
+  risk <- do.call(rbind, lapply(seq_along(runs), function(index) {
+    values <- runs[[index]]$quasi_extinction_50_pairs$cumulative
+    data.frame(
+      scenario = labels[[index]],
+      projection_year = values$year,
+      calendar_year = 2025L + values$year,
+      metric = "Fewer than 100 pairs",
+      probability = values$probability,
+      stringsAsFactors = FALSE
+    )
+  }))
+  starts <- seq.int(1L, 71L, 5L)
+  first_passage <- do.call(rbind, lapply(seq_along(runs), function(index) {
+    years <- runs[[index]]$quasi_extinction_50_pairs$first_crossing_year
+    years <- years[!is.na(years)]
+    counts <- vapply(starts, function(start) {
+      sum(years >= start & years <= start + 4L)
+    }, integer(1))
+    data.frame(
+      scenario = labels[[index]],
+      projection_start = starts,
+      projection_end = starts + 4L,
+      calendar_start = 2025L + starts,
+      calendar_end = 2029L + starts,
+      probability = counts / runs[[index]]$reps,
+      count = counts,
+      stringsAsFactors = FALSE
+    )
+  }))
+  evidence <- list(
+    summary = summary,
+    abundance = abundance,
+    risk = risk,
+    first_passage = first_passage
+  )
+  if (identical(comparison$family_type, "sensitivity")) {
+    evidence$response <- investigate_sensitivity_display_data(comparison)
+  } else {
+    threat <- which(table$scenario_type == "threat")[[1L]]
+    managed <- which(table$scenario_type == "intervention")[[1L]]
+    evidence$differences <- list(
+      comparison = "Management versus the same threat without management",
+      final_median_birds = table$final_median_abundance[[managed]] -
+        table$final_median_abundance[[threat]],
+      extinction_percentage_points = 100 * (
+        table$extinction_probability[[managed]] -
+          table$extinction_probability[[threat]]
+      ),
+      warning_percentage_points = 100 * (
+        table$quasi_extinction_probability[[managed]] -
+          table$quasi_extinction_probability[[threat]]
+      )
+    )
+  }
+  evidence
+}
+
+compare_live_family <- function(comparison) {
+  sensitivity <- identical(comparison$family_type, "sensitivity")
+  runs <- comparison$runs
+  if (sensitivity) {
+    factor_id <- investigate_sensitivity_factor_id(comparison)
+    model <- investigate_sensitivity_factor_model(factor_id)
+    label <- model$label
+    question <- model$question
+    purpose <- model$intro
+    held_constant <- paste(
+      "Every model setting except",
+      tolower(model$input_label),
+      "and its linked biological process."
+    )
+    roles <- c("No-change setting", "Higher setting", "Lower setting")
+  } else {
+    threat_label <- runs[[which(vapply(
+      runs,
+      function(run) identical(run$scenario_type, "threat"),
+      logical(1)
+    ))[[1L]]]]$student_label
+    managed_label <- runs[[which(vapply(
+      runs,
+      function(run) identical(run$scenario_type, "intervention"),
+      logical(1)
+    ))[[1L]]]]$student_label
+    label <- paste(threat_label, "and management")
+    question <- paste(
+      "How does", tolower(threat_label),
+      "change the outlook, and how much does management recover?"
+    )
+    purpose <- paste(
+      "Compare the threat with the common future, then compare",
+      tolower(managed_label), "with that same threatened future."
+    )
+    held_constant <- paste(
+      "Starting population, horizon, simulation effort and all assumptions",
+      "outside the stated threat and response."
+    )
+    roles <- c("No-change reference", "Threatened future", "Managed future")
+  }
+  list(
+    id = comparison$family_id,
+    group = if (sensitivity) "Sensitivity" else "Threat and management",
+    label = label,
+    question = question,
+    purpose = purpose,
+    compatible = TRUE,
+    compatibility_title = "Direct comparison",
+    compatibility = paste(
+      "These runs share the same 2025 starting population, 75-year horizon,",
+      "1,000 simulated futures and one comparison family."
+    ),
+    held_constant = held_constant,
+    scenario_roles = roles,
+    evidence = compare_live_evidence(comparison)
+  )
+}
+
+compare_live_catalog <- function(project) {
+  if (is.null(project) || !is.list(project$runs) || length(project$runs) == 0L) {
+    return(list())
+  }
+  family_ids <- unique(vapply(project$runs, `[[`, character(1), "family_id"))
+  values <- lapply(family_ids, function(family_id) {
+    comparison <- tryCatch(
+      investigate_project_comparison(project, family_id),
+      error = function(...) NULL
+    )
+    if (is.null(comparison) || length(comparison$runs) != 3L) return(NULL)
+    types <- vapply(comparison$runs, `[[`, character(1), "scenario_type")
+    expected <- if (identical(comparison$family_type, "sensitivity")) {
+      c("locked_baseline", "sensitivity", "sensitivity")
+    } else {
+      c("locked_baseline", "threat", "intervention")
+    }
+    if (!identical(types, expected)) return(NULL)
+    list(
+      comparison = comparison,
+      family = compare_live_family(comparison)
+    )
+  })
+  keep <- !vapply(values, is.null, logical(1))
+  values <- values[keep]
+  names(values) <- family_ids[keep]
+  values
+}
+
+compare_live_choices <- function(catalog) {
+  if (length(catalog) == 0L) {
+    return(list("Context only" = c(
+      "Recovery check beside future outlook" = "context"
+    )))
+  }
+  groups <- split(
+    names(catalog),
+    vapply(catalog, function(entry) entry$family$group, character(1))
+  )
+  lapply(groups, function(ids) {
+    stats::setNames(
+      ids,
+      vapply(catalog[ids], function(entry) entry$family$label, character(1))
+    )
+  })
+}
+
 compare_probe_choices <- function() {
   list(
     "Threat and management" = c(
@@ -493,6 +697,34 @@ compare_final_plot <- function(evidence) {
 compare_passage_plot <- function(evidence) {
   data <- evidence$first_passage
   data <- data[data$probability > 0, , drop = FALSE]
+  if (nrow(data) == 0L) {
+    return(
+      ggplot2::ggplot() +
+        ggplot2::annotate(
+          "text",
+          x = 2062.5,
+          y = 0.5,
+          label = paste(
+            "None of the simulated futures first crossed",
+            "below 100 pairs under these settings."
+          ),
+          colour = "#526768",
+          size = 4.2
+        ) +
+        ggplot2::scale_x_continuous(limits = c(2025, 2100)) +
+        ggplot2::scale_y_continuous(limits = c(0, 1)) +
+        ggplot2::labs(
+          title = "First passage below 100 pairs",
+          x = "Calendar year",
+          y = NULL
+        ) +
+        compare_plot_theme() +
+        ggplot2::theme(
+          axis.text.y = ggplot2::element_blank(),
+          axis.ticks.y = ggplot2::element_blank()
+        )
+    )
+  }
   data$calendar_midpoint <- (data$calendar_start + data$calendar_end) / 2
   labels <- unique(data$scenario)
   ggplot2::ggplot(
@@ -655,73 +887,34 @@ compare_help_modal <- function() {
   )
 }
 
-compare_evidence_help_modal <- function() {
-  modalDialog(
-    title = "How selected evidence moves forward",
-    div(
-      class = "help-modal-content",
-      p(
-        "Choose the current plot, the compact table, or both when they directly",
-        "support the claim you are recording below."
-      ),
-      tags$ul(
-        tags$li(
-          strong("Current plot: "),
-          "the evidence view now displayed on this page."
-        ),
-        tags$li(
-          strong("Compact comparison table: "),
-          "the numerical record for the same matched comparison."
-        )
-      ),
-      p(
-        "Selecting a box does not save anything by itself. When you select",
-        strong("Save comparison notes"),
-        "the chosen evidence, your interpretation, and your caveat will form one",
-        "comparison item for Evidence Studio."
-      ),
-      p(
-        "Evidence Studio is where you will later review, trim, and export a",
-        "deliberate evidence dossier. Keep only material that helps you make or",
-        "qualify a conservation claim."
-      )
-    ),
-    footer = modalButton("Close"),
-    easyClose = TRUE,
-    size = "m"
-  )
-}
-
-compare_run_library <- function() {
-  data.frame(
-    family_id = c(
-      rep("future", 3L),
-      rep("sensitivity", 3L),
-      rep("context", 2L)
-    ),
-    type = c(
-      rep("Threat and management", 3L),
-      rep("Sensitivity", 3L),
-      rep("Context only", 2L)
-    ),
-    label = c(
-      "Common future",
-      "Severe rat-return stress test",
-      "Rat return with renewed control",
-      "Lower capacity: 150 territories",
-      "Current setting: 325 territories",
-      "Higher capacity: 500 territories",
-      "Post-eradication recovery check",
-      "Common future outlook"
-    ),
-    period = c(rep("2025-2100", 6L), "2019-2024", "2025-2100"),
-    family = c(
-      rep("Rat return and renewed control", 3L),
-      rep("Breeding-territory capacity", 3L),
-      rep("Recovery check beside future outlook", 2L)
-    ),
-    stringsAsFactors = FALSE
-  )
+compare_run_library <- function(project, catalog = compare_live_catalog(project)) {
+  if (length(catalog) == 0L) {
+    return(data.frame(
+      family_id = character(),
+      type = character(),
+      label = character(),
+      period = character(),
+      family = character(),
+      stringsAsFactors = FALSE
+    ))
+  }
+  do.call(rbind, lapply(catalog, function(entry) {
+    runs <- entry$comparison$runs
+    data.frame(
+      family_id = entry$comparison$family_id,
+      type = entry$family$group,
+      label = vapply(runs, function(run) {
+        if (identical(run$scenario_type, "locked_baseline")) {
+          "Common future"
+        } else {
+          run$student_label
+        }
+      }, character(1)),
+      period = "2025-2100",
+      family = entry$family$label,
+      stringsAsFactors = FALSE
+    )
+  }))
 }
 
 compare_run_library_modal <- function(ns) {
@@ -747,8 +940,8 @@ compare_run_library_modal <- function(ns) {
     ),
     p(
       class = "compare-library-note",
-      "The active comparison remains dominant. This library helps you find",
-      "ecologically related runs without turning Compare into a session-history list."
+      "Choose a completed matched comparison here, then add its current plot,",
+      "table, or a note to the Evidence Portfolio from the main Compare page."
     ),
     uiOutput(ns("library_results")),
     footer = modalButton("Close"),
@@ -768,7 +961,7 @@ compare_ui <- function(id) {
         h1("Build one defensible comparison"),
         p(
           "Choose a matched scenario family, inspect its outcomes together,",
-          "and retain only the evidence that informs your conservation advice."
+          "and save any useful plots, tables, or notes to your Evidence Portfolio."
         )
       ),
       div(
@@ -791,15 +984,10 @@ compare_ui <- function(id) {
       class = "compare-family-band",
       div(
         class = "compare-family-choice",
-        selectInput(
-          ns("family"),
-          "Active comparison",
-          choices = compare_probe_choices(),
-          selected = "future"
-        ),
+        uiOutput(ns("family_control")),
         p(
-          "Start from a named family. The run library shows related evidence",
-          "without letting the complete project history dominate this page."
+          "Completed matched families from Investigate appear here. The run",
+          "library helps you revisit their individual scenarios."
         )
       ),
       uiOutput(ns("family_summary"))
@@ -825,25 +1013,26 @@ compare_ui <- function(id) {
             class = "compare-evidence-choice-heading",
             div(
               span(class = "workspace-label", "Evidence handoff"),
-              h3("Choose for Evidence Studio")
+              h3("Add evidence to your portfolio")
             ),
             actionButton(
-              ns("open_evidence_help"),
-              "How this works",
-              icon = icon("circle-info"),
+              ns("add_plot"),
+              "Add current plot to Evidence Portfolio",
+              icon = icon("chart-line"),
+              class = "btn-default btn-sm"
+            ),
+            actionButton(
+              ns("add_table"),
+              "Add comparison table to Evidence Portfolio",
+              icon = icon("table"),
               class = "btn-default btn-sm"
             )
           ),
           p(
-            "Tick the plot, table, or both if they support the claim you will",
-            "record below. Selection alone does not save them."
+            "Add anything that may help your investigation. You can inspect,",
+            "order, and export it later without narrowing the collection here."
           ),
-          uiOutput(ns("keep_controls"))
-        ),
-        div(
-          class = "compare-keep-status",
-          icon("bookmark"),
-          textOutput(ns("keep_count"), inline = TRUE)
+          textOutput(ns("portfolio_status"), inline = TRUE)
         )
       )
     ),
@@ -868,11 +1057,11 @@ compare_ui <- function(id) {
     ),
     tags$section(
       class = "compare-reasoning-band",
-      span(class = "workspace-label", "Interpret before exporting"),
+      span(class = "workspace-label", "Interpret while you investigate"),
       h2("Record the claim and its boundary"),
       p(
-        "A useful evidence item needs both an interpretation and a caveat.",
-        "These prompts are optional, but they make later report writing much easier."
+        "These prompts are optional. Recording an interpretation and a caveat",
+        "now can make the comparison easier to understand when you return later."
       ),
       div(
         class = "compare-reasoning-grid",
@@ -897,31 +1086,80 @@ compare_ui <- function(id) {
       ),
       actionButton(
         ns("save_reasoning"),
-        "Save comparison notes",
+        "Add note to Evidence Portfolio",
         icon = icon("note-sticky"),
-        class = "btn-default",
-        disabled = "disabled",
-        `aria-disabled` = "true"
+        class = "btn-default"
       ),
-      div(
-        class = "compare-preview-note",
-        icon("circle-info"),
-        span(
-          "Design preview: the evidence bundle is visible here, but saving it",
-          "into Evidence Studio is enabled in the next build stage."
-        )
-      )
+      textOutput(ns("note_status"), inline = TRUE)
     )
   )
 }
 
 compare_server <- function(id, project = NULL) {
   moduleServer(id, function(input, output, session) {
+    event_counter <- reactiveVal(0L)
+    portfolio_event <- reactiveVal(NULL)
+    portfolio_status <- reactiveVal(
+      "Choose an action to add evidence to your portfolio."
+    )
+    note_status <- reactiveVal("")
+    registered_library_families <- new.env(parent = emptyenv())
+    project_value <- reactive({
+      if (is.function(project)) project() else project
+    })
+    live_catalog <- reactive({
+      compare_live_catalog(project_value())
+    })
     active_family_id <- reactive({
-      compare_or(input$family, "future")
+      available <- names(live_catalog())
+      requested <- compare_or(input$family, NULL)
+      if (!is.null(requested) && requested %in% c(available, "context")) {
+        return(requested)
+      }
+      if (length(available)) available[[1L]] else "context"
+    })
+    active_entry <- reactive({
+      if (identical(active_family_id(), "context")) return(NULL)
+      live_catalog()[[active_family_id()]]
     })
     active_family <- reactive({
-      compare_probe_family(active_family_id())
+      entry <- active_entry()
+      if (is.null(entry)) compare_probe_family("context") else entry$family
+    })
+    publish_portfolio <- function(kind, title, view_id, note = NULL) {
+      candidate <- project_value()
+      entry <- active_entry()
+      if (is.null(candidate) || is.null(entry)) {
+        return(FALSE)
+      }
+      run_ids <- vapply(entry$comparison$runs, `[[`, character(1), "run_id")
+      n <- shiny::isolate(event_counter()) + 1L
+      event_counter(n)
+      portfolio_event(list(
+        ok = TRUE,
+        action = "add",
+        kind = kind,
+        source_family_id = entry$comparison$family_id,
+        source_run_ids = run_ids,
+        view_id = view_id,
+        title = title,
+        note = note,
+        base_project_fingerprint = candidate$project_fingerprint,
+        event_id = n,
+        message = paste(title, "added to the Evidence Portfolio.")
+      ))
+      portfolio_status(paste(title, "sent to the portfolio."))
+      TRUE
+    }
+
+    output$family_control <- renderUI({
+      choices <- compare_live_choices(live_catalog())
+      selectInput(
+        session$ns("family"),
+        "Active comparison",
+        choices = choices,
+        selected = active_family_id()
+      )
     })
 
     observeEvent(input$open_help, {
@@ -930,8 +1168,82 @@ compare_server <- function(id, project = NULL) {
     observeEvent(input$open_library, {
       showModal(compare_run_library_modal(session$ns))
     })
-    observeEvent(input$open_evidence_help, {
-      showModal(compare_evidence_help_modal())
+    observeEvent(live_catalog(), {
+      family_ids <- names(live_catalog())
+      new_ids <- family_ids[!vapply(
+        family_ids,
+        exists,
+        logical(1),
+        envir = registered_library_families,
+        inherits = FALSE
+      )]
+      lapply(new_ids, function(value) {
+        local({
+          family_id <- value
+          input_id <- paste0(
+            "select_family_",
+            gsub("[^A-Za-z0-9_-]", "_", family_id)
+          )
+          registered_library_families[[family_id]] <- TRUE
+          observeEvent(input[[input_id]], {
+            updateSelectInput(
+              session,
+              "family",
+              selected = family_id
+            )
+            removeModal()
+          }, ignoreInit = TRUE)
+        })
+      })
+    }, ignoreInit = FALSE)
+    observeEvent(input$add_plot, {
+      view <- compare_or(input$view, "population")
+      view_choices <- compare_view_choices(active_family_id())
+      view_label <- names(view_choices)[match(view, unname(view_choices))]
+      title <- paste(active_family()$label, "-", view_label)
+      if (!publish_portfolio("plot", title, view)) {
+        showNotification(
+          "Complete a matched family in Investigate before adding this plot.",
+          type = "warning"
+        )
+      }
+    })
+    observeEvent(input$add_table, {
+      title <- paste(active_family()$label, "- comparison table")
+      if (!publish_portfolio("table", title, "comparison_table")) {
+        showNotification(
+          "Complete a matched family in Investigate before adding this table.",
+          type = "warning"
+        )
+      }
+    })
+    observeEvent(input$save_reasoning, {
+      interpretation <- trimws(compare_or(input$interpretation, ""))
+      caveat <- trimws(compare_or(input$caveat, ""))
+      if (!nzchar(interpretation) && !nzchar(caveat)) {
+        note_status("Add an interpretation or caveat before saving a note.")
+        return()
+      }
+      title <- paste(active_family()$label, "- comparison note")
+      saved <- publish_portfolio(
+        "observation",
+        title,
+        "comparison_note",
+        paste(
+          c(
+            if (nzchar(interpretation)) {
+              paste("Interpretation:", interpretation)
+            },
+            if (nzchar(caveat)) paste("Caveat:", caveat)
+          ),
+          collapse = "\n"
+        )
+      )
+      if (saved) {
+        note_status("Note sent to the Evidence Portfolio.")
+      } else {
+        note_status("Complete a matched family before saving this note.")
+      }
     })
 
     output$family_summary <- renderUI({
@@ -1073,7 +1385,7 @@ compare_server <- function(id, project = NULL) {
     output$response_plot <- renderPlot({
       family <- active_family()
       req(family$compatible)
-      if (identical(family$id, "sensitivity")) {
+      if (identical(family$group, "Sensitivity")) {
         investigate_sensitivity_probe_plot(family$evidence$response)
       } else {
         compare_management_response_plot(family$evidence)
@@ -1084,22 +1396,7 @@ compare_server <- function(id, project = NULL) {
       compare_probe_table(active_family())
     }, striped = TRUE, bordered = FALSE, spacing = "s", rownames = FALSE)
 
-    output$keep_controls <- renderUI({
-      plot_label <- if (identical(active_family_id(), "context")) {
-        "Current context overview"
-      } else {
-        "Current plot"
-      }
-      checkboxGroupInput(
-        session$ns("keep_items"),
-        label = NULL,
-        choices = stats::setNames(
-          c("plot", "table"),
-          c(plot_label, "Compact comparison table")
-        ),
-        selected = compare_or(input$keep_items, character())
-      )
-    })
+    output$portfolio_status <- renderText(portfolio_status())
 
     output$table_note <- renderUI({
       family <- active_family()
@@ -1126,24 +1423,10 @@ compare_server <- function(id, project = NULL) {
       )
     })
 
-    output$keep_count <- renderText({
-      count <- length(compare_or(input$keep_items, character()))
-      if (count == 0L) {
-        "No evidence selected yet"
-      } else {
-        paste0(
-          count,
-          if (count == 1L) {
-            " item selected for this comparison note"
-          } else {
-            " items selected for this comparison note"
-          }
-        )
-      }
-    })
+    output$note_status <- renderText(note_status())
 
     output$library_results <- renderUI({
-      library <- compare_run_library()
+      library <- compare_run_library(project_value(), live_catalog())
       search <- tolower(trimws(compare_or(input$library_search, "")))
       type <- compare_or(input$library_type, "all")
       keep <- rep(TRUE, nrow(library))
@@ -1156,29 +1439,41 @@ compare_server <- function(id, project = NULL) {
       if (nrow(library) == 0L) {
         return(div(
           class = "compare-library-empty",
-          "No representative runs match this search."
+          "No completed matched project runs match this search."
         ))
       }
+      first_for_family <- !duplicated(library$family_id)
       div(
         class = "compare-run-library",
         lapply(seq_len(nrow(library)), function(index) {
           row <- library[index, ]
+          active <- identical(row$family_id, active_family_id())
+          input_id <- paste0(
+            "select_family_",
+            gsub("[^A-Za-z0-9_-]", "_", row$family_id)
+          )
           tags$article(
             class = paste(
               "compare-run-card",
-              if (identical(row$family_id, active_family_id())) "is-active" else ""
+              if (active) "is-active" else ""
             ),
             div(
               span(class = "compare-run-type", row$type),
-              if (identical(row$family_id, active_family_id())) {
+              if (active) {
                 span(class = "compare-run-selected", icon("circle-check"), "Active family")
               }
             ),
             h4(row$label),
             p(row$family),
-            tags$small(paste(row$period, "|", ifelse(
-              row$period == "2019-2024", "5-year check", "75-year future"
-            )))
+            tags$small(paste(row$period, "|", "part of one matched comparison")),
+            if (first_for_family[[index]] && !active) {
+              actionButton(
+                session$ns(input_id),
+                "Use this comparison",
+                icon = icon("arrow-right"),
+                class = "btn-default btn-sm"
+              )
+            }
           )
         })
       )
@@ -1187,7 +1482,7 @@ compare_server <- function(id, project = NULL) {
     list(
       family_id = active_family_id,
       family = active_family,
-      evidence_selection = reactive(compare_or(input$keep_items, character()))
+      portfolio_event = reactive(portfolio_event())
     )
   })
 }

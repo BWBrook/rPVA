@@ -58,7 +58,7 @@ test_that("new projects have a stable versioned identity without consuming RNG",
     "project_schema_version", "project_id", "title", "owner_label",
     "created_at", "modified_at", "app_version", "model_version",
     "reference_library_version", "catalog_version", "scenarios",
-    "scenario_versions", "runs", "observations", "evidence_ids",
+    "scenario_versions", "runs", "observations", "evidence_items", "evidence_ids",
     "provenance", "fingerprint_algorithm", "canonicalization_version",
     "project_fingerprint"
   ))
@@ -73,6 +73,7 @@ test_that("new projects have a stable versioned identity without consuming RNG",
   expect_length(first$scenario_versions, 0L)
   expect_length(first$runs, 0L)
   expect_length(first$observations, 0L)
+  expect_length(first$evidence_items, 0L)
   expect_length(first$evidence_ids, 0L)
   expect_identical(first$project_fingerprint, woodhen_project_fingerprint(first))
   expect_silent(validate_woodhen_project(first))
@@ -210,6 +211,144 @@ test_that("observations and evidence selections use a strict ordered namespace",
       title = "Missing run", note = "No evidence", run_ids = "woodhen_run_missing"
     )),
     "Unknown run"
+  )
+})
+
+test_that("typed portfolio items preserve source, view, order, and deduplicate stable evidence", {
+  family <- build_woodhen_sensitivity_family("K", c(350, 250), seed = 92L)
+  project <- new_woodhen_project()
+  for (scenario in family$scenarios) {
+    project <- add_woodhen_scenario(project, scenario)
+  }
+  runs <- lapply(seq_along(family$scenarios), function(index) {
+    project_test_run(family$scenarios[[index]], abundance_shift = -50 * (index - 1L))
+  })
+  for (run in runs) {
+    project <- add_woodhen_run(project, run)
+  }
+  run_ids <- vapply(runs, `[[`, character(1), "run_id")
+  timestamp <- as.POSIXct("2026-07-25 03:00:00", tz = "UTC")
+
+  plot_spec <- list(
+    kind = "plot",
+    source_family_id = family$family_id,
+    source_run_ids = run_ids,
+    view_id = "risk",
+    title = "Risk below 100 breeding pairs",
+    observation_id = NULL
+  )
+  with_plot <- add_woodhen_evidence_item(project, plot_spec, now = timestamp)
+  plot_item <- with_plot$evidence_items[[1L]]
+
+  expect_named(plot_item, c(
+    "evidence_schema_version", "evidence_id", "kind", "source_family_id",
+    "source_run_ids", "view_id", "title", "observation_id",
+    "created_at", "modified_at"
+  ))
+  expect_match(plot_item$evidence_id, "^woodhen_evidence_[0-9a-f]{16}$")
+  expect_equal(plot_item$kind, "plot")
+  expect_equal(plot_item$source_run_ids, run_ids)
+  expect_equal(plot_item$view_id, "risk")
+  expect_identical(with_plot$evidence_ids, plot_item$evidence_id)
+  expect_identical(
+    add_woodhen_evidence_item(with_plot, plot_spec, now = timestamp + 60),
+    with_plot
+  )
+
+  table_spec <- plot_spec
+  table_spec$kind <- "table"
+  table_spec$view_id <- "comparison_table"
+  table_spec$title <- "Sensitivity comparison table"
+  with_table <- add_woodhen_evidence_item(with_plot, table_spec, now = timestamp + 60)
+  table_item <- with_table$evidence_items[[2L]]
+  expect_false(identical(table_item$evidence_id, plot_item$evidence_id))
+
+  observed <- add_woodhen_observation(with_table, list(
+    title = "Capacity interpretation",
+    note = "The warning risk increased as breeding capacity fell.",
+    run_ids = run_ids
+  ), now = timestamp + 120)
+  observation <- observed$observations[[1L]]
+  note_spec <- list(
+    kind = "observation",
+    source_family_id = family$family_id,
+    source_run_ids = run_ids,
+    view_id = "comparison_note",
+    title = observation$title,
+    observation_id = observation$observation_id
+  )
+  with_note <- add_woodhen_evidence_item(observed, note_spec, now = timestamp + 180)
+  note_item <- with_note$evidence_items[[3L]]
+  expect_equal(note_item$observation_id, observation$observation_id)
+
+  reordered <- select_woodhen_evidence(
+    with_note,
+    c(note_item$evidence_id, plot_item$evidence_id, table_item$evidence_id),
+    now = timestamp + 240
+  )
+  expect_identical(
+    reordered$evidence_ids,
+    c(note_item$evidence_id, plot_item$evidence_id, table_item$evidence_id)
+  )
+  removed <- remove_woodhen_evidence_item(
+    reordered,
+    plot_item$evidence_id,
+    now = timestamp + 300
+  )
+  expect_identical(
+    vapply(removed$evidence_items, `[[`, character(1), "evidence_id"),
+    c(table_item$evidence_id, note_item$evidence_id)
+  )
+  expect_identical(
+    removed$evidence_ids,
+    c(note_item$evidence_id, table_item$evidence_id)
+  )
+  expect_error(
+    add_woodhen_evidence_item(project, within(plot_spec, {
+      source_run_ids <- "woodhen_run_missing"
+    })),
+    "Unknown run"
+  )
+  expect_error(
+    add_woodhen_evidence_item(project, within(plot_spec, {
+      view_id <- "internal_widget_17"
+    })),
+    "view_id"
+  )
+  expect_error(
+    add_woodhen_evidence_item(project, within(plot_spec, {
+      kind <- "table"
+    })),
+    "kind|plot",
+    ignore.case = TRUE
+  )
+  expect_error(
+    add_woodhen_evidence_item(project, within(plot_spec, {
+      kind <- "table"
+      view_id <- "calibration_summary"
+    })),
+    "reference|calibrat",
+    ignore.case = TRUE
+  )
+  expect_error(
+    add_woodhen_evidence_item(project, within(plot_spec, {
+      source_run_ids <- source_run_ids[[1L]]
+      view_id <- "comparison_table"
+      kind <- "table"
+    })),
+    "complete|comparison",
+    ignore.case = TRUE
+  )
+  expect_error(
+    add_woodhen_evidence_item(observed, within(note_spec, {
+      view_id <- "calibration_summary"
+    })),
+    "observation|saved note|view",
+    ignore.case = TRUE
+  )
+  expect_error(
+    remove_woodhen_evidence_item(project, "woodhen_evidence_0000000000000000"),
+    "Unknown portfolio"
   )
 })
 
@@ -864,7 +1003,8 @@ test_that("unsupported package versions raise structured conditions", {
 test_that("portable project API is exported from the source namespace", {
   required <- c(
     "new_woodhen_project", "validate_woodhen_project", "add_woodhen_scenario",
-    "add_woodhen_run", "add_woodhen_observation", "select_woodhen_evidence",
+    "add_woodhen_run", "add_woodhen_observation", "add_woodhen_evidence_item",
+    "remove_woodhen_evidence_item", "select_woodhen_evidence",
     "woodhen_project_fingerprint", "write_woodhen_project_package",
     "read_woodhen_project_package"
   )

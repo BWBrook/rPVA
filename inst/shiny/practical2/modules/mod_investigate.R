@@ -2320,7 +2320,8 @@ investigate_ui <- function(id) {
         h3("Record what changed, what was recovered, and what remains uncertain"),
         p(
           "Your notes do not affect the simulations. Save a concise observation",
-          "when the comparison gives you evidence worth carrying into Compare."
+          "to keep it with this project. You can add useful notes to the Evidence",
+          "Portfolio later from Evidence Studio."
         ),
         investigate_future_observation_prompts(ns)
       )

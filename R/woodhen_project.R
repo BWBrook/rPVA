@@ -110,7 +110,7 @@ woodhen_project_fields <- function() {
     "project_schema_version", "project_id", "title", "owner_label",
     "created_at", "modified_at", "app_version", "model_version",
     "reference_library_version", "catalog_version", "scenarios",
-    "scenario_versions", "runs", "observations", "evidence_ids",
+    "scenario_versions", "runs", "observations", "evidence_items", "evidence_ids",
     "provenance", "fingerprint_algorithm", "canonicalization_version",
     "project_fingerprint"
   )
@@ -148,6 +148,7 @@ new_woodhen_project <- function(title = NULL, owner_label = NULL, now = Sys.time
       scenario_versions = list(),
       runs = list(),
       observations = list(),
+      evidence_items = list(),
       evidence_ids = character(),
       provenance = list(imports = list(), exports = list()),
       fingerprint_algorithm = "sha256",
@@ -748,6 +749,214 @@ woodhen_project_validate_observation <- function(value, run_ids) {
   invisible(value)
 }
 
+woodhen_evidence_view_ids <- function() {
+  c(
+    "population", "risk", "final", "passage", "response",
+    "comparison_table", "comparison_note", "saved_observation",
+    "calibration_trajectory", "calibration_risk", "calibration_timing",
+    "calibration_summary", "calibration_comparison_table"
+  )
+}
+
+woodhen_evidence_view_kind <- function(view_id) {
+  if (view_id %in% c(
+    "population", "risk", "final", "passage", "response",
+    "calibration_trajectory", "calibration_risk", "calibration_timing"
+  )) {
+    return("plot")
+  }
+  if (view_id %in% c(
+    "comparison_table", "calibration_summary",
+    "calibration_comparison_table"
+  )) {
+    return("table")
+  }
+  "observation"
+}
+
+woodhen_project_validate_evidence_source <- function(value, source_runs) {
+  expected_kind <- woodhen_evidence_view_kind(value$view_id)
+  if (!identical(value$kind, expected_kind)) {
+    stop(
+      "Evidence-item kind does not match its plot, table, or observation view.",
+      call. = FALSE
+    )
+  }
+
+  if (identical(value$view_id, "saved_observation")) {
+    return(invisible(value))
+  }
+
+  if (value$view_id %in% c(
+    "calibration_trajectory", "calibration_risk",
+    "calibration_timing", "calibration_summary"
+  )) {
+    if (length(source_runs) != 1L ||
+        !identical(source_runs[[1L]]$scenario_type, "reference")) {
+      stop(
+        "A Calibrate result view requires exactly one reference run.",
+        call. = FALSE
+      )
+    }
+    return(invisible(value))
+  }
+
+  if (identical(value$view_id, "calibration_comparison_table")) {
+    scenario_ids <- vapply(
+      source_runs,
+      `[[`,
+      character(1),
+      "scenario_id"
+    )
+    if (!identical(
+      scenario_ids,
+      c("01_no_mgmt", "02_pig_control", "03_captive_pig")
+    )) {
+      stop(
+        "The Calibrate comparison table requires the complete ordered 1980 reference set.",
+        call. = FALSE
+      )
+    }
+    return(invisible(value))
+  }
+
+  scenario_types <- vapply(
+    source_runs,
+    `[[`,
+    character(1),
+    "scenario_type"
+  )
+  valid_shape <- length(source_runs) == 3L && (
+    identical(
+      scenario_types,
+      c("locked_baseline", "sensitivity", "sensitivity")
+    ) ||
+      identical(
+        scenario_types,
+        c("locked_baseline", "threat", "intervention")
+      )
+  )
+  compatibility_issues <- if (valid_shape) {
+    woodhen_family_compatibility_issues(
+      source_runs,
+      value$source_family_id
+    )
+  } else {
+    "incomplete family"
+  }
+  if (!valid_shape || length(compatibility_issues)) {
+    stop(
+      "Comparison evidence requires one complete compatible three-run family.",
+      call. = FALSE
+    )
+  }
+  invisible(value)
+}
+
+woodhen_evidence_item_id <- function(kind,
+                                     source_family_id,
+                                     source_run_ids,
+                                     view_id,
+                                     observation_id) {
+  paste0(
+    "woodhen_evidence_",
+    substr(woodhen_content_fingerprint(list(
+      kind = kind,
+      source_family_id = source_family_id,
+      source_run_ids = source_run_ids,
+      view_id = view_id,
+      observation_id = observation_id
+    )), 1L, 16L)
+  )
+}
+
+woodhen_project_validate_evidence_item <- function(value,
+                                                   runs,
+                                                   observations) {
+  woodhen_require_exact_fields(
+    value,
+    c(
+      "evidence_schema_version", "evidence_id", "kind", "source_family_id",
+      "source_run_ids", "view_id", "title", "observation_id",
+      "created_at", "modified_at"
+    ),
+    "evidence item"
+  )
+  woodhen_project_validate_version(
+    value$evidence_schema_version,
+    "evidence_schema_version",
+    "woodhen-evidence-item-v1"
+  )
+  woodhen_project_validate_id(
+    value$evidence_id,
+    "^woodhen_evidence_[0-9a-f]{16}$",
+    "evidence item$evidence_id"
+  )
+  if (!is.character(value$kind) || length(value$kind) != 1L ||
+      !value$kind %in% c("plot", "table", "observation")) {
+    stop("`evidence item$kind` must be plot, table, or observation.", call. = FALSE)
+  }
+  woodhen_project_scalar_text(value$source_family_id, "evidence item$source_family_id")
+  if (!is.character(value$source_run_ids) || length(value$source_run_ids) < 1L ||
+      anyNA(value$source_run_ids) || any(!nzchar(value$source_run_ids)) ||
+      anyDuplicated(value$source_run_ids)) {
+    stop(
+      "`evidence item$source_run_ids` must be an ordered duplicate-free run ID vector.",
+      call. = FALSE
+    )
+  }
+  known_run_ids <- vapply(runs, `[[`, character(1), "run_id")
+  unknown <- setdiff(value$source_run_ids, known_run_ids)
+  if (length(unknown)) {
+    stop("Unknown run ID in evidence item: ", unknown[[1L]], call. = FALSE)
+  }
+  source_runs <- runs[match(value$source_run_ids, known_run_ids)]
+  if (any(!vapply(source_runs, function(run) {
+    identical(run$family_id, value$source_family_id)
+  }, logical(1)))) {
+    stop("Evidence-item runs must belong to its source family.", call. = FALSE)
+  }
+  if (!is.character(value$view_id) || length(value$view_id) != 1L ||
+      !value$view_id %in% woodhen_evidence_view_ids()) {
+    stop("`evidence item$view_id` is unsupported.", call. = FALSE)
+  }
+  woodhen_project_validate_evidence_source(value, source_runs)
+  woodhen_project_scalar_text(value$title, "evidence item$title")
+  if (identical(value$kind, "observation")) {
+    woodhen_project_validate_id(
+      value$observation_id,
+      "^woodhen_observation_[0-9a-f]{16}$",
+      "evidence item$observation_id"
+    )
+    observation_ids <- vapply(observations, `[[`, character(1), "observation_id")
+    observation_index <- match(value$observation_id, observation_ids)
+    if (is.na(observation_index)) {
+      stop("Unknown observation ID in evidence item.", call. = FALSE)
+    }
+    if (!identical(
+      observations[[observation_index]]$run_ids,
+      value$source_run_ids
+    )) {
+      stop("Evidence-item note runs must match its saved observation.", call. = FALSE)
+    }
+  } else if (!is.null(value$observation_id)) {
+    stop("Plot and table evidence items cannot name an observation.", call. = FALSE)
+  }
+  expected_id <- woodhen_evidence_item_id(
+    value$kind,
+    value$source_family_id,
+    value$source_run_ids,
+    value$view_id,
+    value$observation_id
+  )
+  if (!identical(value$evidence_id, expected_id)) {
+    stop("`evidence item$evidence_id` does not match its stable source and view.", call. = FALSE)
+  }
+  woodhen_project_time(value$created_at, "evidence item$created_at")
+  woodhen_project_time(value$modified_at, "evidence item$modified_at")
+  invisible(value)
+}
+
 woodhen_project_validate_provenance <- function(provenance) {
   woodhen_require_exact_fields(provenance, c("imports", "exports"), "project$provenance")
   if (!is.list(provenance$imports) || !is.list(provenance$exports)) {
@@ -829,7 +1038,9 @@ validate_woodhen_project <- function(project) {
     stop("The project fingerprint metadata is unsupported.", call. = FALSE)
   }
   if (any(!vapply(
-    project[c("scenarios", "scenario_versions", "runs", "observations")],
+    project[c(
+      "scenarios", "scenario_versions", "runs", "observations", "evidence_items"
+    )],
     is.list,
     logical(1)
   ))) {
@@ -888,11 +1099,26 @@ validate_woodhen_project <- function(project) {
   if (anyDuplicated(observation_ids)) {
     stop("Project observation IDs must be unique.", call. = FALSE)
   }
+  lapply(
+    project$evidence_items,
+    woodhen_project_validate_evidence_item,
+    runs = project$runs,
+    observations = project$observations
+  )
+  evidence_item_ids <- vapply(
+    project$evidence_items,
+    `[[`,
+    character(1),
+    "evidence_id"
+  )
+  if (anyDuplicated(evidence_item_ids)) {
+    stop("Project portfolio evidence IDs must be unique.", call. = FALSE)
+  }
   if (!is.character(project$evidence_ids) || anyNA(project$evidence_ids) ||
       any(!nzchar(project$evidence_ids)) || anyDuplicated(project$evidence_ids)) {
     stop("Project evidence IDs must be an ordered duplicate-free character vector.", call. = FALSE)
   }
-  evidence_namespace <- c(run_ids, observation_ids)
+  evidence_namespace <- c(run_ids, observation_ids, evidence_item_ids)
   unknown_evidence <- setdiff(project$evidence_ids, evidence_namespace)
   if (length(unknown_evidence)) {
     stop("Unknown evidence ID: ", unknown_evidence[[1L]], call. = FALSE)
@@ -1038,10 +1264,111 @@ add_woodhen_observation <- function(project, observation, now = Sys.time()) {
   woodhen_project_refresh(candidate, timestamp)
 }
 
+#' Add a typed plot, table, or note to the Evidence Portfolio
+#'
+#' @param project A validated project.
+#' @param item A list containing exactly `kind`, `source_family_id`,
+#'   `source_run_ids`, `view_id`, `title`, and `observation_id`.
+#' @param now Portfolio modification time.
+#' @return A new validated project list, or the original for identical evidence.
+#' @export
+add_woodhen_evidence_item <- function(project, item, now = Sys.time()) {
+  validate_woodhen_project(project)
+  woodhen_require_exact_fields(
+    item,
+    c(
+      "kind", "source_family_id", "source_run_ids", "view_id", "title",
+      "observation_id"
+    ),
+    "item"
+  )
+  timestamp <- woodhen_project_time(now, "now")
+  value <- list(
+    evidence_schema_version = "woodhen-evidence-item-v1",
+    evidence_id = woodhen_evidence_item_id(
+      item$kind,
+      item$source_family_id,
+      item$source_run_ids,
+      item$view_id,
+      item$observation_id
+    ),
+    kind = item$kind,
+    source_family_id = item$source_family_id,
+    source_run_ids = item$source_run_ids,
+    view_id = item$view_id,
+    title = item$title,
+    observation_id = item$observation_id,
+    created_at = timestamp,
+    modified_at = timestamp
+  )
+  woodhen_project_validate_evidence_item(
+    value,
+    runs = project$runs,
+    observations = project$observations
+  )
+  evidence_item_ids <- vapply(
+    project$evidence_items,
+    `[[`,
+    character(1),
+    "evidence_id"
+  )
+  existing <- match(value$evidence_id, evidence_item_ids)
+  candidate <- project
+  if (!is.na(existing)) {
+    stable_fields <- setdiff(names(value), c("created_at", "modified_at"))
+    if (!identical(
+      project$evidence_items[[existing]][stable_fields],
+      value[stable_fields]
+    )) {
+      stop("Portfolio evidence ID collision with different content.", call. = FALSE)
+    }
+    if (value$evidence_id %in% project$evidence_ids) {
+      return(project)
+    }
+  } else {
+    candidate$evidence_items[[length(candidate$evidence_items) + 1L]] <- value
+  }
+  candidate$evidence_ids <- c(candidate$evidence_ids, value$evidence_id)
+  woodhen_project_refresh(candidate, timestamp)
+}
+
+#' Remove a typed item from the Evidence Portfolio
+#'
+#' Source runs and saved observations remain in the investigation project.
+#'
+#' @param project A validated project.
+#' @param evidence_id A typed portfolio evidence ID.
+#' @param now Portfolio modification time.
+#' @return A new validated project list.
+#' @export
+remove_woodhen_evidence_item <- function(project, evidence_id, now = Sys.time()) {
+  validate_woodhen_project(project)
+  woodhen_project_validate_id(
+    evidence_id,
+    "^woodhen_evidence_[0-9a-f]{16}$",
+    "evidence_id"
+  )
+  evidence_item_ids <- vapply(
+    project$evidence_items,
+    `[[`,
+    character(1),
+    "evidence_id"
+  )
+  index <- match(evidence_id, evidence_item_ids)
+  if (is.na(index)) {
+    stop("Unknown portfolio evidence ID: ", evidence_id, call. = FALSE)
+  }
+  candidate <- project
+  candidate$evidence_items <- candidate$evidence_items[-index]
+  candidate$evidence_ids <- setdiff(candidate$evidence_ids, evidence_id)
+  woodhen_project_refresh(candidate, now)
+}
+
 #' Select ordered project evidence
 #'
 #' @param project A validated project.
-#' @param evidence_ids An ordered duplicate-free vector of run and observation IDs.
+#' @param evidence_ids An ordered duplicate-free vector of run, observation, or
+#'   typed portfolio evidence IDs.
 #' @param now Modification time.
 #' @return A new validated project list.
 #' @export
@@ -1056,7 +1383,8 @@ select_woodhen_evidence <- function(project, evidence_ids, now = Sys.time()) {
   }
   namespace <- c(
     vapply(project$runs, `[[`, character(1), "run_id"),
-    vapply(project$observations, `[[`, character(1), "observation_id")
+    vapply(project$observations, `[[`, character(1), "observation_id"),
+    vapply(project$evidence_items, `[[`, character(1), "evidence_id")
   )
   unknown <- setdiff(evidence_ids, namespace)
   if (length(unknown)) {
@@ -1593,12 +1921,22 @@ read_woodhen_project_browser_snapshot <- function(
   document <- woodhen_json_parse(bytes, "browser snapshot")
   woodhen_validate_project_document(document)
   candidate <- woodhen_typed_decode(document$payload, "browser snapshot$payload")
+  upgraded <- woodhen_project_upgrade_evidence_items(candidate)
+  candidate <- upgraded$project
   candidate <- woodhen_project_restore_schema_order(candidate)
   validate_woodhen_project(candidate)
-  for (field in c("project_schema_version", "project_id", "project_fingerprint")) {
+  for (field in c("project_schema_version", "project_id")) {
     if (!identical(candidate[[field]], document[[field]])) {
       stop("Browser snapshot metadata mismatch for `", field, "`.", call. = FALSE)
     }
+  }
+  source_fingerprint <- if (is.null(upgraded$source_fingerprint)) {
+    candidate$project_fingerprint
+  } else {
+    upgraded$source_fingerprint
+  }
+  if (!identical(source_fingerprint, document$project_fingerprint)) {
+    stop("Browser snapshot metadata mismatch for `project_fingerprint`.", call. = FALSE)
   }
   candidate
 }
@@ -1836,6 +2174,25 @@ woodhen_project_reorder_fields <- function(value, expected) {
   value
 }
 
+woodhen_project_upgrade_evidence_items <- function(project) {
+  legacy_fields <- setdiff(woodhen_project_fields(), "evidence_items")
+  if ("evidence_items" %in% names(project) ||
+      !setequal(names(project), legacy_fields)) {
+    return(list(project = project, source_fingerprint = NULL))
+  }
+  source_fingerprint <- project$project_fingerprint
+  if (!identical(source_fingerprint, woodhen_project_fingerprint(project))) {
+    stop(
+      "The pre-portfolio project fingerprint does not match its stable content.",
+      call. = FALSE
+    )
+  }
+  project$evidence_items <- list()
+  project <- woodhen_project_reorder_fields(project, woodhen_project_fields())
+  project$project_fingerprint <- woodhen_project_fingerprint(project)
+  list(project = project, source_fingerprint = source_fingerprint)
+}
+
 woodhen_project_restore_scenario_order <- function(scenario) {
   scenario <- woodhen_project_reorder_fields(
     scenario,
@@ -1984,6 +2341,13 @@ woodhen_project_restore_schema_order <- function(project) {
       "run_ids", "created_at", "modified_at"
     ))
   })
+  project$evidence_items <- lapply(project$evidence_items, function(value) {
+    woodhen_project_reorder_fields(value, c(
+      "evidence_schema_version", "evidence_id", "kind", "source_family_id",
+      "source_run_ids", "view_id", "title", "observation_id",
+      "created_at", "modified_at"
+    ))
+  })
   project$provenance <- woodhen_project_reorder_fields(
     project$provenance, c("imports", "exports")
   )
@@ -2103,12 +2467,25 @@ read_woodhen_project_package <- function(
   }
 
   candidate <- woodhen_typed_decode(document$payload, "project.json$payload")
+  upgraded <- woodhen_project_upgrade_evidence_items(candidate)
+  candidate <- upgraded$project
   candidate <- woodhen_project_restore_schema_order(candidate)
   validate_woodhen_project(candidate)
-  for (field in c("project_schema_version", "project_id", "project_fingerprint")) {
+  for (field in c("project_schema_version", "project_id")) {
     if (!identical(candidate[[field]], document[[field]])) {
       stop("Decoded project metadata mismatch for `", field, "`.", call. = FALSE)
     }
+  }
+  source_fingerprint <- if (is.null(upgraded$source_fingerprint)) {
+    candidate$project_fingerprint
+  } else {
+    upgraded$source_fingerprint
+  }
+  if (!identical(source_fingerprint, document$project_fingerprint)) {
+    stop(
+      "Decoded project metadata mismatch for `project_fingerprint`.",
+      call. = FALSE
+    )
   }
   version_fields <- c(
     "app_version", "model_version", "reference_library_version", "catalog_version"
@@ -2125,7 +2502,7 @@ read_woodhen_project_package <- function(
     imported_at = imported_at,
     package_format_version = manifest$package_format_version,
     source_project_id = candidate$project_id,
-    source_project_fingerprint = candidate$project_fingerprint
+    source_project_fingerprint = manifest$project_fingerprint
   )
   validate_woodhen_project(candidate)
   candidate

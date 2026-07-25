@@ -38,6 +38,249 @@ calibrate_abundance_ylim <- function(quantiles) {
   c(0, max(1, ceiling(upper * 1.05)))
 }
 
+calibrate_plot_trajectory <- function(run,
+                                      reference_id = run$scenario_id) {
+  quantiles <- run$annual_quantiles
+  calendar_years <- calibrate_calendar_years(reference_id, quantiles$year)
+  abundance_ylim <- calibrate_abundance_ylim(quantiles)
+  if (identical(reference_id, "04_rodent_eradication")) {
+    recovery <- rPVA:::woodhen_calibration_history()$recovery_2019_2024
+    observed <- recovery$observed_points
+    released <- recovery$release_marker
+    abundance_ylim[[2L]] <- max(
+      abundance_ylim[[2L]],
+      1.08 * max(observed$abundance)
+    )
+  }
+  old_par <- graphics::par(no.readonly = TRUE)
+  on.exit(graphics::par(old_par), add = TRUE)
+  graphics::par(mar = c(4.2, 4.6, 3.2, 1.2), mgp = c(2.7, 0.8, 0), las = 1)
+  graphics::plot(
+    calendar_years, quantiles$median,
+    type = "l", lwd = 2, col = "#126a73",
+    xlab = "Year", ylab = "Number of birds",
+    main = if (identical(reference_id, "04_rodent_eradication")) {
+      "Reconstructed recovery and survey record"
+    } else {
+      "Abundance through time"
+    },
+    ylim = abundance_ylim, xaxt = "n", xaxs = "i", yaxs = "i"
+  )
+  graphics::polygon(
+    c(calendar_years, rev(calendar_years)),
+    c(quantiles$q025, rev(quantiles$q975)),
+    col = grDevices::adjustcolor("#7fb6b3", alpha.f = 0.35),
+    border = NA
+  )
+  graphics::lines(calendar_years, quantiles$median, lwd = 2, col = "#126a73")
+  graphics::axis(1, at = calibrate_calendar_ticks(reference_id))
+  if (identical(reference_id, "04_rodent_eradication")) {
+    graphics::points(
+      calibrate_calendar_years(reference_id, observed$projection_year),
+      observed$abundance,
+      pch = 21, bg = "#f2c14e", col = "#5f4300", cex = 1.25
+    )
+    graphics::points(
+      calibrate_calendar_years(reference_id, released$projection_year),
+      released$abundance,
+      pch = 24, bg = "#315c88", col = "#183a58", cex = 1.25
+    )
+    graphics::legend(
+      "topleft",
+      c(
+        "Model median", "95% simulation interval",
+        "Reported survey counts", "208 released"
+      ),
+      lwd = c(2, NA, NA, NA), pch = c(NA, 15, 21, 24),
+      pt.bg = c(
+        NA, grDevices::adjustcolor("#7fb6b3", alpha.f = 0.35),
+        "#f2c14e", "#315c88"
+      ),
+      col = c(
+        "#126a73", grDevices::adjustcolor("#7fb6b3", alpha.f = 0.35),
+        "#5f4300", "#183a58"
+      ),
+      bty = "n", cex = 0.78
+    )
+  } else {
+    graphics::legend(
+      "topleft", c("Median", "95% simulation interval"),
+      lwd = c(2, NA), pch = c(NA, 15),
+      pt.bg = c(NA, grDevices::adjustcolor("#7fb6b3", alpha.f = 0.35)),
+      col = c(
+        "#126a73",
+        grDevices::adjustcolor("#7fb6b3", alpha.f = 0.35)
+      ),
+      bty = "n", cex = 0.8
+    )
+  }
+  invisible(NULL)
+}
+
+calibrate_plot_risk <- function(run,
+                                reference_id = run$scenario_id) {
+  extinction <- run$extinction_evidence$cumulative
+  calendar_years <- calibrate_calendar_years(reference_id, extinction$year)
+  old_par <- graphics::par(no.readonly = TRUE)
+  on.exit(graphics::par(old_par), add = TRUE)
+  graphics::par(mar = c(4.2, 4.6, 3.2, 1.2), mgp = c(2.7, 0.8, 0), las = 1)
+  graphics::plot(
+    calendar_years, extinction$probability,
+    type = "l", lwd = 2, col = "#a63d40", ylim = c(0, 1),
+    xlab = "Year", ylab = "Cumulative probability",
+    main = "Cumulative risk through time",
+    xaxt = "n", yaxt = "n", xaxs = "i", yaxs = "i"
+  )
+  graphics::axis(1, at = calibrate_calendar_ticks(reference_id))
+  graphics::axis(
+    2,
+    at = seq(0, 1, by = 0.2),
+    labels = sprintf("%.1f", seq(0, 1, by = 0.2)),
+    las = 1
+  )
+  graphics::abline(h = seq(0, 1, by = 0.2), col = "#d8dfdd", lty = 3)
+  graphics::lines(
+    calendar_years, extinction$probability,
+    lwd = 2, col = "#a63d40"
+  )
+  if (identical(reference_id, "05_future_baseline")) {
+    quasi <- run$quasi_extinction_50_pairs$cumulative
+    graphics::lines(
+      calibrate_calendar_years(reference_id, quasi$year),
+      quasi$probability,
+      lwd = 2, col = "#9a6a14"
+    )
+    graphics::legend(
+      "topleft", c("Extinction", "Below 100 pairs"),
+      col = c("#a63d40", "#9a6a14"), lwd = 2, bty = "n"
+    )
+  } else {
+    graphics::legend(
+      "topleft", "Extinction",
+      col = "#a63d40", lwd = 2, bty = "n"
+    )
+  }
+  invisible(NULL)
+}
+
+calibrate_plot_timing <- function(run,
+                                  reference_id = run$scenario_id) {
+  years <- run$extinction_evidence$first_extinction_year
+  years <- years[!is.na(years)]
+  calendar_range <- calibrate_calendar_years(
+    reference_id,
+    c(0, as.integer(run$horizon))
+  )
+  years <- calibrate_calendar_years(reference_id, years)
+  old_par <- graphics::par(no.readonly = TRUE)
+  on.exit(graphics::par(old_par), add = TRUE)
+  graphics::par(mar = c(4.2, 4.6, 3.2, 1.2), mgp = c(2.7, 0.8, 0), las = 1)
+  if (!length(years)) {
+    graphics::plot(
+      NA, xlim = calendar_range, ylim = c(0, 1),
+      xlab = "Year of extinction", ylab = "Number of simulated futures",
+      main = "When extinction occurred", xaxt = "n", yaxt = "n", xaxs = "i"
+    )
+    graphics::axis(1, at = calibrate_calendar_ticks(reference_id))
+    graphics::axis(2, at = 0)
+    midpoint <- mean(calendar_range)
+    graphics::text(
+      midpoint, 0.52, "No simulated extinctions",
+      cex = 1.05, col = "#4a5b59"
+    )
+    graphics::text(
+      midpoint, 0.39, "All futures persisted to the final year",
+      cex = 0.85, col = "#667572"
+    )
+  } else {
+    graphics::hist(
+      years,
+      breaks = seq(
+        calendar_range[[1L]] - 0.5,
+        calendar_range[[2L]] + 0.5,
+        by = 1
+      ),
+      col = "#d9795f", border = "white",
+      xlim = calendar_range, xaxs = "i", xaxt = "n",
+      xlab = "Year of extinction", ylab = "Number of simulated futures",
+      main = "When extinction occurred"
+    )
+    graphics::axis(1, at = calibrate_calendar_ticks(reference_id))
+    graphics::abline(
+      v = stats::median(years),
+      col = "#7d2528", lwd = 2, lty = 2
+    )
+    graphics::legend(
+      "topright", "Median among extinct futures",
+      col = "#7d2528", lwd = 2, lty = 2, bty = "n", cex = 0.8
+    )
+  }
+  invisible(NULL)
+}
+
+calibrate_summary_table <- function(run,
+                                    reference_id = run$scenario_id) {
+  metrics <- c(
+    "Extinction by the final year",
+    "Final median abundance",
+    "95% simulation interval"
+  )
+  results <- c(
+    sprintf("%.1f%%", 100 * run$extinction_evidence$probability_by_horizon),
+    paste(calibrate_whole_birds(run$final_abundance$median), "birds"),
+    sprintf(
+      "%s - %s birds",
+      calibrate_whole_birds(run$final_abundance$q025),
+      calibrate_whole_birds(run$final_abundance$q975)
+    )
+  )
+  if (identical(reference_id, "05_future_baseline")) {
+    metrics <- c(
+      metrics,
+      "Breeding-territory capacity",
+      "Below 100 breeding pairs by 2100"
+    )
+    results <- c(
+      results,
+      paste(calibrate_whole_birds(run$scenario$spec$K), "pairs"),
+      sprintf(
+        "%.1f%%",
+        100 * run$quasi_extinction_50_pairs$probability_by_horizon
+      )
+    )
+  }
+  if (identical(reference_id, "04_rodent_eradication")) {
+    metrics <- c(metrics, "2024 known minimum")
+    results <- c(results, "1,638 birds")
+  }
+  data.frame(Metric = metrics, Result = results, stringsAsFactors = FALSE)
+}
+
+calibrate_comparison_table <- function(runs) {
+  values <- rPVA:::compare_woodhen_1980_references(runs)$table
+  data.frame(
+    `Reference case` = values$student_label,
+    Extinction = sprintf("%.1f%%", 100 * values$extinction_probability),
+    `Median extinction year` = ifelse(
+      is.na(values$extinction_conditional_median_year),
+      "Not reached",
+      calibrate_year_label(1980 + values$extinction_conditional_median_year)
+    ),
+    `Final median birds` = vapply(
+      values$final_median_abundance,
+      calibrate_whole_birds,
+      character(1)
+    ),
+    `95% interval (birds)` = sprintf(
+      "%s - %s",
+      vapply(values$final_q025, calibrate_whole_birds, character(1)),
+      vapply(values$final_q975, calibrate_whole_birds, character(1))
+    ),
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+}
+
 calibrate_scenario_help_path <- function(reference_id) {
   names <- c(
     `01_no_mgmt` = "01-no-intervention.md",
@@ -120,7 +363,7 @@ calibrate_reference_case_ui <- function(ns, reference_id) {
       ),
       actionButton(
         ns(paste0("save_notes_", reference_id)),
-        "Save observations",
+        "Save notes to project",
         icon = icon("note-sticky"),
         class = "btn-default btn-sm"
       )
@@ -451,7 +694,13 @@ calibrate_server <- function(
             )
             return()
           }
-          set_reference_status(reference_id, "Observations saved to your investigation.")
+          set_reference_status(
+            reference_id,
+            paste(
+              "Notes saved to your project. You can add them to the Evidence",
+              "Portfolio later from Evidence Studio."
+            )
+          )
           publish_update(list(
             ok = TRUE,
             candidate = updated,

@@ -23,6 +23,38 @@ test_that("browser snapshot is deterministic and round-trips without import prov
   expect_length(restored$provenance$exports, 0L)
 })
 
+test_that("browser snapshots from before typed evidence migrate without losing project work", {
+  legacy <- new_woodhen_project(
+    "Existing investigation",
+    "Returning student",
+    now = as.POSIXct("2026-07-22 10:00:00", tz = "UTC")
+  )
+  legacy$evidence_items <- NULL
+  legacy$project_fingerprint <- woodhen_project_fingerprint(legacy)
+  legacy_fingerprint <- legacy$project_fingerprint
+  document <- list(
+    format_version = "woodhen-project-json-v1",
+    project_schema_version = legacy$project_schema_version,
+    project_id = legacy$project_id,
+    project_fingerprint = legacy_fingerprint,
+    payload = woodhen_typed_encode(legacy, "project")
+  )
+
+  restored <- rPVA:::read_woodhen_project_browser_snapshot(
+    browser_snapshot_json(document)
+  )
+
+  expect_length(restored$evidence_items, 0L)
+  expect_identical(restored$title, legacy$title)
+  expect_identical(restored$owner_label, legacy$owner_label)
+  expect_false(identical(restored$project_fingerprint, legacy_fingerprint))
+  expect_identical(
+    restored$project_fingerprint,
+    woodhen_project_fingerprint(restored)
+  )
+  expect_silent(validate_woodhen_project(restored))
+})
+
 test_that("browser snapshot rejects non-scalar, invalid JSON, UTF-8, and byte overflow", {
   project <- new_woodhen_project(now = as.POSIXct("2026-07-22 10:00:00", tz = "UTC"))
   snapshot <- rPVA:::woodhen_project_browser_snapshot(project)
