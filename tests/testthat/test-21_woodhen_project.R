@@ -440,6 +440,20 @@ test_that("typed JSON preserves non-trivial R semantics deterministically", {
   expect_error(woodhen_json_parse(as.raw(c(0x7b, 0x22, 0x61, 0x22, 0x3a, 0xff, 0x7d))), "JSON")
 })
 
+test_that("typed JSON vectorizes long scalar arrays without unboxing scalars", {
+  expect_identical(woodhen_typed_scalar_values(integer()), list())
+  expect_identical(woodhen_typed_scalar_values(1L), list(1L))
+  expect_identical(woodhen_typed_scalar_values(NA_real_), list(NULL))
+  expect_identical(
+    woodhen_typed_scalar_values(c(1L, NA_integer_, 3L)),
+    c(1L, NA_integer_, 3L)
+  )
+  expect_identical(
+    woodhen_typed_scalar_values(c(1, NA_real_, 3.25)),
+    c(sprintf("%a", 1), NA_character_, sprintf("%a", 3.25))
+  )
+})
+
 test_that("portable packages round trip exact scientific and selected evidence", {
   project <- project_test_nontrivial_project()
   first_path <- tempfile(fileext = ".zip")

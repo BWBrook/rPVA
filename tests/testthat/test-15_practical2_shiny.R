@@ -749,6 +749,25 @@ test_that("project download and restore outcomes remain visible in the page stat
   expect_match(app_text, "browser's Downloads folder", fixed = TRUE)
 })
 
+test_that("project restore summaries make recovered content explicit", {
+  env <- source_practical2_app()
+
+  expect_identical(
+    env$project_content_summary(list(
+      runs = list(list(), list()),
+      observations = list(list())
+    )),
+    "2 completed runs and 1 saved observation"
+  )
+  expect_identical(
+    env$project_content_summary(list(
+      runs = list(),
+      observations = list()
+    )),
+    "0 completed runs and 0 saved observations"
+  )
+})
+
 test_that("only the latest Resume response may replace the live project", {
   env <- source_practical2_app()
   first <- practical2_store_fixture(env, "Resume A")

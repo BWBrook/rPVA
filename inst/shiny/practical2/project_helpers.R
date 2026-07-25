@@ -71,8 +71,23 @@ project_store_record <- function(project,
   if (!identical(decoded, canonical_project)) {
     stop("The browser snapshot does not exactly match the live project.", call. = FALSE)
   }
+  project_store_record_from_fresh_snapshot(
+    project,
+    snapshot_json,
+    saved_at,
+    portable_request_fingerprint
+  )
+}
+
+project_store_record_from_fresh_snapshot <- function(
+    project,
+    snapshot_json,
+    saved_at,
+    portable_request_fingerprint = NULL
+) {
+  snapshot_json <- project_store_scalar_text(snapshot_json, "snapshot_json")
   saved_at <- rPVA:::woodhen_project_time(saved_at, "saved_at")
-  project_store_validate_fingerprint(
+  portable_request_fingerprint <- project_store_validate_fingerprint(
     portable_request_fingerprint,
     "portable_request_fingerprint",
     optional = TRUE

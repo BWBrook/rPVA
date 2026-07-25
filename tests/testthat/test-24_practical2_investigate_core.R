@@ -680,6 +680,149 @@ test_that("Investigation module flushes disabled controls and rejects queued sub
   })
 })
 
+test_that("a fresh session restores completed Investigate evidence before selectors settle", {
+  env <- source_investigate_app()
+  project <- investigate_ready_project()
+  family <- build_woodhen_sensitivity_family("K_sd", c(108, 0))
+  completed <- rPVA:::woodhen_run_investigation_family_project(
+    project,
+    family,
+    runner = investigate_test_runner,
+    sample_trajectories = 3L
+  )$project
+  future_family <- env$investigate_build_future_family(
+    "sea_level_rise_pathway",
+    "moderate",
+    NA_real_,
+    "habitat_protection_restoration",
+    "high",
+    NA_real_
+  )
+  completed <- rPVA:::woodhen_run_investigation_family_project(
+    completed,
+    future_family,
+    runner = investigate_test_runner,
+    sample_trajectories = 3L
+  )$project
+  default_row <- woodhen_sensitivity_catalog()
+  default_row <- default_row[default_row$id == "K", , drop = FALSE]
+  default_values <- unname(default_row$anchors[[1L]][c("higher", "lower")])
+  live <- shiny::reactiveVal(NULL)
+
+  shiny::testServer(env$investigate_server, args = list(
+    project = shiny::reactive(live()),
+    scenario_runner = investigate_test_runner
+  ), {
+    session$setInputs(
+      factor_id = "K",
+      sensitivity_first_custom = default_values[[1L]],
+      sensitivity_second_custom = default_values[[2L]],
+      threat_id = "predator_reinvasion",
+      threat_choice = "high",
+      intervention_id = "biosecurity_eradication",
+      intervention_choice = "moderate"
+    )
+    session$flushReact()
+
+    live(completed)
+    session$flushReact()
+
+    expect_identical(selected_sensitivity_family_id(), family$family_id)
+    expect_identical(sensitivity_model()$factor_id, "K_sd")
+    expect_s3_class(
+      sensitivity_comparison(),
+      "woodhen_run_family_comparison"
+    )
+    expect_match(
+      status_state()[["sensitivity"]],
+      "loaded from this project",
+      ignore.case = TRUE
+    )
+    expect_identical(selected_future_family_id(), future_family$family_id)
+    expect_s3_class(
+      future_comparison(),
+      "woodhen_run_family_comparison"
+    )
+    expect_match(
+      status_state()[["future"]],
+      "loaded from this project",
+      ignore.case = TRUE
+    )
+  })
+})
+
+test_that("late hidden-tab defaults do not replace restored Investigate controls", {
+  env <- source_investigate_app()
+  project <- investigate_ready_project()
+  family <- build_woodhen_sensitivity_family("K_sd", c(108, 0))
+  completed <- rPVA:::woodhen_run_investigation_family_project(
+    project,
+    family,
+    runner = investigate_test_runner,
+    sample_trajectories = 3L
+  )$project
+  future_family <- env$investigate_build_future_family(
+    "sea_level_rise_pathway",
+    "moderate",
+    NA_real_,
+    "habitat_protection_restoration",
+    "high",
+    NA_real_
+  )
+  completed <- rPVA:::woodhen_run_investigation_family_project(
+    completed,
+    future_family,
+    runner = investigate_test_runner,
+    sample_trajectories = 3L
+  )$project
+  default_row <- woodhen_sensitivity_catalog()
+  default_row <- default_row[default_row$id == "K", , drop = FALSE]
+  default_values <- unname(default_row$anchors[[1L]][c("higher", "lower")])
+  live <- shiny::reactiveVal(NULL)
+
+  shiny::testServer(env$investigate_server, args = list(
+    project = shiny::reactive(live()),
+    scenario_runner = investigate_test_runner
+  ), {
+    session$flushReact()
+    live(completed)
+    session$flushReact()
+
+    session$setInputs(
+      factor_id = "K",
+      sensitivity_first_custom = default_values[[1L]],
+      sensitivity_second_custom = default_values[[2L]],
+      threat_id = "predator_reinvasion",
+      threat_choice = "high",
+      intervention_id = "biosecurity_eradication",
+      intervention_choice = "moderate"
+    )
+    session$flushReact()
+
+    expect_identical(selected_sensitivity_family_id(), family$family_id)
+    expect_identical(sensitivity_model()$factor_id, "K_sd")
+    expect_s3_class(
+      sensitivity_comparison(),
+      "woodhen_run_family_comparison"
+    )
+    expect_match(
+      status_state()[["sensitivity"]],
+      "loaded from this project",
+      ignore.case = TRUE
+    )
+    expect_identical(selected_future_family_id(), future_family$family_id)
+    expect_s3_class(
+      future_comparison(),
+      "woodhen_run_family_comparison"
+    )
+    expect_match(
+      status_state()[["future"]],
+      "loaded from this project",
+      ignore.case = TRUE
+    )
+  })
+})
+
 test_that("Investigation aborts a deferred family when the live project changes", {
   env <- source_investigate_app()
   accepted <- investigate_ready_project()

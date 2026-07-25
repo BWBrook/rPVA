@@ -2387,6 +2387,8 @@ investigate_server <- function(
     progress_history_state <- reactiveVal(list(sensitivity = list(), future = list()))
     sensitivity_selector_initialized <- reactiveVal(FALSE)
     sensitivity_selector_state <- reactiveVal(NULL)
+    future_selector_initialized <- reactiveVal(FALSE)
+    future_selector_state <- reactiveVal(NULL)
 
     publish <- function(target, value) {
       next_event <- shiny::isolate(event_counter()) + 1L
@@ -2459,55 +2461,183 @@ investigate_server <- function(
       if (is.null(candidate)) "no-active-project" else candidate$project_fingerprint
     })
 
+    sensitivity_inputs_match <- function(state) {
+      if (is.null(state) || is.null(input$factor_id) ||
+          !identical(input$factor_id, state$factor_id)) {
+        return(FALSE)
+      }
+      values <- suppressWarnings(as.numeric(c(
+        input$sensitivity_first_custom,
+        input$sensitivity_second_custom
+      )))
+      length(values) == 2L && !anyNA(values) &&
+        isTRUE(all.equal(values, as.numeric(state$values), tolerance = 1e-10))
+    }
+
+    future_inputs_match <- function(state) {
+      if (is.null(state)) return(FALSE)
+      current <- c(
+        input$threat_id,
+        input$threat_choice,
+        input$intervention_id,
+        input$intervention_choice
+      )
+      expected <- c(
+        state$threat_id,
+        state$threat_choice,
+        state$intervention_id,
+        state$intervention_choice
+      )
+      length(current) == 4L && !anyNA(current) &&
+        identical(unname(current), unname(expected))
+    }
+
+    apply_sensitivity_selector_state <- function(state) {
+      updateSelectInput(session, "factor_id", selected = state$factor_id)
+      updateSelectInput(
+        session, "sensitivity_first_choice", selected = state$choices[[1L]]
+      )
+      updateSelectInput(
+        session, "sensitivity_second_choice", selected = state$choices[[2L]]
+      )
+      updateNumericInput(
+        session, "sensitivity_first_custom", value = state$values[[1L]]
+      )
+      updateNumericInput(
+        session, "sensitivity_second_custom", value = state$values[[2L]]
+      )
+      invisible(NULL)
+    }
+
+    apply_future_selector_state <- function(state) {
+      core <- investigate_future_catalog_row(state$threat_id)
+      updateSelectInput(session, "threat_id", selected = state$threat_id)
+      updateSelectInput(
+        session,
+        "threat_choice",
+        choices = investigate_future_threat_choices(state$threat_id),
+        selected = state$threat_choice
+      )
+      updateSelectInput(
+        session,
+        "intervention_id",
+        choices = stats::setNames(
+          core$intervention_id, core$intervention_label
+        ),
+        selected = core$intervention_id
+      )
+      updateSelectInput(
+        session,
+        "intervention_choice",
+        choices = investigate_future_response_choices(core$intervention_id),
+        selected = state$intervention_choice
+      )
+      invisible(NULL)
+    }
+
     observeEvent(project_fingerprint(), {
       candidate <- project()
       sensitivity_selector_initialized(FALSE)
+      future_selector_initialized(FALSE)
       progress_history_state(list(sensitivity = list(), future = list()))
       restored <- investigate_restored_controls(candidate)
       if (!is.null(restored$sensitivity)) {
         state <- restored$sensitivity
-        sensitivity_selector_state(list(
-          family_id = state$family_id,
-          factor_id = state$factor_id,
-          values = state$values
-        ))
-        updateSelectInput(session, "factor_id", selected = state$factor_id)
-        updateSelectInput(session, "sensitivity_first_choice", selected = state$choices[[1L]])
-        updateSelectInput(session, "sensitivity_second_choice", selected = state$choices[[2L]])
-        updateNumericInput(session, "sensitivity_first_custom", value = state$values[[1L]])
-        updateNumericInput(session, "sensitivity_second_custom", value = state$values[[2L]])
+        sensitivity_selector_state(state)
+        apply_sensitivity_selector_state(state)
+        progress <- shiny::isolate(progress_state())
+        progress$sensitivity <- c(
+          scenario = 3L, scenarios = 3L, completed = 1000L, total = 1000L
+        )
+        progress_state(progress)
+        set_status(
+          "sensitivity",
+          "Saved sensitivity results loaded from this project."
+        )
       } else {
         sensitivity_selector_state(NULL)
+        progress <- shiny::isolate(progress_state())
+        progress$sensitivity <- c(
+          scenario = 0L, scenarios = 3L, completed = 0L, total = 1000L
+        )
+        progress_state(progress)
+        set_status(
+          "sensitivity",
+          "Choose two alternative settings, then run the comparison."
+        )
       }
       if (!is.null(restored$future) &&
           restored$future$threat_id %in% investigate_future_core_catalog()$threat_id) {
         state <- restored$future
-        core <- investigate_future_catalog_row(state$threat_id)
-        updateSelectInput(session, "threat_id", selected = state$threat_id)
-        updateSelectInput(
-          session,
-          "threat_choice",
-          choices = investigate_future_threat_choices(state$threat_id),
-          selected = state$threat_choice
+        future_selector_state(state)
+        apply_future_selector_state(state)
+        progress <- shiny::isolate(progress_state())
+        progress$future <- c(
+          scenario = 3L, scenarios = 3L, completed = 1000L, total = 1000L
         )
-        updateSelectInput(
-          session,
-          "intervention_id",
-          choices = stats::setNames(
-            core$intervention_id, core$intervention_label
-          ),
-          selected = core$intervention_id
+        progress_state(progress)
+        set_status(
+          "future",
+          "Saved threat and management results loaded from this project."
         )
-        updateSelectInput(
-          session,
-          "intervention_choice",
-          choices = investigate_future_response_choices(core$intervention_id),
-          selected = state$intervention_choice
+      } else {
+        future_selector_state(NULL)
+        progress <- shiny::isolate(progress_state())
+        progress$future <- c(
+          scenario = 0L, scenarios = 3L, completed = 0L, total = 1000L
+        )
+        progress_state(progress)
+        set_status(
+          "future",
+          paste(
+            "Choose a threat and management setting, make a prediction, then run",
+            "three comparable futures."
+          )
         )
       }
       session$onFlushed(function() {
-        sensitivity_selector_initialized(TRUE)
+        sensitivity_state <- shiny::isolate(sensitivity_selector_state())
+        if (is.null(sensitivity_state) ||
+            shiny::isolate(sensitivity_inputs_match(sensitivity_state))) {
+          sensitivity_selector_initialized(TRUE)
+        }
+        future_state <- shiny::isolate(future_selector_state())
+        if (is.null(future_state) ||
+            shiny::isolate(future_inputs_match(future_state))) {
+          future_selector_initialized(TRUE)
+        }
       }, once = TRUE)
+    }, ignoreInit = FALSE)
+
+    observeEvent(list(
+      input$factor_id,
+      input$sensitivity_first_custom,
+      input$sensitivity_second_custom
+    ), {
+      state <- shiny::isolate(sensitivity_selector_state())
+      if (is.null(state)) {
+        sensitivity_selector_initialized(TRUE)
+      } else if (sensitivity_inputs_match(state)) {
+        sensitivity_selector_initialized(TRUE)
+      } else if (isTRUE(shiny::isolate(sensitivity_selector_initialized()))) {
+        sensitivity_selector_state(NULL)
+      }
+    }, ignoreInit = FALSE)
+
+    observeEvent(list(
+      input$threat_id,
+      input$threat_choice,
+      input$intervention_id,
+      input$intervention_choice
+    ), {
+      state <- shiny::isolate(future_selector_state())
+      if (is.null(state)) {
+        future_selector_initialized(TRUE)
+      } else if (future_inputs_match(state)) {
+        future_selector_initialized(TRUE)
+      } else if (isTRUE(shiny::isolate(future_selector_initialized()))) {
+        future_selector_state(NULL)
+      }
     }, ignoreInit = FALSE)
 
     observeEvent(input$open_investigate_help, {
@@ -2523,12 +2653,19 @@ investigate_server <- function(
     })
 
     observeEvent(input$factor_id, {
-      sensitivity_selector_initialized(FALSE)
       selector_state <- shiny::isolate(sensitivity_selector_state())
+      selector_initialized <- shiny::isolate(
+        sensitivity_selector_initialized()
+      )
       if (!is.null(selector_state) &&
           !identical(selector_state$factor_id, input$factor_id)) {
+        if (!isTRUE(selector_initialized)) {
+          apply_sensitivity_selector_state(selector_state)
+          return()
+        }
         sensitivity_selector_state(NULL)
       }
+      sensitivity_selector_initialized(FALSE)
       row <- investigate_catalog_row(
         rPVA::woodhen_sensitivity_catalog(), input$factor_id, "sensitivity factor"
       )
@@ -2554,8 +2691,11 @@ investigate_server <- function(
     }, ignoreInit = FALSE)
 
     selected_sensitivity_family_id <- reactive({
-      if (!isTRUE(sensitivity_selector_initialized())) return(NULL)
       initialized_state <- sensitivity_selector_state()
+      if (!isTRUE(sensitivity_selector_initialized())) {
+        if (is.null(initialized_state)) return(NULL)
+        return(initialized_state$family_id)
+      }
       required <- list(
         input$factor_id,
         input$sensitivity_first_custom,
@@ -2604,6 +2744,16 @@ investigate_server <- function(
     }, ignoreInit = TRUE)
 
     observeEvent(input$threat_id, {
+      selector_state <- shiny::isolate(future_selector_state())
+      selector_initialized <- shiny::isolate(future_selector_initialized())
+      if (!is.null(selector_state) &&
+          !identical(selector_state$threat_id, input$threat_id)) {
+        if (!isTRUE(selector_initialized)) {
+          apply_future_selector_state(selector_state)
+          return()
+        }
+        future_selector_state(NULL)
+      }
       core <- investigate_future_catalog_row(input$threat_id)
       restored <- investigate_restored_controls(project())$future
       threat_choices <- investigate_future_threat_choices(input$threat_id)
@@ -2648,6 +2798,11 @@ investigate_server <- function(
     }, ignoreInit = FALSE)
 
     selected_future_family_id <- reactive({
+      initialized_state <- future_selector_state()
+      if (!isTRUE(future_selector_initialized())) {
+        if (is.null(initialized_state)) return(NULL)
+        return(initialized_state$family_id)
+      }
       required <- list(
         input$threat_id,
         input$threat_choice,
@@ -2709,11 +2864,11 @@ investigate_server <- function(
 
     sensitivity_model <- reactive({
       selector_state <- sensitivity_selector_state()
-      factor_id <- if (!is.null(input$factor_id) &&
+      factor_id <- if (!is.null(selector_state)) {
+        selector_state$factor_id
+      } else if (!is.null(input$factor_id) &&
           length(input$factor_id) == 1L && nzchar(input$factor_id)) {
         input$factor_id
-      } else if (!is.null(selector_state)) {
-        selector_state$factor_id
       } else {
         "K"
       }

@@ -123,11 +123,18 @@ test_that("project store key and save record have exact scoped fields", {
   snapshot <- rPVA:::woodhen_project_browser_snapshot(project)
   saved_at <- "2026-07-22T10:01:00Z"
   record <- env$project_store_record(project, snapshot, saved_at, portable_request_fingerprint = NULL)
+  fresh_record <- env$project_store_record_from_fresh_snapshot(
+    project,
+    snapshot,
+    saved_at,
+    portable_request_fingerprint = NULL
+  )
 
   expect_identical(
     env$project_store_key(project$project_schema_version, project$project_id),
     paste0(project$project_schema_version, "::", project$project_id)
   )
+  expect_identical(fresh_record, record)
   expect_named(record, c(
     "key", "contract_version", "schema_version", "project_id",
     "project_fingerprint", "title", "modified_at", "saved_at",

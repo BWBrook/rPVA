@@ -13,6 +13,18 @@ status_value <- function(value, state = "neutral", icon = "circle-info") {
   list(value = value, state = state, icon = icon)
 }
 
+project_content_summary <- function(candidate) {
+  run_count <- length(candidate$runs)
+  observation_count <- length(candidate$observations)
+  paste(
+    run_count,
+    if (run_count == 1L) "completed run" else "completed runs",
+    "and",
+    observation_count,
+    if (observation_count == 1L) "saved observation" else "saved observations"
+  )
+}
+
 should_confirm_manual_browser_save <- function(request, status) {
   is.list(request) &&
     identical(request$kind, "save") &&
@@ -286,7 +298,9 @@ make_practical2_server <- function(
         "%Y-%m-%dT%H:%M:%SZ",
         tz = "UTC"
       )
-      record <- project_store_record(
+      # This snapshot was generated from the validated candidate above.
+      # Browser restore and package import still perform the full untrusted-input checks.
+      record <- project_store_record_from_fresh_snapshot(
         candidate,
         snapshot_json,
         saved_at,
@@ -351,6 +365,10 @@ make_practical2_server <- function(
                 " Saves completed runs and observations already added to the",
                 " project; it does not download a file."
               )
+            ),
+            span(
+              project_content_summary(candidate),
+              class = "project-save-content-summary"
             )
           ),
           actionButton(
@@ -569,7 +587,14 @@ make_practical2_server <- function(
       }
       portable_request_fingerprint <- input$project_store_restore$record$portable_request_fingerprint
       activate_project(candidate, portable_request_fingerprint)
-      showNotification("Browser project restored after validation.", type = "message")
+      showNotification(
+        paste(
+          "Browser project restored:",
+          project_content_summary(candidate)
+        ),
+        type = "message",
+        duration = 10
+      )
     }, ignoreInit = TRUE)
 
     observeEvent(events$import(), {

@@ -1079,6 +1079,14 @@ woodhen_typed_atomic_names <- function(value) {
 }
 
 woodhen_typed_scalar_values <- function(value) {
+  if (length(value) > 1L) {
+    if (is.double(value)) {
+      result <- sprintf("%a", unname(value))
+      result[is.na(value)] <- NA_character_
+      return(result)
+    }
+    return(unname(value))
+  }
   unname(lapply(seq_along(value), function(index) {
     if (is.na(value[[index]])) {
       NULL
@@ -1229,6 +1237,14 @@ woodhen_typed_require_object <- function(value, fields, path) {
 }
 
 woodhen_typed_array <- function(value, path) {
+  if (is.atomic(value) && is.null(names(value))) {
+    result <- as.list(unname(value))
+    missing <- which(is.na(value))
+    if (length(missing)) {
+      result[missing] <- rep(list(NULL), length(missing))
+    }
+    return(result)
+  }
   if (!is.list(value) || !is.null(names(value))) {
     stop("`", path, "` must be a JSON array.", call. = FALSE)
   }
