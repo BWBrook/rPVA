@@ -18,7 +18,10 @@ rise well above twice that pair ceiling.
 
 This is a **no-change comparison**, not a forecast that the island will remain
 unchanged for 75 years. Examine both extinction and the chance of falling below
-**50 breeding pairs**. The 50-pair threshold is a shared working warning level
-for this practical, not a universal biological tipping point. It lets you
-compare scenarios at a stage when managers would need to respond well before
-the last Woodhen disappeared.
+**100 territory-holding breeding pairs**. Crossing means falling strictly below
+100. This shared working warning level is approximately the population scale
+that preceded rodent eradication, but historical survey totals and the modelled
+breeding-pair proxy are different measures. It is not a direct reconstruction
+of a past census or a universal biological tipping point. It lets you compare
+scenarios at a stage when managers would need to respond well before the last
+Woodhen disappeared.

@@ -356,7 +356,8 @@ woodhen_project_validate_run <- function(run) {
       scenario_id = run$scenario_id,
       scientific_identity_fingerprint = run$scientific_identity_fingerprint,
       seed = run$seed,
-      reps = run$reps
+      reps = run$reps,
+      warning_threshold_pairs = woodhen_warning_threshold_pairs()
     )), 1L, 16L)
   )
   if (!identical(run$run_id, expected_run_id)) {
@@ -373,6 +374,15 @@ woodhen_project_validate_run <- function(run) {
     woodhen_spec_fingerprint(woodhen_locked_future_spec())
   )) {
     stop("`run$baseline_spec_fingerprint` does not match the locked baseline.", call. = FALSE)
+  }
+  if (!identical(
+    run$quasi_extinction_50_pairs$threshold_pairs,
+    woodhen_warning_threshold_pairs()
+  )) {
+    stop(
+      "Compact run evidence must use the current 100-pair warning threshold.",
+      call. = FALSE
+    )
   }
 
   woodhen_project_validate_data_frame(
@@ -1829,6 +1839,13 @@ woodhen_project_restore_scenario_order <- function(scenario) {
     "annual_profiles", "release_years", "release_vec"
   )
   scenario$spec <- woodhen_project_reorder_fields(scenario$spec, spec_fields)
+  scenario$spec$annual_profiles <- woodhen_project_reorder_fields(
+    scenario$spec$annual_profiles,
+    c(
+      "surv", "fecund", "env_sd", "K", "K_sd",
+      "cat_freq", "cat_surv", "cat_repro"
+    )
+  )
   component_fields <- c(
     "component_id", "affected_fields", "affected_stages", "operator",
     "value", "temporal_profile"

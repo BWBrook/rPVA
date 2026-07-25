@@ -755,7 +755,7 @@ compact_woodhen_run <- function(result, scenario, sample_trajectories = 100L) {
   indices <- woodhen_sample_replicate_indices(reps, sample_trajectories)
   quasi_extinction <- summarize_quasi_extinction(
     result,
-    threshold_pairs = 50L,
+    threshold_pairs = woodhen_warning_threshold_pairs(),
     holder_stages = seq.int(2L, dim(result$traj)[[2L]])
   )
   quasi_extinction$breeding_pair_trajectories <- NULL
@@ -776,7 +776,8 @@ compact_woodhen_run <- function(result, scenario, sample_trajectories = 100L) {
       scenario_id = scenario$scenario_id,
       scientific_identity_fingerprint = scenario$scientific_identity_fingerprint,
       seed = seed,
-      reps = reps
+      reps = reps,
+      warning_threshold_pairs = woodhen_warning_threshold_pairs()
     )), 1L, 16L)
   )
   difference_status <- if (is.na(scenario$parent_id)) "not_applicable" else "pending_comparison"
@@ -859,7 +860,8 @@ woodhen_reference_run_id <- function(scenario, seed = scenario$seed) {
       scenario_id = scenario$scenario_id,
       scientific_identity_fingerprint = scenario$scientific_identity_fingerprint,
       seed = seed,
-      reps = as.integer(scenario$spec$reps)
+      reps = as.integer(scenario$spec$reps),
+      warning_threshold_pairs = woodhen_warning_threshold_pairs()
     )), 1L, 16L)
   )
 }
@@ -1232,6 +1234,14 @@ woodhen_family_compatibility_issues <- function(runs, family_id) {
   if (length(unique(replicate_counts)) != 1L) {
     issues <- c(issues, "replicate count differs")
   }
+  warning_thresholds <- vapply(
+    runs,
+    function(run) run$quasi_extinction_50_pairs$threshold_pairs,
+    integer(1)
+  )
+  if (length(unique(warning_thresholds)) != 1L) {
+    issues <- c(issues, "warning threshold differs")
+  }
   unique(issues)
 }
 
@@ -1482,7 +1492,11 @@ woodhen_existing_family_runs <- function(project, family) {
       family$scenarios[[index]]$scientific_identity_fingerprint
     ) && identical(runs[[index]]$scenario_id, family$scenarios[[index]]$scenario_id) &&
       identical(runs[[index]]$seed, 123L) && identical(runs[[index]]$reps, 1000L) &&
-      identical(runs[[index]]$horizon, 75L)
+      identical(runs[[index]]$horizon, 75L) &&
+      identical(
+        runs[[index]]$quasi_extinction_50_pairs$threshold_pairs,
+        woodhen_warning_threshold_pairs()
+      )
   }, logical(1))
   if (!all(same_science)) {
     stop("An existing family run has stale or incompatible identity.", call. = FALSE)

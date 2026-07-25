@@ -1062,20 +1062,26 @@ woodhen_build_intervention_scenario <- function(config,
     if (!identical(threat_id, "increased_cyclone_pressure")) {
       stop("Emergency response requires an increased-cyclone-pressure parent threat.", call. = FALSE)
     }
-    component_id <- "catastrophe_survival_recovery"
-    applied <- woodhen_apply_profile_component(
+    parent_changes <- woodhen_threat_changes_for(threat_scenario, c("cat_surv", "cat_repro"))
+    parent_fields <- unique(unlist(lapply(parent_changes, `[[`, "affected_fields"), use.names = FALSE))
+    required_fields <- c("cat_surv", "cat_repro")
+    if (!all(required_fields %in% parent_fields)) {
+      stop(
+        "Emergency response requires named parent cat_surv and cat_repro effects.",
+        call. = FALSE
+      )
+    }
+    applied <- woodhen_apply_recovery_changes(
       spec = spec,
       locked = locked,
-      component_id = component_id,
-      field = "cat_surv",
-      operator = "recover_toward_one",
-      value = normalized$intensity,
-      stages = "not_applicable",
+      parent_changes = parent_changes,
+      intervention_id = intervention_id,
+      intensity = normalized$intensity,
       temporal_profile = normalized$temporal_profile
     )
     spec <- applied$spec
-    components[[component_id]] <- applied$component
-    changes[[component_id]] <- applied$change
+    components <- applied$components
+    changes <- applied$changes
   }
 
   if (length(normalized$components)) {

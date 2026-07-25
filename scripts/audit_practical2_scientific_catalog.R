@@ -19,6 +19,50 @@ woodhen_audit_mapping <- function(mapping) {
   }, character(1)), collapse = "; ")
 }
 
+woodhen_audit_guided_scenarios <- function() {
+  package_root <- system.file(package = "rPVA")
+  if (!nzchar(package_root)) package_root <- getwd()
+  package_root <- if (basename(package_root) == "inst") dirname(package_root) else package_root
+  module_path <- file.path(package_root, "inst", "shiny", "practical2", "modules", "mod_investigate.R")
+  if (!file.exists(module_path)) {
+    stop("The current Practical 2 Investigate module is required to derive guided mechanisms.", call. = FALSE)
+  }
+  env <- new.env(parent = globalenv())
+  sys.source(module_path, env)
+  core <- env$investigate_future_core_catalog()
+  build <- function(threat_id) {
+    row <- core[core$threat_id == threat_id, , drop = FALSE]
+    threat_choices <- env$investigate_future_threat_choices(threat_id)
+    response_choices <- env$investigate_future_response_choices(row$intervention_id[[1L]])
+    env$investigate_build_future_family(
+      threat_id = threat_id,
+      threat_choice = unname(threat_choices[[2L]]),
+      threat_custom = NULL,
+      intervention_id = row$intervention_id[[1L]],
+      intervention_choice = unname(response_choices[[2L]]),
+      intervention_custom = NULL
+    )
+  }
+  list(
+    predator_reinvasion = build("predator_reinvasion"),
+    increased_cyclone_pressure = build("increased_cyclone_pressure"),
+    habitat_contraction = build("habitat_contraction"),
+    sea_level_rise_pathway = build("sea_level_rise_pathway")
+  )
+}
+
+woodhen_audit_scenario_mapping <- function(scenario) {
+  components <- scenario$components
+  components <- lapply(components, function(component) {
+    list(
+      operator = component$operator,
+      affected_fields = component$affected_fields,
+      affected_stages = component$affected_stages
+    )
+  })
+  woodhen_audit_mapping(components)
+}
+
 woodhen_audit_value <- function(value) {
   if (is.null(value) || length(value) == 0L) {
     return("none")
@@ -268,7 +312,7 @@ woodhen_audit_catalogue_rows <- function() {
   sensitivity <- woodhen_sensitivity_catalog()
   sensitivity_rows <- woodhen_audit_catalogue_frame(
     sensitivity, "sensitivity",
-    vapply(sensitivity$anchors, function(x) woodhen_audit_value(x[["low"]]), character(1)),
+    vapply(sensitivity$anchors, function(x) woodhen_audit_value(x[["baseline"]]), character(1)),
     c(
       "breeding pairs", "multiplier on every stage survival", "multiplier on stages 1-2 survival",
       "multiplier on every fecundity value", "annual probability", "catastrophe-year multiplier",
@@ -293,21 +337,37 @@ woodhen_audit_catalogue_rows <- function() {
       "No spatial covariance or directional habitat trend is represented."
     )
   )
-  sensitivity_rows$setting_1 <- sensitivity_rows$setting_2
-  sensitivity_rows$setting_2 <- sensitivity_rows$setting_3
+  sensitivity_rows$setting_1 <- vapply(
+    sensitivity$anchors,
+    function(x) woodhen_audit_value(x[["higher"]]),
+    character(1)
+  )
+  sensitivity_rows$setting_2 <- vapply(
+    sensitivity$anchors,
+    function(x) woodhen_audit_value(x[["lower"]]),
+    character(1)
+  )
   sensitivity_rows$setting_3 <- ""
 
   threat <- woodhen_threat_catalog()
+  locked <- woodhen_locked_future_spec()
+  threat_baselines <- vapply(seq_len(nrow(threat)), function(index) {
+    mapping <- threat$mapping[[index]][[1L]]
+    field <- mapping$affected_fields[[1L]]
+    woodhen_audit_value(locked[[field]])
+  }, character(1))
   threat_rows <- woodhen_audit_catalogue_frame(
-    threat, "threat", c("1.00", "500", "500", "0.04", "1.00", "0.20"),
+    threat, "threat", threat_baselines,
     c(
       "survival multiplier", "breeding pairs", "breeding pairs at horizon",
-      "annual probability", "stages 1-2 survival multiplier", "standard deviation"
+      "annual probability", "young-bird survival and breeding-output multipliers",
+      "standard deviation"
     ),
     c(
       "Reduces survival across all seven stages.", "Reduces breeding-territory capacity.",
       "Gradually reduces breeding-territory capacity.", "Increases cyclone frequency without changing severity.",
-      "Reduces survival in stages 1 and 2.", "Increases annual vital-rate variation."
+      "Reduces survival in stage 1; the guided parent also includes a named fecundity effect.",
+      "Increases annual vital-rate variation."
     ),
     c(
       "Step or linear change; step is the current default.",
@@ -323,24 +383,42 @@ woodhen_audit_catalogue_rows <- function() {
       "Disease transmission, prevalence, recovery, reproduction, and stage-specific pathology.",
       "Mapped habitat, quality, occupancy, salinity, and compensatory movement.",
       "Sea level itself, inundation maps, salinity dynamics, and adaptation; only K changes.",
-      "Storm intensity, duration, reproductive loss, spatial refugia, and serial correlation.",
+      "Storm intensity, duration, spatial refugia, and serial correlation beyond the explicit frequency, catastrophe-survival and reproduction components.",
       "Predator abundance, reinvasion detection, control response, and later-stage predation.",
       "A mechanistic climate driver, autocorrelation, trends, and covariance among rates."
     )
   )
 
+  guided <- woodhen_audit_guided_scenarios()
+  threat_rows$model_quantity[threat_rows$id == "predator_reinvasion"] <-
+    woodhen_audit_scenario_mapping(guided$predator_reinvasion$scenarios[[2L]])
+  threat_rows$model_quantity[threat_rows$id == "increased_cyclone_pressure"] <-
+    woodhen_audit_scenario_mapping(guided$increased_cyclone_pressure$scenarios[[2L]])
+
   intervention <- woodhen_intervention_catalog()
+  intervention_baseline <- c(
+    paste0("0 (no added intervention; locked K = ", woodhen_audit_value(locked$K), ")"),
+    "0 (no added intervention)", "0 (no added intervention)",
+    "0 (no added intervention)", "0 (no added intervention)"
+  )
   intervention_rows <- woodhen_audit_catalogue_frame(
-    intervention, "intervention", rep("0 (no added intervention)", nrow(intervention)),
+    intervention, "intervention", intervention_baseline,
     c(
       "fraction of threatened K recovered", "fraction of parent vital-rate loss recovered",
       "fraction of named vital-rate loss recovered", "stage-2 female-equivalent pairs per year",
-      "fraction of catastrophe-survival loss recovered"
+      "fraction of named catastrophe-year losses recovered"
     ),
     c(
-      "Restores threatened K toward 500.", "Restores predator-affected survival or fecundity toward baseline.",
+      paste0("Restores threatened K toward locked K = ", woodhen_audit_value(locked$K), "."), "Restores predator-affected survival or fecundity toward baseline.",
       "Restores one named survival or fecundity component toward baseline.",
-      "Adds birds without changing the parent threat.", "Raises catastrophe survival toward 1."
+      "Adds birds without changing the parent threat.",
+      paste0(
+        "Recovers named catastrophe-year survival toward ",
+        woodhen_audit_value(locked$cat_surv),
+        " and reproduction toward ",
+        woodhen_audit_value(locked$cat_repro),
+        "."
+      )
     ),
     c(
       "Step or linear recovery after a chosen onset.", "Step or linear recovery after a chosen onset.",
@@ -363,6 +441,19 @@ woodhen_audit_catalogue_rows <- function() {
       "Forecasting, logistics, action efficacy, duration, and effects on reproduction."
     )
   )
+
+  intervention_rows$model_quantity[intervention_rows$id == "habitat_protection_restoration"] <-
+    woodhen_audit_scenario_mapping(guided$habitat_contraction$scenarios[[3L]])
+  intervention_rows$model_quantity[intervention_rows$id == "emergency_response"] <-
+    woodhen_audit_scenario_mapping(guided$increased_cyclone_pressure$scenarios[[3L]])
+  intervention_rows$direction[intervention_rows$id == "emergency_response"] <-
+    paste0(
+      "Recovers named catastrophe-year survival toward ",
+      woodhen_audit_value(locked$cat_surv),
+      " and reproduction toward ",
+      woodhen_audit_value(locked$cat_repro),
+      "."
+    )
 
   out <- rbind(reference_rows, sensitivity_rows, threat_rows, intervention_rows)
   rownames(out) <- NULL
@@ -505,9 +596,9 @@ audit_practical2_scientific_catalog <- function(output_dir) {
     "",
     "## Accepted decisions for the 2026 practical",
     "",
-    "1. **Female cohorts versus whole birds is a material issue, and the engine conventions are internally inconsistent.** The Woodhen YAML and legacy case-study script define female-cohort trajectories and convert final abundance to whole birds by multiplying by two. However, `recruit_phase()` and its tests update sex ratio as though the same state vector contains total birds. The current Practical 2 compact-evidence layer then sums the raw state while some plots label it as whole birds. Until that deeper semantic mismatch is refactored, replicate-specific sex-ratio conversion would imply more precision than the engine supports. For this teaching release, the least disruptive convention is to preserve the tuned engine, describe its states internally as female-equivalent model units, report whole birds as twice those units, and keep sex ratio locked away from student control. This must be implemented and tested before Gate E is accepted.",
+    "1. **Female cohorts versus whole birds is a material issue, and the engine conventions are internally inconsistent.** The Woodhen YAML and legacy case-study script define female-cohort trajectories and convert final abundance to whole birds by multiplying by two. However, `recruit_phase()` and its tests update sex ratio as though the same state vector contains total birds. The current Practical 2 compact-evidence layer now applies that established two-times conversion for whole-bird abundance while breeding-pair risk sums territory-holder stages 2-7. Until the deeper state-accounting mismatch is refactored, replicate-specific sex-ratio conversion would imply more precision than the engine supports. For this teaching release, the least disruptive convention is to preserve the tuned engine, describe its states internally as female-equivalent model units, report whole birds as twice those units, and keep sex ratio locked away from student control. The convention is implemented and tested; its mixed semantics remain recorded as technical debt.",
     "2. **Breeding pairs are a model proxy.** Under the model's monogamy and territory assumptions, one territory-holding female represents one breeding pair. Stages 2-7 are therefore summed and stage 1 non-territorial birds are excluded. Males, pair formation, failed pairing, and territory occupancy are not tracked explicitly, so the result is not an observed pair count.",
-    "3. **Fewer than 50 pairs is a working warning threshold.** It creates a common management-warning comparison for this practical. It is not a universal minimum viable population, a proven biological tipping point, or an estimate of the number at which intervention would certainly occur. A threshold-sensitivity view is a useful optional extension, not a compulsory task.",
+    "3. **Fewer than 100 pairs is a working warning threshold.** Crossing is defined strictly: a future at exactly 100 pairs has not crossed, whereas a future below 100 has. The value creates a more information-rich management-warning comparison and is approximately the population scale that preceded rodent eradication. Historical survey totals and the female territory-holder proxy are different measures, so 100 pairs is not a direct conversion of a past census. It is not a universal minimum viable population, a proven biological tipping point, or an estimate of the number at which intervention would certainly occur. A threshold-sensitivity view remains a useful optional extension, not a compulsory task.",
     "4. **The 2019-2024 exercise is a historical reconstruction, not independent validation.** The 2019 starting scale and the post-eradication survival and fecundity changes were used to construct the reconstruction, while the future starting vector was chosen to represent the then-known 2024 scale. Agreement with those endpoints is therefore a plausibility or consistency check, not independent validation.",
     "5. **The monitoring series is informative but not uniform.** Survey season, coverage, chicks, banding-only samples, and carried-forward Mt Gower counts differ. The official values remain a strong teaching record if those differences are taught rather than hidden.",
     "6. **The future baseline starts at 1,654 birds, while the latest official minimum is 1,638.** The 16-bird difference is biologically trivial but epistemically useful: 1,654 is a tuned model state, not an exact census. Retaining it avoids needless recalibration; changing it would align the model with the updated official headline. Either choice should be described honestly.",
@@ -529,7 +620,7 @@ audit_practical2_scientific_catalog <- function(output_dir) {
     "",
     "## Compulsory one-factor sensitivity settings",
     "",
-    "Each row changes one quantity while retaining the common 2025 starting population, 75-year horizon, and other future settings. The two altered settings are bounded teaching choices, not empirical forecasts.",
+    "Each row changes one quantity while retaining the common 2025 starting population, 75-year horizon, and other future settings. One altered setting is numerically higher than the baseline and the other is lower. The deliberately wide permitted ranges are bounded teaching choices, not empirical forecasts, and not every allowed value is expected to be realistic.",
     "",
     woodhen_audit_markdown_table(sensitivity),
     "",
@@ -576,10 +667,10 @@ audit_practical2_scientific_catalog <- function(output_dir) {
     "## Gate A2 accepted decisions",
     "",
     "1. Accept the provenance classes and baseline rationales as sufficient for the time-constrained 2026 delivery.",
-    "2. Accept the two sensitivity settings and three threat/intervention settings as biologically useful bounded teaching choices.",
+    "2. Accept sensitivity defaults that bracket the baseline with one higher and one lower setting, together with deliberately wide bounded exploratory ranges. These are teaching assumptions rather than empirical forecasts.",
     "3. Accept the documented default timing assumptions, including linear sea-level-driven habitat contraction and step defaults elsewhere.",
     "4. Preserve the tuned engine, treat state values as female-equivalent model units, report whole birds as twice those values, keep sex ratio locked, and record the mixed state semantics as technical debt for 2026-2027 repair.",
-    "5. Accept the female territory-holder proxy for the shared fewer-than-50-pair working warning threshold with its stated limitations.",
+    "5. Accept the female territory-holder proxy for the shared strictly-fewer-than-100-pair working warning threshold with its stated limitations.",
     "6. Use the official 1,638 minimum as the recovery pop-out headline while explaining that it includes the 77-bird Mt Gower count carried forward from 2022.",
     "7. Retain the tuned 1,654-bird future starting state and describe it as a model state rather than an exact census."
   )

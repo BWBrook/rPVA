@@ -43,13 +43,14 @@ point of comparison. It is not a prediction that ecological conditions will
 remain unchanged. It asks: *if no new pressure or intervention is added, what
 does this model project?*
 
-For this future case, also examine the chance of falling below **50
+For this future case, also examine the chance of falling **strictly below 100
 territory-holding breeding pairs**. Extinction is the final outcome, but a
-decline to 50 pairs would already demand strong conservation attention. The
-threshold therefore provides an earlier warning of serious decline. It is a
-**working warning threshold** adopted for consistent comparison in this
-practical, not a universal biological tipping point or a proven minimum viable
-population.
+return to approximately the population scale that preceded rodent eradication
+would already demand strong conservation attention. Historical survey totals
+and this modelled breeding-pair proxy are different measures, so 100 pairs is
+not a direct reconstruction of a past census. It is a **working warning
+threshold** adopted for consistent comparison in this practical, not a
+universal biological tipping point or a proven minimum viable population.
 
 The model begins near the observed 2024 population scale, but its starting
 stage distribution represents approximately 1,650 birds rather than an exact

@@ -75,6 +75,10 @@ validate_pair_threshold <- function(threshold_pairs) {
   as.integer(threshold_pairs)
 }
 
+woodhen_warning_threshold_pairs <- function() {
+  100L
+}
+
 #' Summarise risk of falling below a breeding-pair threshold
 #'
 #' @param result A result from `run_pva_core(..., keep_traj = TRUE)`.

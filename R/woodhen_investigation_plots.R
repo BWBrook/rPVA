@@ -271,7 +271,7 @@ plot_woodhen_final_abundance <- function(run) {
     ggplot2::theme_minimal(base_size = 11)
 }
 
-#' Plot cumulative extinction and 50-pair risk from compact evidence
+#' Plot cumulative extinction and warning-threshold risk from compact evidence
 #'
 #' @param run A `woodhen_compact_run`.
 #' @return A ggplot object.
@@ -281,14 +281,19 @@ plot_woodhen_risk_evidence <- function(run) {
   extinction <- run$extinction_evidence$cumulative
   extinction$event <- "Extinction (0 birds)"
   quasi <- run$quasi_extinction_50_pairs$cumulative
-  quasi$event <- "Fewer than 50 breeding pairs"
+  threshold <- run$quasi_extinction_50_pairs$threshold_pairs
+  quasi$event <- paste("Fewer than", threshold, "breeding pairs")
   plot_data <- rbind(extinction, quasi)
   conditional <- run$quasi_extinction_50_pairs$conditional_median_year
   conditional_caption <- if (is.na(conditional)) {
-    "Conditional 50-pair first-passage median: not available; no crossing futures were observed."
+    paste0(
+      "Conditional ", threshold,
+      "-pair first-passage median: not available; no crossing futures were observed."
+    )
   } else {
     paste0(
-      "Conditional 50-pair first-passage median among crossing futures: ",
+      "Conditional ", threshold,
+      "-pair first-passage median among crossing futures: ",
       format(conditional, trim = TRUE), " years."
     )
   }
@@ -383,6 +388,15 @@ plot_woodhen_family_comparison <- function(comparison) {
   comparison <- validate_woodhen_plot_comparison(comparison, "prospective")
   table <- comparison$table
   n <- nrow(table)
+  thresholds <- unique(vapply(
+    comparison$runs,
+    function(run) run$quasi_extinction_50_pairs$threshold_pairs,
+    integer(1)
+  ))
+  if (length(thresholds) != 1L) {
+    stop("Prospective comparison runs must share one warning threshold.", call. = FALSE)
+  }
+  warning_metric <- paste("Probability of fewer than", thresholds[[1L]], "breeding pairs")
   plot_data <- data.frame(
     student_label = rep(table$student_label, 3L),
     scenario_type = rep(table$scenario_type, 3L),
@@ -391,12 +405,12 @@ plot_woodhen_family_comparison <- function(comparison) {
       rep(c(
         "Final total abundance (birds)",
         "Extinction probability",
-        "Probability of fewer than 50 breeding pairs"
+        warning_metric
       ), each = n),
       levels = c(
         "Final total abundance (birds)",
         "Extinction probability",
-        "Probability of fewer than 50 breeding pairs"
+        warning_metric
       )
     ),
     value = c(

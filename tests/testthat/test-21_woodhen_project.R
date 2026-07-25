@@ -78,6 +78,17 @@ test_that("new projects have a stable versioned identity without consuming RNG",
   expect_silent(validate_woodhen_project(first))
 })
 
+test_that("compact runs require the current 100-pair warning threshold", {
+  scenario <- build_woodhen_sensitivity_family("K", c(500, 150))$scenarios[[1L]]
+  run <- project_test_run(scenario)
+  run$quasi_extinction_50_pairs$threshold_pairs <- 50L
+
+  expect_error(
+    rPVA:::woodhen_project_validate_run(run),
+    "100-pair warning threshold"
+  )
+})
+
 test_that("project mutations are pure, version scenarios, and retain completed evidence", {
   old_family <- build_woodhen_sensitivity_family("K", c(350, 250), seed = 144L)
   new_family <- build_woodhen_sensitivity_family("K", c(300, 250), seed = 144L)

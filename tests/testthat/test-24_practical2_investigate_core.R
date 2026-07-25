@@ -123,7 +123,7 @@ test_that("all eight factors run exact isolated three-setting families", {
   env <- source_investigate_app()
 
   for (index in seq_len(nrow(catalog))) {
-    values <- unname(catalog$anchors[[index]][c("moderate", "high")])
+    values <- unname(catalog$anchors[[index]][c("higher", "lower")])
     family <- build_woodhen_sensitivity_family(catalog$id[[index]], values)
     progress <- list()
     action <- rPVA:::woodhen_run_investigation_family_project(
@@ -164,36 +164,138 @@ test_that("all eight factors run exact isolated three-setting families", {
   expect_silent(validate_woodhen_project(project))
 })
 
+test_that("sensitivity inputs keep the higher and lower alternatives on opposite sides", {
+  env <- source_investigate_app()
+  catalog <- woodhen_sensitivity_catalog()
+
+  for (index in seq_len(nrow(catalog))) {
+    factor_id <- catalog$id[[index]]
+    anchor <- catalog$anchors[[index]]
+    expect_equal(
+      env$investigate_sensitivity_values(
+        factor_id, "higher", "lower", NA_real_, NA_real_
+      ),
+      unname(anchor[c("higher", "lower")]),
+      info = factor_id
+    )
+  }
+
+  expect_error(
+    env$investigate_sensitivity_values("K", "custom", "lower", 300, NA_real_),
+    "Alternative 1 must be higher"
+  )
+  expect_error(
+    env$investigate_sensitivity_values("K", "higher", "custom", NA_real_, 400),
+    "Alternative 2 must be lower"
+  )
+})
+
+test_that("Gate G1 presents every sensitivity factor with factor-specific evidence", {
+  env <- source_investigate_app()
+  catalog <- woodhen_sensitivity_catalog()
+  choices <- env$investigate_sensitivity_factor_choices()
+
+  expect_identical(unname(choices), catalog$id)
+  expect_identical(names(choices), catalog$label)
+  expect_null(env$investigate_sensitivity_display_data(NULL))
+
+  for (index in seq_len(nrow(catalog))) {
+    factor_id <- catalog$id[[index]]
+    model <- env$investigate_sensitivity_factor_model(factor_id)
+    range <- catalog$custom_range[[index]]
+    if (identical(factor_id, "K_sd")) {
+      range[["max"]] <- 108
+    }
+    values <- unname(catalog$anchors[[index]][c("higher", "lower")])
+    family <- build_woodhen_sensitivity_family(factor_id, values)
+    comparison <- rPVA:::woodhen_run_investigation_family_project(
+      investigate_ready_project(),
+      family,
+      runner = investigate_test_runner,
+      sample_trajectories = 3L
+    )$comparison
+    evidence <- env$investigate_sensitivity_display_data(
+      comparison, factor_id
+    )
+    plots <- env$investigate_sensitivity_probe_plot(evidence)
+    table <- env$investigate_sensitivity_probe_table(evidence)
+
+    expect_identical(model$factor_id, factor_id, info = factor_id)
+    expect_identical(model$label, catalog$label[[index]], info = factor_id)
+    expect_equal(model$baseline, catalog$locked_baseline[[index]], info = factor_id)
+    expect_equal(model$defaults, values, info = factor_id)
+    expect_equal(model$range, range, info = factor_id)
+    expect_true(all(nzchar(unlist(model[c(
+      "question", "what_changes", "meaning", "boundary", "input_label",
+      "unit_label", "x_label", "plot_title", "research_placeholder",
+      "direction_placeholder"
+    )]))), info = factor_id)
+    expect_identical(unique(evidence$factor_id), factor_id, info = factor_id)
+    expect_equal(evidence$setting_value,
+      c(catalog$locked_baseline[[index]], values),
+      info = factor_id
+    )
+    expect_identical(table$Setting, evidence$setting_label, info = factor_id)
+    expect_s3_class(plots, "patchwork")
+    expect_identical(plots[[1L]]$labels$x, model$x_label, info = factor_id)
+    expect_identical(plots[[2L]]$labels$x, model$x_label, info = factor_id)
+    expect_match(
+      plots$patches$annotation$title, model$label,
+      fixed = TRUE, info = factor_id
+    )
+    if (!identical(factor_id, "K")) {
+      expect_false(any(grepl(
+        "breeding territor", evidence$setting_label,
+        ignore.case = TRUE
+      )), info = factor_id)
+    }
+  }
+  k_sd_model <- env$investigate_sensitivity_factor_model("K_sd")
+  expect_equal(k_sd_model$range[["max"]], 108)
+  expect_silent(
+    env$investigate_sensitivity_values(
+      "K_sd", "custom", "lower", 108, NA_real_
+    )
+  )
+  expect_error(
+    env$investigate_sensitivity_values(
+      "K_sd", "custom", "lower", 109, NA_real_
+    ),
+    "between 0 and 108"
+  )
+})
+
 test_that("UI builders resolve presets, bounded custom settings, and reject invalid routes", {
   env <- source_investigate_app()
   expect_equal(
-    env$investigate_sensitivity_values("K", "moderate", "high", 300, 200),
-    c(225, 160)
+    env$investigate_sensitivity_values("K", "higher", "lower", 300, 200),
+    c(500, 150)
   )
   expect_equal(
-    env$investigate_sensitivity_values("K", "custom", "high", 300, 200),
-    c(300, 160)
+    env$investigate_sensitivity_values("K", "custom", "lower", 400, 200),
+    c(400, 150)
   )
   expect_error(
     env$investigate_sensitivity_values("K", "custom", "custom", 300, 300),
     "different alternative"
   )
   expect_error(
-    env$investigate_sensitivity_values("K", "custom", "high", 149, 250),
+    env$investigate_sensitivity_values("K", "custom", "lower", 149, 250),
     "between 150 and 750"
   )
   expect_error(
-    env$investigate_sensitivity_values("K", "custom", "high", 325, 250),
+    env$investigate_sensitivity_values("K", "custom", "lower", 325, 250),
     "current no-change assumption"
   )
 
-  threats <- woodhen_threat_catalog()$id
-  for (threat_id in threats) {
-    compatible <- env$investigate_compatible_interventions(threat_id)
-    expect_true(length(compatible) >= 1L)
-    expect_true("captive_breeding_supplementation" %in% compatible)
+  core <- env$investigate_future_core_catalog()
+  for (index in seq_len(nrow(core))) {
+    threat_id <- core$threat_id[[index]]
+    intervention_id <- core$intervention_id[[index]]
+    expect_true(intervention_id %in%
+      env$investigate_compatible_interventions(threat_id))
     family <- env$investigate_build_future_family(
-      threat_id, "moderate", NA_real_, compatible[[1L]], "moderate", NA_real_
+      threat_id, "moderate", NA_real_, intervention_id, "moderate", NA_real_
     )
     expect_length(family$scenarios, 3L)
     profile <- family$scenarios[[2L]]$temporal_profile[[1L]]
@@ -207,23 +309,26 @@ test_that("UI builders resolve presets, bounded custom settings, and reject inva
   }
   expect_error(
     env$investigate_build_future_family(
-      "novel_disease", "moderate", NA_real_, "", "moderate", NA_real_
+      "habitat_contraction", "moderate", NA_real_, "", "moderate", NA_real_
     ),
     "intervention"
   )
   expect_error(
     env$investigate_build_future_family(
-      "novel_disease", "moderate", NA_real_, "emergency_response", "moderate", NA_real_
+      "habitat_contraction", "moderate", NA_real_,
+      "emergency_response", "moderate", NA_real_
     ),
-    "compatible"
+    "compatible|guided management response"
   )
 })
 
 test_that("future families preserve exact ancestry and threat-relative advice", {
   env <- source_investigate_app()
   project <- investigate_ready_project()
-  for (threat_id in woodhen_threat_catalog()$id) {
-    intervention_id <- env$investigate_compatible_interventions(threat_id)[[1L]]
+  core <- env$investigate_future_core_catalog()
+  for (index in seq_len(nrow(core))) {
+    threat_id <- core$threat_id[[index]]
+    intervention_id <- core$intervention_id[[index]]
     family <- env$investigate_build_future_family(
       threat_id, "moderate", NA_real_, intervention_id, "moderate", NA_real_
     )
@@ -314,7 +419,17 @@ test_that("family actions are atomic, immutable, duplicate-free, and prompt-awar
     investigate_test_runner(...)
   }
   prospective <- build_woodhen_prospective_family(
-    "increased_cyclone_pressure",
+    list(
+      threat_id = "increased_cyclone_pressure",
+      components = list(
+        cyclone_survival = list(
+          field = "cat_surv", operator = "absolute", value = 0.40
+        ),
+        cyclone_reproduction = list(
+          field = "cat_repro", operator = "absolute", value = 0.60
+        )
+      )
+    ),
     list(response = list(intervention_id = "emergency_response"))
   )
   before <- second$project
@@ -331,8 +446,8 @@ test_that("future investigation projects satisfy the strict browser-store bounda
   env <- source_investigate_app()
   project <- investigate_ready_project()
   family <- env$investigate_build_future_family(
-    "novel_disease", "moderate", 0.9,
-    "targeted_vital_rate_improvement", "moderate", 0.5
+    "predator_reinvasion", "low", NA_real_,
+    "biosecurity_eradication", "moderate", NA_real_
   )
   action <- rPVA:::woodhen_run_investigation_family_project(
     project,
@@ -369,12 +484,12 @@ test_that("Investigation module guards busy clicks and restores completed eviden
   shiny::isolate(busy(FALSE))
 
   project <- investigate_ready_project()
-  family <- build_woodhen_sensitivity_family("K_sd", c(60, 85))
+  family <- build_woodhen_sensitivity_family("K_sd", c(108, 0))
   completed <- rPVA:::woodhen_run_investigation_family_project(
     project, family, runner = investigate_test_runner, sample_trajectories = 3L
   )$project
   future_family <- env$investigate_build_future_family(
-    "sea_level_rise_pathway", "custom", 325,
+    "sea_level_rise_pathway", "moderate", NA_real_,
     "habitat_protection_restoration", "high", NA_real_
   )
   completed <- rPVA:::woodhen_run_investigation_family_project(
@@ -383,11 +498,11 @@ test_that("Investigation module guards busy clicks and restores completed eviden
   )$project
   restored <- env$investigate_restored_controls(completed)
   expect_identical(restored$sensitivity$factor_id, "K_sd")
-  expect_equal(restored$sensitivity$values, c(60, 85))
-  expect_identical(restored$sensitivity$choices, c("moderate", "high"))
+  expect_equal(restored$sensitivity$values, c(108, 0))
+  expect_identical(restored$sensitivity$choices, c("higher", "lower"))
   expect_identical(restored$future$threat_id, "sea_level_rise_pathway")
-  expect_equal(restored$future$threat_value, 325)
-  expect_identical(restored$future$threat_choice, "custom")
+  expect_equal(restored$future$threat_value, 225)
+  expect_identical(restored$future$threat_choice, "moderate")
   expect_identical(
     restored$future$intervention_id, "habitat_protection_restoration"
   )
@@ -403,17 +518,30 @@ test_that("Investigation module guards busy clicks and restores completed eviden
   shiny::testServer(env$investigate_server, args = list(
     project = shiny::reactive(live()), scenario_runner = reuse_runner
   ), {
-    expect_identical(completion_state()$sensitivity, "Three sensitivity settings available")
+    session$setInputs(
+      threat_id = restored$future$threat_id,
+      threat_choice = restored$future$threat_choice,
+      intervention_id = restored$future$intervention_id,
+      intervention_choice = restored$future$intervention_choice
+    )
+    session$flushReact()
+    expect_identical(
+      completion_state()$sensitivity,
+      "Habitat-capacity variability comparison complete"
+    )
     expect_s3_class(sensitivity_comparison(), "woodhen_run_family_comparison")
     expect_equal(sensitivity_comparison()$family_id, family$family_id)
-    expect_identical(completion_state()$future, "Threat-intervention family complete")
+    expect_identical(
+      completion_state()$future,
+      "Threat and management comparison complete"
+    )
     expect_equal(future_comparison()$family_id, future_family$family_id)
     session$setInputs(
       factor_id = "K_sd",
-      sensitivity_first_choice = "moderate",
-      sensitivity_second_choice = "high",
-      sensitivity_first_custom = 60,
-      sensitivity_second_custom = 85,
+      sensitivity_first_choice = "higher",
+      sensitivity_second_choice = "lower",
+      sensitivity_first_custom = 108,
+      sensitivity_second_custom = 0,
       run_sensitivity = investigate_action_value(1L)
     )
     expect_equal(reuse_calls, 0L)
@@ -431,7 +559,7 @@ test_that("Investigation module guards busy clicks and restores completed eviden
 test_that("Investigation saves linked sensitivity observations through a distinct event", {
   env <- source_investigate_app()
   ready <- investigate_ready_project()
-  family <- build_woodhen_sensitivity_family("K", c(225, 160))
+  family <- build_woodhen_sensitivity_family("K", c(500, 150))
   completed <- rPVA:::woodhen_run_investigation_family_project(
     ready,
     family,
@@ -444,6 +572,14 @@ test_that("Investigation saves linked sensitivity observations through a distinc
     project = shiny::reactive(live()),
     scenario_runner = investigate_test_runner
   ), {
+    session$setInputs(
+      factor_id = "K",
+      sensitivity_first_choice = "higher",
+      sensitivity_second_choice = "lower",
+      sensitivity_first_custom = 500,
+      sensitivity_second_custom = 150
+    )
+    session$flushReact()
     session$setInputs(
       sensitivity_interpretation = paste(
         "Final abundance and warning-threshold risk responded differently",
@@ -506,16 +642,15 @@ test_that("Investigation module flushes disabled controls and rejects queued sub
   ), {
     session$setInputs(
       factor_id = "K",
-      sensitivity_first_choice = "moderate",
-      sensitivity_second_choice = "high",
+      sensitivity_first_choice = "higher",
+      sensitivity_second_choice = "lower",
       sensitivity_first_custom = 350,
       sensitivity_second_custom = 250,
-      threat_id = "novel_disease",
-      threat_choice = "moderate",
-      threat_custom = 0.9,
-      intervention_id = "captive_breeding_supplementation",
+      threat_id = "predator_reinvasion",
+      threat_choice = "low",
+      intervention_id = "biosecurity_eradication",
       intervention_choice = "moderate",
-      intervention_custom = 5
+      intervention_custom = 0.5
     )
     session$setInputs(
       run_sensitivity = investigate_action_value(1L),
@@ -592,12 +727,11 @@ test_that("Investigation keeps the cross-route guard through the post-work flush
     project = shiny::reactive(project), scenario_runner = runner
   ), {
     session$setInputs(
-      threat_id = "novel_disease",
-      threat_choice = "moderate",
-      threat_custom = 0.9,
-      intervention_id = "captive_breeding_supplementation",
+      threat_id = "predator_reinvasion",
+      threat_choice = "low",
+      intervention_id = "biosecurity_eradication",
       intervention_choice = "moderate",
-      intervention_custom = 5
+      intervention_custom = 0.5
     )
     shiny::isolate(run_route("sensitivity", family, list()))
     session$onFlushed(function() {
@@ -626,6 +760,19 @@ test_that("Investigation keeps the cross-route guard through the post-work flush
 test_that("Investigate UI and root integration are accessible and honest", {
   env <- source_investigate_app()
   html <- paste(as.character(env$investigate_ui("investigate")), collapse = "\n")
+  ns <- shiny::NS("investigate")
+  initial_model <- env$investigate_sensitivity_factor_model("K")
+  dynamic_html <- paste(as.character(tagList(
+    env$investigate_sensitivity_purpose_ui(ns, initial_model),
+    env$investigate_sensitivity_workspace_intro_ui(ns, initial_model),
+    env$investigate_sensitivity_setting_grid(ns, initial_model),
+    env$investigate_prompt_inputs(ns, "sensitivity", initial_model),
+    env$investigate_sensitivity_plot_region_ui(ns, initial_model),
+    env$investigate_result_prompts(
+      ns, "sensitivity", model = initial_model
+    )
+  )), collapse = "\n")
+  html <- paste(html, dynamic_html)
   app_text <- paste(readLines(file.path(env$practical2_app_dir, "app.R")), collapse = "\n")
   help <- paste(readLines(file.path(
     env$practical2_app_dir, "content", "help-sensitivity.md"
@@ -643,17 +790,17 @@ test_that("Investigate UI and root integration are accessible and honest", {
     "investigate-go_calibrate"
   )) expect_match(html, paste0('id="', id, '"'), fixed = TRUE)
   expect_match(html, 'aria-live="polite"', fixed = TRUE)
-  expect_match(html, "50-pair warning threshold", ignore.case = TRUE)
+  expect_match(html, "100-pair warning threshold", ignore.case = TRUE)
   expect_match(html, "75 years")
   expect_match(html, "1,000")
   expect_match(html, "what stays the same", ignore.case = TRUE)
   expect_match(html, "breeding territories", ignore.case = TRUE)
   expect_match(html, "What are you testing?", fixed = TRUE)
   expect_match(html, "What did the simulations show, and why?", fixed = TRUE)
-  expect_match(html, 'What does "below 50 pairs" mean?', fixed = TRUE)
+  expect_match(html, 'What does "below 100 pairs" mean?', fixed = TRUE)
   expect_match(html, "quasi-extinction threshold", ignore.case = TRUE)
   expect_false(grepl("Moderate anchor|High anchor|custom value", html))
-  expect_match(help, "strictly below 50", ignore.case = TRUE)
+  expect_match(help, "strictly below 100", ignore.case = TRUE)
   expect_match(help, "one-factor", ignore.case = TRUE)
   expect_match(help, "sensitivity analysis", ignore.case = TRUE)
   expect_match(help, "325 territories", ignore.case = TRUE)
@@ -676,10 +823,486 @@ test_that("Investigate UI and root integration are accessible and honest", {
   expect_match(module_text, "withProgress(", fixed = TRUE)
   expect_match(module_text, "setProgress(", fixed = TRUE)
   expect_match(module_text, "observation_update = reactive", fixed = TRUE)
-  expect_false(grepl("design_probe = TRUE", module_text, fixed = TRUE))
+  expect_match(
+    module_text,
+    'investigate_run_action(session$ns, "sensitivity", busy())',
+    fixed = TRUE
+  )
+  expect_match(
+    module_text,
+    'investigate_run_action(session$ns, "future", busy())',
+    fixed = TRUE
+  )
   expect_match(app_text, 'source(file.path("modules", "mod_investigate.R")', fixed = TRUE)
   expect_match(app_text, 'investigate_ui("investigate")', fixed = TRUE)
   expect_match(app_text, "investigate_events <- investigate_server", fixed = TRUE)
   expect_match(app_text, "observeEvent(investigate_events$project_update()", fixed = TRUE)
   expect_equal(length(gregexpr('class="pending-tab-band"', paste(as.character(env$ui), collapse = "\n"), fixed = TRUE)[[1L]]), 2L)
+})
+
+test_that("Gate G2 rat-return family changes recruitment without changing adult survival", {
+  env <- source_investigate_app()
+  core <- env$investigate_future_core_catalog()
+  expect_identical(core$threat_id, c(
+    "predator_reinvasion", "habitat_contraction",
+    "sea_level_rise_pathway", "increased_cyclone_pressure"
+  ))
+  expect_identical(
+    env$investigate_future_default_threat_choice("predator_reinvasion"),
+    "high"
+  )
+  expect_identical(
+    env$investigate_future_default_threat_choice("habitat_contraction"),
+    "moderate"
+  )
+
+  family <- env$investigate_build_future_family(
+    "predator_reinvasion", "low", NA_real_,
+    "biosecurity_eradication", "moderate", NA_real_
+  )
+  common <- family$scenarios[[1L]]$spec
+  threat <- family$scenarios[[2L]]$spec$annual_profiles
+  managed <- family$scenarios[[3L]]$spec$annual_profiles
+
+  expect_identical(
+    unname(vapply(family$scenarios, `[[`, character(1), "student_label")),
+    c("Locked future baseline", "Rat-return future", "Rat return with renewed control")
+  )
+  expect_equal(threat$surv[, 1L], rep(common$surv[[1L]] * 0.85, 75L))
+  expect_equal(threat$surv[, 2:7], matrix(
+    rep(common$surv[2:7], each = 75L), nrow = 75L
+  ))
+  expect_equal(threat$fecund[, 2:7], matrix(
+    rep(common$fecund[2:7] * 0.80, each = 75L), nrow = 75L
+  ))
+  expect_equal(managed$surv[, 1L], rep(common$surv[[1L]] * 0.925, 75L))
+  expect_equal(managed$surv[, 2:7], threat$surv[, 2:7])
+  expect_equal(managed$fecund[, 2:7], matrix(
+    rep(common$fecund[2:7] * 0.90, each = 75L), nrow = 75L
+  ))
+  expect_named(
+    family$scenarios[[2L]]$components,
+    c("young_bird_survival", "breeding_output")
+  )
+  expect_named(
+    family$scenarios[[3L]]$components,
+    c(
+      "threat__young_bird_survival", "threat__breeding_output",
+      "biosecurity_eradication__young_bird_survival",
+      "biosecurity_eradication__breeding_output"
+    )
+  )
+
+  restored_project <- investigate_ready_project()
+  for (choice in c("low", "moderate", "high")) {
+    round_trip_family <- env$investigate_build_future_family(
+      "predator_reinvasion", choice, NA_real_,
+      "biosecurity_eradication", "moderate", NA_real_
+    )
+    restored_project <- rPVA:::woodhen_run_investigation_family_project(
+      restored_project,
+      round_trip_family,
+      runner = investigate_test_runner,
+      sample_trajectories = 3L
+    )$project
+    canonical_project <- rPVA:::woodhen_project_restore_schema_order(
+      restored_project
+    )
+    expect_identical(
+      env$investigate_restored_controls(canonical_project)$future$threat_choice,
+      choice
+    )
+  }
+
+  for (index in seq_len(nrow(core))) {
+    candidate <- env$investigate_build_future_family(
+      core$threat_id[[index]], "moderate", NA_real_,
+      core$intervention_id[[index]], "moderate", NA_real_
+    )
+    expect_length(candidate$scenarios, 3L)
+    expect_identical(
+      unname(vapply(candidate$scenarios, `[[`, character(1), "scenario_type")),
+      c("locked_baseline", "threat", "intervention")
+    )
+  }
+})
+
+test_that("Gate G2 cyclone presets combine frequency, survival, and breeding losses", {
+  env <- source_investigate_app()
+  presets <- env$investigate_cyclone_presets()
+  locked <- woodhen_locked_future_spec()
+
+  expect_identical(presets$choice, c("low", "moderate", "high"))
+  expect_equal(presets$cat_freq, c(0.07, 0.10, 0.15))
+  expect_equal(presets$cat_surv, c(0.45, 0.40, 0.30))
+  expect_equal(presets$cat_repro, c(0.60, 0.45, 0.30))
+  expect_match(
+    paste(names(env$investigate_future_threat_choices(
+      "increased_cyclone_pressure"
+    )), collapse = " "),
+    "7%.*45%.*60%.*10%.*40%.*45%.*15%.*30%.*30%"
+  )
+  expect_error(
+    env$investigate_build_future_family(
+      "increased_cyclone_pressure", "custom", 0.08,
+      "emergency_response", "moderate", NA_real_
+    ),
+    "named settings"
+  )
+
+  recoveries <- c(low = 0.25, moderate = 0.50, high = 0.75)
+  for (index in seq_len(nrow(presets))) {
+    threat_choice <- presets$choice[[index]]
+    for (response_choice in names(recoveries)) {
+      recovery <- recoveries[[response_choice]]
+      family <- env$investigate_build_future_family(
+        "increased_cyclone_pressure", threat_choice, NA_real_,
+        "emergency_response", response_choice, NA_real_
+      )
+      threat <- family$scenarios[[2L]]
+      managed <- family$scenarios[[3L]]
+
+      expect_named(
+        threat$components,
+        c("cyclone_frequency", "cyclone_survival", "cyclone_reproduction")
+      )
+      expect_equal(
+        tail(threat$spec$annual_profiles$cat_freq, 1L),
+        presets$cat_freq[[index]]
+      )
+      expect_equal(
+        tail(threat$spec$annual_profiles$cat_surv, 1L),
+        presets$cat_surv[[index]]
+      )
+      expect_equal(
+        tail(threat$spec$annual_profiles$cat_repro, 1L),
+        presets$cat_repro[[index]]
+      )
+      expect_equal(
+        tail(managed$spec$annual_profiles$cat_freq, 1L),
+        presets$cat_freq[[index]]
+      )
+      expect_equal(
+        tail(managed$spec$annual_profiles$cat_surv, 1L),
+        presets$cat_surv[[index]] +
+          recovery * (locked$cat_surv - presets$cat_surv[[index]])
+      )
+      expect_equal(
+        tail(managed$spec$annual_profiles$cat_repro, 1L),
+        presets$cat_repro[[index]] +
+          recovery * (locked$cat_repro - presets$cat_repro[[index]])
+      )
+    }
+  }
+
+  model <- env$investigate_future_mechanism_model(
+    "increased_cyclone_pressure", "moderate", "moderate"
+  )
+  expect_match(model$common_setting, "4%.*50%.*75%")
+  expect_match(model$threat_setting, "10%.*40%.*45%")
+  expect_match(model$managed_setting, "10%.*45%.*60%")
+  expect_match(model$threat_mechanism, "all model stages", ignore.case = TRUE)
+  expect_match(model$threat_mechanism, "acute recruitment loss", ignore.case = TRUE)
+  expect_match(model$response_mechanism, "annual cyclone probability remains", ignore.case = TRUE)
+  expect_match(model$boundary, "cannot uniquely model juvenile mortality", ignore.case = TRUE)
+})
+
+test_that("Gate G2 habitat contraction states illustrative ecological routes", {
+  env <- source_investigate_app()
+  model <- env$investigate_future_mechanism_model(
+    "habitat_contraction", "moderate", "moderate"
+  )
+  copy <- paste(model$threat_mechanism, model$boundary)
+
+  expect_match(copy, "climate-driven moisture", ignore.case = TRUE)
+  expect_match(copy, "invertebrate-food", ignore.case = TRUE)
+  expect_match(copy, "invasive plants", ignore.case = TRUE)
+  expect_match(copy, "illustrative routes", ignore.case = TRUE)
+  expect_match(copy, "only lowers.*territory capacity", ignore.case = TRUE)
+  expect_match(copy, "not predictions", ignore.case = TRUE)
+})
+
+test_that("Gate G2 presents live ecological controls without implementation jargon", {
+  env <- source_investigate_app()
+  html <- paste(as.character(env$investigate_ui("investigate")), collapse = "\n")
+  model <- env$investigate_future_mechanism_model(
+    "predator_reinvasion", "low", "moderate"
+  )
+  mechanism_html <- paste(
+    as.character(env$investigate_future_mechanism_ui(model)),
+    collapse = "\n"
+  )
+  future_help <- paste(readLines(file.path(
+    env$practical2_app_dir, "content", "help-threat-intervention.md"
+  )), collapse = "\n")
+  run_html <- paste(as.character(env$investigate_run_action(
+    shiny::NS("investigate"), "future", FALSE
+  )), collapse = "\n")
+  save_html <- paste(as.character(env$investigate_future_observation_prompts(
+    shiny::NS("investigate")
+  )), collapse = "\n")
+
+  for (id in c(
+    "investigate-route_sensitivity", "investigate-route_future",
+    "investigate-open_future_help", "investigate-threat_id",
+    "investigate-threat_choice", "investigate-intervention_id",
+    "investigate-intervention_choice", "investigate-future_expected_outcome",
+    "investigate-future_mechanism_prediction",
+    "investigate-future_partial_recovery", "investigate-future_run_control",
+    "investigate-future_progress", "investigate-future_abundance_plot",
+    "investigate-future_risk_plot", "investigate-future_passage_plot",
+    "investigate-future_table", "investigate-future_threat_observation",
+    "investigate-future_response_observation", "investigate-future_caveat",
+    "investigate-save_future_notes"
+  )) expect_match(html, paste0('id="', id, '"'), fixed = TRUE)
+
+  expect_match(html, "Rat return or loss of control", fixed = TRUE)
+  expect_match(html, "young-bird survival -15%; breeding output -20%", fixed = TRUE)
+  expect_match(html, "3,000 futures", fixed = TRUE)
+  expect_false(grepl("<fieldset[^>]+disabled", html, perl = TRUE))
+  expect_false(grepl('disabled="disabled"', run_html, fixed = TRUE))
+  expect_false(grepl('disabled="disabled"', save_html, fixed = TRUE))
+  expect_match(mechanism_html, "egg or chick losses", ignore.case = TRUE)
+  expect_match(mechanism_html, "territory-holder survival is unchanged", ignore.case = TRUE)
+  expect_match(mechanism_html, "bounded teaching assumptions", ignore.case = TRUE)
+  expect_match(mechanism_html, "Add the threat", fixed = TRUE)
+  expect_match(mechanism_html, "Add management to the same threat", fixed = TRUE)
+
+  student_copy <- paste(html, mechanism_html, future_help)
+  expect_false(grepl("\\b(parent|child|yaml|seed|immutable|design probe)\\b",
+    student_copy, ignore.case = TRUE, perl = TRUE
+  ))
+  expect_match(future_help, "egg or chick", ignore.case = TRUE)
+  expect_match(future_help, "percentage points", ignore.case = TRUE)
+  expect_match(future_help, "working warning threshold", ignore.case = TRUE)
+  expect_match(future_help, "empirical estimates", ignore.case = TRUE)
+})
+
+test_that("Gate G2 live evidence uses probabilities, whole birds, and readable plots", {
+  env <- source_investigate_app()
+  project <- investigate_ready_project()
+  family <- env$investigate_build_future_family(
+    "predator_reinvasion", "low", NA_real_,
+    "biosecurity_eradication", "moderate", NA_real_
+  )
+  action <- rPVA:::woodhen_run_investigation_family_project(
+    project, family,
+    runner = investigate_test_runner, sample_trajectories = 3L
+  )
+  evidence <- env$investigate_future_display_data(action$comparison)
+  table <- env$investigate_future_probe_table(evidence)
+  differences_html <- paste(
+    as.character(env$investigate_future_difference_ui(evidence)),
+    collapse = "\n"
+  )
+
+  expect_identical(evidence$summary$scenario, c(
+    "Common future", "Rat-return future", "Rat return with renewed control"
+  ))
+  expect_true(all(evidence$risk$probability >= 0 & evidence$risk$probability <= 1))
+  expect_identical(unique(evidence$risk$metric), "Fewer than 100 pairs")
+  expect_false(any(grepl("Extinction", evidence$risk$metric, fixed = TRUE)))
+  expect_true(all(evidence$first_passage$probability >= 0 &
+    evidence$first_passage$probability <= 1))
+  passage_risk <- vapply(evidence$summary$scenario, function(label) {
+    sum(evidence$first_passage$probability[
+      evidence$first_passage$scenario == label
+    ])
+  }, numeric(1))
+  expect_true(all(unname(passage_risk) <=
+    evidence$summary$warning_probability))
+  starts_above_threshold <- vapply(
+    action$comparison$runs,
+    function(run) {
+      years <- run$quasi_extinction_50_pairs$first_crossing_year
+      !any(years == 0L, na.rm = TRUE)
+    },
+    logical(1)
+  )
+  expect_equal(
+    unname(passage_risk[starts_above_threshold]),
+    evidence$summary$warning_probability[starts_above_threshold]
+  )
+  expect_s3_class(env$investigate_future_abundance_plot(evidence), "ggplot")
+  expect_s3_class(env$investigate_future_risk_plot(evidence), "ggplot")
+  expect_s3_class(env$investigate_future_passage_plot(evidence), "ggplot")
+  expect_true(all(evidence$summary$final_median_abundance %% 1 == 0))
+  expect_identical(table$Scenario, evidence$summary$scenario)
+  expect_true("Futures below 100 pairs by 2100" %in% names(table))
+  expect_true("Extinction by 2100" %in% names(table))
+  expect_false("Crossing futures" %in% names(table))
+  expect_true(all(grepl(" - ", table$`Final birds in 2100 (95% interval)`,
+    fixed = TRUE
+  )))
+  expect_match(differences_html, "percentage points", ignore.case = TRUE)
+  expect_false(grepl("\\bpp\\b", differences_html, ignore.case = TRUE))
+})
+
+test_that("Gate G2 runs and saves a live future family through project events", {
+  env <- source_investigate_app()
+  live <- shiny::reactiveVal(investigate_ready_project())
+  calls <- 0L
+  runner <- function(...) {
+    calls <<- calls + 1L
+    investigate_test_runner(...)
+  }
+
+  shiny::testServer(env$investigate_server, args = list(
+    project = shiny::reactive(live()), scenario_runner = runner
+  ), {
+    session$setInputs(
+      threat_id = "predator_reinvasion",
+      threat_choice = "low",
+      intervention_id = "biosecurity_eradication",
+      intervention_choice = "moderate",
+      future_expected_outcome = "Rat return should lower abundance and raise risk.",
+      future_mechanism_prediction = "Egg, chick and young-bird losses reduce recruitment.",
+      future_partial_recovery = "The response should recover only part of the loss.",
+      run_future = investigate_action_value(1L)
+    )
+    session$flushReact()
+
+    event <- project_update_state()
+    expect_true(event$ok)
+    expect_identical(event$route, "future")
+    expect_false(event$reused)
+    expect_equal(calls, 3L)
+    expect_identical(
+      progress_state()$future,
+      c(scenario = 3L, scenarios = 3L, completed = 1000L, total = 1000L)
+    )
+    expect_length(event$candidate$runs, length(live()$runs) + 3L)
+    expect_length(event$candidate$observations, length(live()$observations) + 1L)
+
+    live(event$candidate)
+    session$flushReact()
+    expect_s3_class(future_comparison(), "woodhen_run_family_comparison")
+    expect_identical(future_comparison()$family_id, event$family_id)
+
+    session$setInputs(
+      future_threat_observation = "The rat-return future increased warning risk.",
+      future_response_observation = "Renewed control recovered part of the loss.",
+      future_caveat = "The joint recruitment effect is a teaching assumption.",
+      save_future_notes = investigate_action_value(1L)
+    )
+    session$flushReact()
+    note_event <- observation_update_state()
+    expect_true(note_event$ok)
+    expect_identical(note_event$route, "future")
+    appended <- tail(note_event$candidate$observations, 1L)[[1L]]
+    expect_match(appended$note, "Threat:")
+    expect_match(appended$note, "Management:")
+    expect_match(appended$note, "Caveat:")
+    expect_identical(
+      sort(appended$run_ids),
+      sort(future_comparison()$table$run_id)
+    )
+  })
+})
+
+test_that("Gate G2 never presents or saves evidence for changed future controls", {
+  env <- source_investigate_app()
+  live <- shiny::reactiveVal(investigate_ready_project())
+
+  shiny::testServer(env$investigate_server, args = list(
+    project = shiny::reactive(live()),
+    scenario_runner = investigate_test_runner
+  ), {
+    session$setInputs(
+      threat_id = "predator_reinvasion",
+      threat_choice = "low",
+      intervention_id = "biosecurity_eradication",
+      intervention_choice = "moderate",
+      run_future = investigate_action_value(1L)
+    )
+    session$flushReact()
+    event <- project_update_state()
+    expect_true(event$ok)
+    live(event$candidate)
+    session$flushReact()
+    expect_s3_class(future_comparison(), "woodhen_run_family_comparison")
+
+    session$setInputs(
+      threat_id = "increased_cyclone_pressure",
+      threat_choice = "moderate",
+      intervention_id = "emergency_response",
+      intervention_choice = "moderate"
+    )
+    session$flushReact()
+    expect_null(future_comparison())
+    expect_identical(
+      progress_state()$future,
+      c(scenario = 0L, scenarios = 3L, completed = 0L, total = 1000L)
+    )
+    expect_match(status_state()[["future"]], "Settings changed", fixed = TRUE)
+
+    session$setInputs(
+      future_threat_observation = "Cyclones increased risk.",
+      future_response_observation = "Response reduced cyclone effects.",
+      save_future_notes = investigate_action_value(1L)
+    )
+    session$flushReact()
+    expect_null(observation_update_state())
+    expect_match(
+      status_state()[["future"]],
+      "Run all three comparable scenarios before saving",
+      fixed = TRUE
+    )
+  })
+})
+
+test_that("Gate G1 never presents or saves evidence for changed sensitivity controls", {
+  env <- source_investigate_app()
+  family <- build_woodhen_sensitivity_family("K_sd", c(108, 0))
+  completed <- rPVA:::woodhen_run_investigation_family_project(
+    investigate_ready_project(),
+    family,
+    runner = investigate_test_runner,
+    sample_trajectories = 3L
+  )$project
+  live <- shiny::reactiveVal(completed)
+
+  shiny::testServer(env$investigate_server, args = list(
+    project = shiny::reactive(live()),
+    scenario_runner = investigate_test_runner
+  ), {
+    session$setInputs(
+      factor_id = "K_sd",
+      sensitivity_first_choice = "higher",
+      sensitivity_second_choice = "lower",
+      sensitivity_first_custom = 108,
+      sensitivity_second_custom = 0
+    )
+    session$flushReact()
+    expect_identical(selected_sensitivity_family_id(), family$family_id)
+    expect_s3_class(sensitivity_comparison(), "woodhen_run_family_comparison")
+
+    session$setInputs(
+      factor_id = "env_sd",
+      sensitivity_first_choice = "higher",
+      sensitivity_second_choice = "lower",
+      sensitivity_first_custom = 0.30,
+      sensitivity_second_custom = 0
+    )
+    session$flushReact()
+    expect_null(sensitivity_comparison())
+    expect_identical(
+      progress_state()$sensitivity,
+      c(scenario = 0L, scenarios = 3L, completed = 0L, total = 1000L)
+    )
+    expect_match(status_state()[["sensitivity"]], "Settings changed", fixed = TRUE)
+
+    session$setInputs(
+      sensitivity_interpretation = "Variability changed warning risk.",
+      sensitivity_caveat = "This is a bounded teaching comparison.",
+      save_sensitivity_notes = investigate_action_value(1L)
+    )
+    session$flushReact()
+    expect_null(observation_update_state())
+    expect_match(
+      status_state()[["sensitivity"]],
+      "Run all three comparable scenarios before saving",
+      fixed = TRUE
+    )
+  })
 })

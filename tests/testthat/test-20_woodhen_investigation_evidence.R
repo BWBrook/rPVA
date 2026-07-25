@@ -108,7 +108,18 @@ test_that("a seeded locked baseline becomes reproducible compact evidence", {
   ), ignore.order = TRUE)
   expect_equal(first$annual_quantiles$year, 0:75)
   expect_equal(first$final_abundance$values, 2 * raw$Nend)
-  expect_equal(first$quasi_extinction_50_pairs$threshold_pairs, 50L)
+  expect_equal(first$quasi_extinction_50_pairs$threshold_pairs, 100L)
+  expected_run_id <- paste0(
+    "woodhen_run_",
+    substr(rPVA:::woodhen_content_fingerprint(list(
+      scenario_id = baseline$scenario_id,
+      scientific_identity_fingerprint = baseline$scientific_identity_fingerprint,
+      seed = 9401L,
+      reps = 1000L,
+      warning_threshold_pairs = 100L
+    )), 1L, 16L)
+  )
+  expect_identical(first$run_id, expected_run_id)
   expect_equal(first$difference_from_parent$status, "not_applicable")
   expect_s3_class(plot_woodhen_trajectories(first), "ggplot")
   expect_s3_class(plot_woodhen_final_abundance(first), "ggplot")
@@ -211,7 +222,13 @@ test_that("retained scenarios use a strict portable schema", {
   scenarios <- c(
     build_woodhen_sensitivity_family("K", c(350, 250))$scenarios,
     build_woodhen_prospective_family(
-      "increased_cyclone_pressure",
+      list(
+        threat_id = "increased_cyclone_pressure",
+        components = list(
+          cyclone_survival = list(field = "cat_surv", operator = "absolute", value = 0.40),
+          cyclone_reproduction = list(field = "cat_repro", operator = "absolute", value = 0.45)
+        )
+      ),
       list(response = list(intervention_id = "emergency_response"))
     )$scenarios
   )
@@ -421,7 +438,7 @@ test_that("all sensitivity factors expose their scalar setting on the response s
   catalog <- woodhen_sensitivity_catalog()
 
   for (index in seq_len(nrow(catalog))) {
-    values <- unname(catalog$anchors[[index]][c("moderate", "high")])
+    values <- unname(catalog$anchors[[index]][c("higher", "lower")])
     family <- build_woodhen_sensitivity_family(
       catalog$id[[index]], values, seed = 81L
     )
@@ -444,7 +461,7 @@ test_that("all sensitivity factors expose their scalar setting on the response s
   }
 })
 
-test_that("family result tables retain extinction and strict 50-pair timing", {
+test_that("family result tables retain extinction and strict warning timing", {
   family <- build_woodhen_sensitivity_family("K", c(350, 250), seed = 812L)
   runs <- lapply(family$scenarios, function(scenario) {
     result <- synthetic_woodhen_investigation_result(scenario)
@@ -471,7 +488,13 @@ test_that("family result tables retain extinction and strict 50-pair timing", {
 
 test_that("prospective comparison supports compact baseline-threat-intervention plots", {
   family <- build_woodhen_prospective_family(
-    "increased_cyclone_pressure",
+    list(
+      threat_id = "increased_cyclone_pressure",
+      components = list(
+        cyclone_survival = list(field = "cat_surv", operator = "absolute", value = 0.40),
+        cyclone_reproduction = list(field = "cat_repro", operator = "absolute", value = 0.45)
+      )
+    ),
     list(response = list(
       intervention_id = "emergency_response", intensity = "moderate"
     )),

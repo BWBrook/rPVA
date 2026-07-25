@@ -40,10 +40,13 @@ rmarkdown/Pandoc, JavaScript IndexedDB, Playwright, Docker, and ShinyProxy 3.2.4
 - Keep ordinary Phase 2 comparisons at the supplied 2025 starting population,
   75 years, 1,000 futures, common simulation settings, and current Woodhen stage
   structure. Label alternative seeds or replicate counts as robustness checks.
-- Treat fewer than 50 territory-holding breeding pairs as a shared **working
-  warning threshold for this practical**, not a universal minimum viable
-  population or proven biological tipping point. Gate A2 must verify and explain
-  exactly how the model stages are converted to breeding-pair abundance.
+- Treat strictly fewer than 100 territory-holding breeding pairs as a shared
+  **working warning threshold for this practical**, not a universal minimum
+  viable population or proven biological tipping point. The value is
+  approximately the pre-rodent-eradication population scale, but historical
+  total-bird counts and the modelled pair proxy are different measures. Gate A2
+  must verify and explain exactly how model stages are converted to
+  breeding-pair abundance.
 - Keep the navigation label **Calibrate**, but describe the scientific exercise
   as historical reconstruction, consistency checking, or plausibility checking.
   Do not imply independent validation where observations helped construct or tune
@@ -138,17 +141,17 @@ pre-empt the interface decision may continue in parallel.
 
 ## Gate Map And Current State
 
-| Gate | Type | Surface | State on 2026-07-22 |
+| Gate | Type | Surface | State on 2026-07-25 |
 | --- | --- | --- | --- |
 | A1 | Hard engineering | Scientific engine and risk evidence | Complete |
 | A2 | Scientific review | Ecological assumptions and catalogue audit | Accepted 2026-07-22 |
 | B | Hard engineering | Durable projects and compact evidence | Complete |
-| C | Student-facing | Start | Implemented; review pending |
-| D | Student-facing | Calibrate: 1980 alternatives | Implemented; review pending |
-| E | Student-facing | Calibrate: recovery and future | Implemented; review pending |
-| F | Two-checkpoint student-facing | Investigate: sensitivity | Design probe next |
-| G | Two-checkpoint student-facing | Investigate: threat and intervention | Not started |
-| I | Two-checkpoint student-facing | Compare | Not started |
+| C | Student-facing | Start | Accepted for the 2026 delivery |
+| D | Student-facing | Calibrate: 1980 alternatives | Accepted for the 2026 delivery |
+| E | Student-facing | Calibrate: recovery and future | Accepted for the 2026 delivery |
+| F | Two-checkpoint student-facing | Investigate: sensitivity | Accepted; working implementation checked |
+| G | Two-checkpoint student-facing | Investigate: threat and intervention | Accepted; working implementation checked |
+| I | Two-checkpoint student-facing | Compare | Design probe next |
 | J1 | Two-checkpoint student-facing | Evidence selection and preview | Not started |
 | J2 | Artefact review | Dossier and essential outputs | Not started |
 | J3 | Student-facing | Report, research, and assessment guidance | Not started |
@@ -166,12 +169,12 @@ pre-empt the interface decision may continue in parallel.
 
 - validated annual ecological profiles;
 - exact preservation of the scalar simulation path;
-- extinction and fewer-than-50-pair first-passage evidence;
+- extinction and fewer-than-100-pair first-passage evidence;
 - reference, sensitivity, threat, and intervention catalogues; and
 - compact plotting and comparison inputs.
 
 **Codex acceptance evidence:** Existing focused and shared-engine tests pass;
-catalogue construction and 50-pair calculations satisfy their code contracts.
+catalogue construction and 100-pair calculations satisfy their code contracts.
 
 **Barry review:** None for the implementation mechanics. Biological meaning is
 reviewed explicitly in Gate A2.
@@ -194,8 +197,10 @@ reviewed explicitly in Gate A2.
 
 - [x] Expand the existing audit to show every baseline parameter, value, unit,
   and model location.
-- [x] Show each sensitivity factor with its baseline and two proposed altered
-  settings, including units and permitted exploratory range.
+- [x] Show each sensitivity factor with its baseline, one higher and one lower
+  proposed altered setting, including units and a deliberately wide bounded
+  exploratory range. Treat those values as teaching assumptions, not empirical
+  forecasts.
 - [x] Show each threat and intervention as an ecological process, the exact
   model quantity it changes, the direction and timing of change, and how an
   intervention modifies or offsets its threatened parent.
@@ -207,7 +212,7 @@ reviewed explicitly in Gate A2.
 - [x] Explain whether the 2019 and 2024 observations helped construct or tune the
   rodent-recovery reconstruction and therefore whether either can be treated as
   independent evidence.
-- [x] Explain the 50-pair value as a shared working warning threshold unless a
+- [x] Explain the 100-pair value as a shared working warning threshold unless a
   defensible empirical or management basis is documented.
 - [x] Translate model stages into breeding pairs in biological terms, including
   sex, pair, and individual interpretation; do not rely on the phrase "stages 2
@@ -251,7 +256,7 @@ workflow at Gate J2 and an end-to-end behaviour at Gate K.
 
 ## Gate C: Start
 
-**Type:** Student-facing. **Status:** Implemented; awaiting review.
+**Type:** Student-facing. **Status:** Accepted for the 2026 delivery.
 
 **Files:**
 
@@ -290,7 +295,7 @@ Start changes must not be bundled with Calibrate changes.
 
 ## Gate D: Calibrate - 1980 Management Alternatives
 
-**Type:** Student-facing. **Status:** Implemented; awaiting review.
+**Type:** Student-facing. **Status:** Accepted for the 2026 delivery.
 
 **Files:**
 
@@ -326,7 +331,7 @@ checkpoint commit.
 
 ## Gate E: Calibrate - Rodent Recovery And Common Future Comparison
 
-**Type:** Student-facing. **Status:** Implemented; awaiting review.
+**Type:** Student-facing. **Status:** Accepted for the 2026 delivery.
 
 **Files:**
 
@@ -342,12 +347,12 @@ checkpoint commit.
   the 40-year management alternatives.
 - [x] Overlay the 2019 count and 2024 survey milestone on the recovery plot.
 - [x] Establish the 2025-2100 no-change case as the common Phase 2 comparison.
-- [x] Explain why 50 breeding pairs is an earlier warning threshold than
+- [x] Explain why 100 breeding pairs is an earlier warning threshold than
   extinction.
 - [x] Remove exact-count false precision and internal model-state language.
 - [ ] **Barry review:** assess the historical reconstruction and plausibility
   claim, whether the observations are presented with the correct independence,
-  the survey overlay, short-horizon warning, future-comparison framing, 50-pair
+  the survey overlay, short-horizon warning, future-comparison framing, 100-pair
   explanation, plot scales, and whether the transition to Phase 2 is clear.
 - [ ] Apply one consolidated material revision, return for acceptance, and
   continue only for a remaining material issue.
@@ -365,7 +370,8 @@ its own labelled checkpoint commit.
 
 ## Gate F: Investigate - One-Factor Sensitivity
 
-**Type:** Two-checkpoint student-facing. **Status:** Design probe follows Gate A2.
+**Type:** Two-checkpoint student-facing. **Status:** Accepted; working
+implementation checked for the 2026 delivery.
 
 **Files:**
 
@@ -383,11 +389,13 @@ its own labelled checkpoint commit.
   evidence using values already reviewed at Gate A2; full simulation and project
   persistence may remain stubbed.
 - [ ] Show a named factor, baseline value and units, two clearly labelled altered
-  settings, and an explanation of what remains constant before any controls.
+  settings that bracket the baseline above and below, deliberately wide bounded
+  exploratory ranges, and an explanation of what remains constant before any
+  controls.
 - [ ] Replace *anchor*, *custom value*, and other shorthand with factor-specific
   ecological questions and biologically interpretable controls.
 - [ ] Explain one-factor-at-a-time sensitivity analysis, why it is useful and
-  limited, and why the working 50-pair warning threshold is being compared.
+  limited, and why the working 100-pair warning threshold is being compared.
 - [ ] Include the proposed progress treatment, response plot, comparison table,
   optional research-question and expected-direction prompts, observation and
   caveat fields, and contextual help in their intended visual hierarchy.
@@ -397,7 +405,7 @@ its own labelled checkpoint commit.
   behaviour.
 - [ ] **Barry design review:** decide whether a student who first encountered
   sensitivity analysis in Practical 1 can understand the question, controls,
-  held-constant assumptions, response plot, 50-pair result, and prompts.
+  held-constant assumptions, response plot, 100-pair result, and prompts.
 
 ### F2 - Working Implementation
 
@@ -427,13 +435,17 @@ sensitivity-family workflow, and a focused commit.
 
 ## Gate G: Investigate - Threat And Intervention
 
-**Type:** Two-checkpoint student-facing. **Status:** Follows Gate A2 and Gate F.
+**Type:** Two-checkpoint student-facing. **Status:** Accepted; working
+implementation checked for the 2026 delivery.
 
 **Files:**
 
 - `inst/shiny/practical2/modules/mod_investigate.R`
 - `inst/shiny/practical2/content/help-investigate.md`
 - Create `inst/shiny/practical2/content/help-threat-intervention.md`
+- Create `scripts/run_practical2_investigate_sanity_grid.R`
+- Create `docs/teaching/woodhen/practical2_investigate_default_grid.csv`
+- Create `docs/teaching/woodhen/practical2_investigate_default_grid_review.csv`
 - `R/woodhen_investigation_spec.R`
 - `R/woodhen_investigation_catalog.R`
 - `tests/testthat/helper-practical2-design-fixtures.R`
@@ -448,9 +460,10 @@ sensitivity-family workflow, and a focused commit.
   units, intervention mechanism, and held-constant settings before controls.
 - [ ] Use ecological descriptions plus exact values instead of generic
   low/moderate/high labels; expose bounded choice only where it supports inquiry.
-- [ ] Include the proposed progress treatment, abundance, extinction, working
-  50-pair risk, first-passage timing, intervention difference, result table,
-  prompts, and contextual help in the final visual hierarchy.
+- [ ] Include the proposed progress treatment, abundance, working 100-pair risk,
+  first-passage timing, intervention difference, result table, prompts, and
+  contextual help in the final visual hierarchy. Keep generally sparse
+  extinction risk in the result table rather than giving it equal plot weight.
 - [ ] Explain that improvement relative to the threat is not automatically full
   recovery or evidence that the intervention will work in the real system.
 - [ ] Run the shared rendered-output self-review at both principal desktop sizes
@@ -477,13 +490,15 @@ sensitivity-family workflow, and a focused commit.
 threat/intervention contexts and assertions.
 
 **Gate output:** An approved prospective design probe, a working compulsory
-threat-intervention workflow, and a focused commit.
+threat-intervention workflow, a reproducible 65-row default-setting sanity
+grid, and a focused commit.
 
 ---
 
 ## Gate I: Compare
 
-**Type:** Two-checkpoint student-facing. **Status:** Core work after Gate G.
+**Type:** Two-checkpoint student-facing. **Status:** Design probe is the next
+core task.
 
 **Files:**
 
@@ -798,7 +813,7 @@ and a concise record of material residual risks.
 ## Final Acceptance
 
 - [ ] Gate A2 and compulsory Gates C-G, I, and J1-J3 have explicit acceptance.
-- [ ] Scientific profiles remain valid and the 50-pair result is presented as an
+- [ ] Scientific profiles remain valid and the 100-pair result is presented as an
   explained working warning threshold rather than a universal tipping point.
 - [ ] Start, Calibrate, Investigate, Compare, and Evidence Studio form one clear
   learning progression.

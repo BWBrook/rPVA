@@ -541,7 +541,7 @@ calibrate_server <- function(
               span(paste(calibrate_whole_birds(run$scenario$spec$K), "pairs"))
             )
             evidence[[length(evidence) + 1L]] <- div(
-              strong("Below 50 breeding pairs by 2100"),
+              strong("Below 100 breeding pairs by 2100"),
               span(sprintf("%.1f%%", 100 * run$quasi_extinction_50_pairs$probability_by_horizon))
             )
           }
@@ -651,7 +651,7 @@ calibrate_server <- function(
               calibrate_calendar_years(reference_id, quasi$year), quasi$probability,
               type = "l", lwd = 2, col = "#9a6a14"
             )
-            legend("topleft", c("Extinction", "Below 50 pairs"),
+            legend("topleft", c("Extinction", "Below 100 pairs"),
               col = c("#a63d40", "#9a6a14"), lwd = 2, bty = "n")
           } else {
             legend("topleft", "Extinction", col = "#a63d40", lwd = 2, bty = "n")

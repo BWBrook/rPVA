@@ -231,7 +231,7 @@ test_that("compact Calibrate evidence converts female-equivalent states to whole
   expect_identical(observed_sample, 2 * raw_trajectory[, sampled_first])
   expect_identical(
     compact$quasi_extinction_50_pairs$threshold_pairs,
-    50L
+    100L
   )
 })
 
@@ -616,8 +616,8 @@ test_that("Calibrate UI is chronological, accessible, responsive, and student-fa
   expect_match(help, "exploratory future inference", fixed = TRUE)
   expect_match(help, "plausibility check", fixed = TRUE)
   expect_match(help, "not fully comparable", fixed = TRUE)
-  expect_match(help, "working warning threshold", fixed = TRUE)
-  expect_match(help, "not a universal biological tipping point", fixed = TRUE)
+  expect_match(help, "working warning\\s+threshold")
+  expect_match(help, "not a\\s+universal biological tipping point")
   expect_match(help, "must not be ranked", fixed = TRUE)
   expect_match(module_source, "calibrate_recovery_record_modal", fixed = TRUE)
   expect_match(module_source, "recovery-record-table", fixed = TRUE)

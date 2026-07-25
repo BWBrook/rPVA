@@ -60,7 +60,7 @@ test_that("scientific catalogues expose complete structured review metadata", {
     )
   )
   expect_true(all(vapply(sensitivity$anchors, function(x) {
-    identical(names(x), c("low", "moderate", "high"))
+    identical(names(x), c("baseline", "higher", "lower"))
   }, logical(1))))
   expect_true(all(vapply(threats$mapping, function(x) {
     is.list(x) && length(x) >= 1L && !is.null(names(x)) && all(nzchar(names(x)))
@@ -81,6 +81,94 @@ test_that("scientific catalogues expose complete structured review metadata", {
   expect_match(supplement$source_or_rationale, "pedagogical design anchors")
 })
 
+test_that("sensitivity defaults bracket the locked future with reviewed settings", {
+  catalog <- woodhen_sensitivity_catalog()
+  expected_anchors <- list(
+    c(baseline = 325, higher = 500, lower = 150),
+    c(baseline = 1.00, higher = 1.10, lower = 0.70),
+    c(baseline = 1.00, higher = 1.10, lower = 0.50),
+    c(baseline = 1.00, higher = 1.20, lower = 0.40),
+    c(baseline = 0.04, higher = 0.20, lower = 0.00),
+    c(baseline = 0.50, higher = 1.00, lower = 0.20),
+    c(baseline = 0.20, higher = 0.30, lower = 0.00),
+    c(baseline = 35, higher = 108, lower = 0)
+  )
+  expected_ranges <- list(
+    c(min = 150, max = 750),
+    c(min = 0.50, max = 1.10),
+    c(min = 0.25, max = 1.20),
+    c(min = 0.00, max = 1.50),
+    c(min = 0.00, max = 0.30),
+    c(min = 0.00, max = 1.00),
+    c(min = 0.00, max = 0.33),
+    c(min = 0, max = 108)
+  )
+
+  expect_identical(catalog$catalog_version, rep("woodhen-investigation-v2", 8L))
+  expect_equal(unclass(catalog$anchors), expected_anchors)
+  expect_equal(unclass(catalog$custom_range), expected_ranges)
+  expect_equal(
+    catalog$locked_baseline,
+    vapply(expected_anchors, `[[`, numeric(1), "baseline")
+  )
+  expect_true(all(vapply(catalog$anchors, function(anchor) {
+    anchor[["higher"]] > anchor[["baseline"]] &&
+      anchor[["lower"]] < anchor[["baseline"]]
+  }, logical(1))))
+})
+
+test_that("rodent reinvasion targets youngest-bird survival and can add recruitment pressure", {
+  locked <- woodhen_locked_future_spec()
+  predator <- woodhen_threat_catalog()[woodhen_threat_catalog()$id == "predator_reinvasion", ]
+
+  expect_equal(predator$affected_fields[[1]], "surv")
+  expect_equal(predator$affected_stages[[1]], 1L)
+  expect_match(predator$label[[1]], "Rodent")
+  expect_match(predator$biological_meaning[[1]], "egg and chick")
+  expect_match(predator$limitation[[1]], "territory-holder")
+
+  primary <- build_woodhen_prospective_family(
+    list(threat_id = "predator_reinvasion", intensity = "moderate")
+  )
+  primary_spec <- primary$scenarios[[2]]$spec
+  primary_surv <- as.numeric(tail(woodhen_spec_field_profile(primary_spec, "surv"), 1L))
+  primary_fecund <- as.numeric(tail(woodhen_spec_field_profile(primary_spec, "fecund"), 1L))
+
+  expect_equal(primary_surv[[1]], locked$surv[[1]] * 0.70)
+  expect_equal(primary_surv[-1], locked$surv[-1])
+  expect_equal(primary_fecund, locked$fecund)
+
+  compound <- build_woodhen_prospective_family(
+    list(
+      threat_id = "predator_reinvasion",
+      intensity = "moderate",
+      components = list(egg_chick_recruitment = list(
+        field = "fecund", operator = "multiply", value = 0.80, stages = "all"
+      ))
+    ),
+    interventions = list(response = list(
+      intervention_id = "biosecurity_eradication", intensity = "moderate"
+    ))
+  )
+  threat_spec <- compound$scenarios[[2]]$spec
+  managed_spec <- compound$scenarios[[3]]$spec
+  threat_surv <- as.numeric(tail(woodhen_spec_field_profile(threat_spec, "surv"), 1L))
+  managed_surv <- as.numeric(tail(woodhen_spec_field_profile(managed_spec, "surv"), 1L))
+  threat_fecund <- as.numeric(tail(woodhen_spec_field_profile(threat_spec, "fecund"), 1L))
+  managed_fecund <- as.numeric(tail(woodhen_spec_field_profile(managed_spec, "fecund"), 1L))
+
+  expect_equal(threat_surv[[1]], locked$surv[[1]] * 0.70)
+  expect_equal(threat_surv[-1], locked$surv[-1])
+  expect_equal(threat_fecund, locked$fecund * 0.80)
+  expect_equal(managed_surv[[1]], locked$surv[[1]] + 0.5 * (threat_surv[[1]] - locked$surv[[1]]))
+  expect_equal(managed_surv[-1], locked$surv[-1])
+  expect_equal(managed_fecund, locked$fecund + 0.5 * (threat_fecund - locked$fecund))
+  expect_true(all(c(
+    "biosecurity_eradication__young_bird_survival",
+    "biosecurity_eradication__egg_chick_recruitment"
+  ) %in% names(compound$scenarios[[3]]$changes)))
+})
+
 test_that("every sensitivity family has one baseline and two isolated settings", {
   catalog <- woodhen_sensitivity_catalog()
   locked <- woodhen_locked_future_spec()
@@ -88,7 +176,7 @@ test_that("every sensitivity family has one baseline and two isolated settings",
   for (i in seq_len(nrow(catalog))) {
     family <- build_woodhen_sensitivity_family(
       catalog$id[[i]],
-      unname(catalog$anchors[[i]][c("moderate", "high")]),
+      unname(catalog$anchors[[i]][c("higher", "lower")]),
       seed = 321L,
       created_at = "2026-07-21T01:00:00Z"
     )
@@ -140,21 +228,31 @@ test_that("scientific content gives stable unique family and scenario identities
   intervention <- list(response = list(
     intervention_id = "emergency_response", intensity = "moderate"
   ))
+  cyclone <- function(intensity, label = NULL, notes = NULL) {
+    config <- list(
+      threat_id = "increased_cyclone_pressure",
+      intensity = intensity,
+      components = list(
+        cyclone_survival = list(field = "cat_surv", operator = "absolute", value = 0.40),
+        cyclone_reproduction = list(field = "cat_repro", operator = "absolute", value = 0.60)
+      )
+    )
+    if (!is.null(label)) config$label <- label
+    if (!is.null(notes)) config$notes <- notes
+    config
+  }
   low <- build_woodhen_prospective_family(
-    list(threat_id = "increased_cyclone_pressure", intensity = "low"),
+    cyclone("low"),
     intervention,
     created_at = "2026-07-21T01:00:00Z"
   )
   low_relabelled <- build_woodhen_prospective_family(
-    list(
-      threat_id = "increased_cyclone_pressure", intensity = "low",
-      label = "Presentation-only label", notes = "Presentation-only note"
-    ),
+    cyclone("low", "Presentation-only label", "Presentation-only note"),
     intervention,
     created_at = "2026-07-22T01:00:00Z"
   )
   high <- build_woodhen_prospective_family(
-    list(threat_id = "increased_cyclone_pressure", intensity = "high"),
+    cyclone("high"),
     intervention
   )
 
@@ -257,7 +355,17 @@ test_that("all named threat and intervention families materialise explicit mappi
   for (intervention_id in names(cases)) {
     intervention <- list(list(intervention_id = intervention_id, intensity = "moderate"))
     names(intervention) <- intervention_id
-    family <- build_woodhen_prospective_family(cases[[intervention_id]], intervention)
+    threat <- cases[[intervention_id]]
+    if (identical(intervention_id, "emergency_response")) {
+      threat <- list(
+        threat_id = threat,
+        components = list(
+          cyclone_survival = list(field = "cat_surv", operator = "absolute", value = 0.40),
+          cyclone_reproduction = list(field = "cat_repro", operator = "absolute", value = 0.60)
+        )
+      )
+    }
+    family <- build_woodhen_prospective_family(threat, intervention)
     managed <- family$scenarios[[3]]
     expect_equal(managed$scenario_type, "intervention")
     expect_equal(managed$parent_id, family$scenarios[[2]]$scenario_id)
@@ -318,10 +426,17 @@ test_that("prospective composition is ordered and resolved scientific presets ar
   )
 
   emergency <- build_woodhen_prospective_family(
-    "increased_cyclone_pressure",
+    list(
+      threat_id = "increased_cyclone_pressure",
+      components = list(
+        cyclone_survival = list(field = "cat_surv", operator = "absolute", value = 0.40),
+        cyclone_reproduction = list(field = "cat_repro", operator = "absolute", value = 0.60)
+      )
+    ),
     list(response = list(intervention_id = "emergency_response", intensity = "moderate"))
   )
-  expect_equal(tail(emergency$scenarios[[3]]$spec$annual_profiles$cat_surv, 1), 0.75)
+  expect_equal(tail(emergency$scenarios[[3]]$spec$annual_profiles$cat_surv, 1), 0.45)
+  expect_equal(tail(emergency$scenarios[[3]]$spec$annual_profiles$cat_repro, 1), 0.675)
 
   supplement <- build_woodhen_prospective_family(
     "novel_disease",
@@ -336,6 +451,55 @@ test_that("prospective composition is ordered and resolved scientific presets ar
   expect_equal(release_spec$release_vec, c(0L, 10L, 0L, 0L, 0L, 0L, 0L))
 })
 
+test_that("cyclone emergency response recovers named severity and reproduction without changing frequency", {
+  locked <- woodhen_locked_future_spec()
+  cyclone <- list(
+    threat_id = "increased_cyclone_pressure",
+    intensity = "high",
+    components = list(
+      cyclone_survival = list(field = "cat_surv", operator = "absolute", value = 0.30),
+      cyclone_reproduction = list(field = "cat_repro", operator = "absolute", value = 0.45)
+    )
+  )
+  family <- build_woodhen_prospective_family(
+    cyclone,
+    list(response = list(intervention_id = "emergency_response", intensity = "moderate"))
+  )
+  threat <- family$scenarios[[2]]$spec
+  managed <- family$scenarios[[3]]$spec
+
+  expect_equal(tail(threat$annual_profiles$cat_freq, 1L), 0.15)
+  expect_equal(tail(managed$annual_profiles$cat_freq, 1L), 0.15)
+  expect_equal(tail(managed$annual_profiles$cat_surv, 1L), 0.40)
+  expect_equal(tail(managed$annual_profiles$cat_repro, 1L), 0.60)
+  expect_equal(managed$surv, threat$surv)
+  expect_equal(managed$fecund, threat$fecund)
+  expect_true(all(c(
+    "emergency_response__cyclone_survival",
+    "emergency_response__cyclone_reproduction"
+  ) %in% names(family$scenarios[[3]]$changes)))
+
+  expect_error(
+    build_woodhen_prospective_family(
+      list(
+        threat_id = "increased_cyclone_pressure",
+        components = list(cyclone_survival = list(
+          field = "cat_surv", operator = "absolute", value = 0.30
+        ))
+      ),
+      list(response = list(intervention_id = "emergency_response"))
+    ),
+    "named parent cat_surv and cat_repro"
+  )
+  expect_error(
+    build_woodhen_prospective_family(
+      "novel_disease",
+      list(response = list(intervention_id = "emergency_response"))
+    ),
+    "increased-cyclone-pressure"
+  )
+})
+
 test_that("fully composed records reject compulsory, advanced, and inherited name collisions", {
   expect_error(
     build_woodhen_prospective_family(list(
@@ -348,10 +512,16 @@ test_that("fully composed records reject compulsory, advanced, and inherited nam
   )
   expect_error(
     build_woodhen_prospective_family(
-      "increased_cyclone_pressure",
+      list(
+        threat_id = "increased_cyclone_pressure",
+        components = list(
+          cyclone_survival = list(field = "cat_surv", operator = "absolute", value = 0.40),
+          cyclone_reproduction = list(field = "cat_repro", operator = "absolute", value = 0.60)
+        )
+      ),
       list(response = list(
         intervention_id = "emergency_response",
-        components = list(catastrophe_survival_recovery = list(
+        components = list(emergency_response__cyclone_survival = list(
           field = "cat_repro", operator = "absolute", value = 0.60
         ))
       ))
@@ -360,7 +530,13 @@ test_that("fully composed records reject compulsory, advanced, and inherited nam
   )
   expect_error(
     build_woodhen_prospective_family(
-      "increased_cyclone_pressure",
+      list(
+        threat_id = "increased_cyclone_pressure",
+        components = list(
+          cyclone_survival = list(field = "cat_surv", operator = "absolute", value = 0.40),
+          cyclone_reproduction = list(field = "cat_repro", operator = "absolute", value = 0.60)
+        )
+      ),
       list(response = list(
         intervention_id = "emergency_response",
         components = list(threat__cyclone_frequency = list(
@@ -459,7 +635,7 @@ test_that("supplied timestamp strings must be strict UTC ISO-8601 values", {
 test_that("builders reject unsafe, unsupported, unnamed, and locked changes before simulation", {
   expect_error(build_woodhen_sensitivity_family("K", c(149, 250)), "between 150 and 750")
   expect_error(build_woodhen_sensitivity_family("K", 250), "at least two altered")
-  expect_error(build_woodhen_sensitivity_family("env_sd", c(0.25, 0.31)), "between")
+  expect_error(build_woodhen_sensitivity_family("env_sd", c(0.25, 0.34)), "between")
   expect_error(
     build_woodhen_prospective_family(list(
       threat_id = "sea_level_rise_pathway",
@@ -584,6 +760,49 @@ test_that("scientific catalogue audit writes only to its caller-supplied directo
   expect_false(any(!nzchar(sensitivity$setting_1)))
   expect_false(any(!nzchar(sensitivity$setting_2)))
   expect_true(all(sensitivity$provenance_class == "bounded exploratory setting"))
+
+  baseline <- woodhen_locked_future_spec()
+  expect_equal(baseline$K, 325)
+  expect_equal(baseline$K_sd, 35)
+  threat <- catalogue[catalogue$catalogue == "threat", ]
+  expect_equal(
+    threat$baseline_value[match(c("habitat_contraction", "sea_level_rise_pathway"), threat$id)],
+    c("325", "325")
+  )
+  expect_match(
+    threat$model_quantity[threat$id == "predator_reinvasion"],
+    "fecund",
+    fixed = TRUE
+  )
+  expect_match(
+    threat$unit[threat$id == "predator_reinvasion"],
+    "breeding-output",
+    fixed = TRUE
+  )
+  expect_match(
+    threat$model_quantity[threat$id == "increased_cyclone_pressure"],
+    "cat_surv",
+    fixed = TRUE
+  )
+  expect_match(
+    threat$model_quantity[threat$id == "increased_cyclone_pressure"],
+    "cat_repro",
+    fixed = TRUE
+  )
+  intervention <- catalogue[catalogue$catalogue == "intervention", ]
+  expect_match(
+    intervention$model_quantity[intervention$id == "habitat_protection_restoration"],
+    "recover_toward_locked_baseline K",
+    fixed = TRUE
+  )
+  expect_match(
+    intervention$direction[intervention$id == "emergency_response"],
+    "survival toward 0.5 and reproduction toward 0.75",
+    fixed = TRUE
+  )
+  expect_true(any(grepl("locked K = 325", markdown, fixed = TRUE)))
+  expect_true(any(grepl("cat_surv", markdown, fixed = TRUE)))
+  expect_true(any(grepl("cat_repro", markdown, fixed = TRUE)))
 
   expect_true(all(c(
     "event_period", "reported_count", "comparison_count", "count_type",

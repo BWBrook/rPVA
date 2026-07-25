@@ -140,15 +140,17 @@ human-readable audit is lower cost and earlier.
 sensitivity settings; threat and intervention mechanisms; timing; source or
 rationale; omitted processes; the independence of historical observations; the
 biological conversion from model stages to breeding pairs; and the status of the
-50-pair value.
+100-pair value.
 
 **Out of scope for Barry:** Catalogue data structures, validators, profile
 objects, fingerprints, and unit-test implementation unless they impose a wrong
 biological constraint.
 
-**Epistemic rule:** The 50-pair value is a shared working warning threshold for
-this practical unless an empirical or management basis is documented. It is not
-described as a universal minimum viable population or proven tipping point.
+**Epistemic rule:** Strictly fewer than 100 modelled territory-holding breeding
+pairs is a shared working warning threshold for this practical. It is
+approximately the population scale that preceded rodent eradication, but it is
+not a direct conversion of historical total-bird counts. It is not described as
+a universal minimum viable population or proven tipping point.
 
 ## Gate B: Durable Projects And Compact Evidence
 
@@ -240,6 +242,9 @@ generic controls are not an acceptable teaching model.
 
 **What it sets up:** Students can ask how one uncertain assumption changes risk
 while holding the rest of the future constant, then retain useful evidence.
+The baseline is bracketed by one higher and one lower setting, with deliberately
+wide bounded exploratory ranges that are teaching assumptions rather than
+empirical forecasts.
 
 **Alternatives:** A general parameter table offers flexibility but too much early
 cognitive load. A fixed demonstration is safer but limits ownership. One named

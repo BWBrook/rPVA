@@ -1,5 +1,5 @@
 woodhen_investigation_catalog_version <- function() {
-  "woodhen-investigation-v1"
+  "woodhen-investigation-v2"
 }
 
 woodhen_reference_library_version <- function() {
@@ -135,24 +135,24 @@ woodhen_reference_catalog <- function() {
 woodhen_sensitivity_catalog <- function() {
   ids <- c("K", "surv", "juvenile_surv", "fecund", "cat_freq", "cat_surv", "env_sd", "K_sd")
   anchors <- list(
-    c(low = 325, moderate = 225, high = 160),
-    c(low = 1.00, moderate = 0.95, high = 0.90),
-    c(low = 1.00, moderate = 0.85, high = 0.70),
-    c(low = 1.00, moderate = 0.80, high = 0.60),
-    c(low = 0.04, moderate = 0.07, high = 0.10),
-    c(low = 0.50, moderate = 0.40, high = 0.30),
-    c(low = 0.20, moderate = 0.25, high = 0.30),
-    c(low = 35, moderate = 60, high = 85)
+    c(baseline = 325, higher = 500, lower = 150),
+    c(baseline = 1.00, higher = 1.10, lower = 0.70),
+    c(baseline = 1.00, higher = 1.10, lower = 0.50),
+    c(baseline = 1.00, higher = 1.20, lower = 0.40),
+    c(baseline = 0.04, higher = 0.20, lower = 0.00),
+    c(baseline = 0.50, higher = 1.00, lower = 0.20),
+    c(baseline = 0.20, higher = 0.30, lower = 0.00),
+    c(baseline = 35, higher = 108, lower = 0)
   )
   ranges <- list(
     woodhen_catalog_range(150, 750),
-    woodhen_catalog_range(0.70, 1.10),
     woodhen_catalog_range(0.50, 1.10),
-    woodhen_catalog_range(0.40, 1.20),
-    woodhen_catalog_range(0.00, 0.20),
-    woodhen_catalog_range(0.20, 1.00),
+    woodhen_catalog_range(0.25, 1.20),
+    woodhen_catalog_range(0.00, 1.50),
     woodhen_catalog_range(0.00, 0.30),
-    woodhen_catalog_range(0, 150)
+    woodhen_catalog_range(0.00, 1.00),
+    woodhen_catalog_range(0.00, 0.33),
+    woodhen_catalog_range(0, 108)
   )
   fields <- c("K", "surv", "surv", "fecund", "cat_freq", "cat_surv", "env_sd", "K_sd")
   stages <- list("not_applicable", 1:7, 1:2, 1:7, "not_applicable", "not_applicable", "not_applicable", "not_applicable")
@@ -217,7 +217,7 @@ woodhen_sensitivity_catalog <- function() {
       "The model does not impose a shared good-year or bad-year effect across all rates.",
       "Capacity draws are Normal; every practical setting must satisfy K >= 3*K_sd."
     ),
-    locked_baseline = vapply(anchors, `[[`, numeric(1), "low"),
+    locked_baseline = vapply(anchors, `[[`, numeric(1), "baseline"),
     horizon_years = rep(75L, length(ids))
   )
 }
@@ -249,11 +249,11 @@ woodhen_threat_catalog <- function() {
     woodhen_catalog_range(0.20, 0.30)
   )
   fields <- c("surv", "K", "K", "cat_freq", "surv", "env_sd")
-  stages <- list(1:7, "not_applicable", "not_applicable", "not_applicable", 1:2, "not_applicable")
+  stages <- list(1:7, "not_applicable", "not_applicable", "not_applicable", 1L, "not_applicable")
   operators <- c("multiply", "absolute", "absolute", "absolute", "multiply", "absolute")
   component_names <- c(
     "disease_survival", "habitat_capacity", "linear_habitat_pathway",
-    "cyclone_frequency", "juvenile_survival", "demographic_variability"
+    "cyclone_frequency", "young_bird_survival", "demographic_variability"
   )
   mapping <- lapply(seq_along(ids), function(i) {
     stats::setNames(list(woodhen_catalog_component(
@@ -269,15 +269,21 @@ woodhen_threat_catalog <- function() {
     id = ids,
     label = c(
       "Novel disease", "Habitat contraction or degradation", "Sea-level rise pathway",
-      "Increased cyclone pressure", "Invasive-predator reinvasion",
+      "Increased cyclone pressure", "Rodent return or loss of control",
       "Chronic environmental variability"
     ),
     biological_meaning = c(
       "A new disease reduces survival across affected life stages.",
       "Loss or degradation reduces available breeding territories.",
       "Inundation and saline intrusion progressively reduce lowland habitat.",
-      "Cyclones occur more often across the projection horizon.",
-      "Predator return reduces juvenile and subadult survival.",
+      paste(
+        "Cyclones occur more often across the projection horizon; event-year survival",
+        "and breeding-output effects can be added as separately named components."
+      ),
+      paste(
+        "A renewed rodent problem reduces survival of the youngest birds;",
+        "egg and chick losses can be added as a separately named breeding-output component."
+      ),
       "Demographic conditions vary more strongly among years."
     ),
     mapping = mapping,
@@ -285,24 +291,39 @@ woodhen_threat_catalog <- function() {
     custom_range = ranges,
     allowed_temporal_shapes = list(c("step", "linear"), c("step", "linear"), "linear", c("step", "linear"), c("step", "linear"), c("step", "linear")),
     default_temporal_shape = c("step", "step", "linear", "step", "step", "step"),
-    source_or_rationale = rep(
-      "Prospective pedagogical design bounds derived from the locked model scale; not an empirical prescription.",
-      length(ids)
+    source_or_rationale = c(
+      rep(
+        "Prospective pedagogical design bounds derived from the locked model scale; not an empirical prescription.",
+        4L
+      ),
+      paste(
+        "Bounded teaching presets apply a survival multiplier to first-year birds;",
+        "egg and chick recruitment can be added as a separately named fecundity component.",
+        "These are not empirical effect estimates."
+      ),
+      "Prospective pedagogical design bounds derived from the locked model scale; not an empirical prescription."
     ),
     interpretation_help = c(
       "State which stages or processes the disease assumption represents.",
       "Interpret the response as a habitat-capacity pathway.",
       "Interpret the generated K profile as a habitat-loss abstraction, not an inundation forecast.",
       "Separate cyclone frequency from severity and reproductive effects.",
-      "Relate the targeted early-life stages to recruitment into the breeding population.",
+      paste(
+        "Explain how renewed rodent pressure affects first-year survival and, where included,",
+        "breeding output; distinguish bounded teaching assumptions from evidence."
+      ),
       "Discuss how increased variability changes uncertainty as well as median outcomes."
     ),
     limitation = c(
       "Disease effects are not estimated; reproduction may change only as a separately named advanced component.",
       "Habitat quality has no independent model field and K_sd remains locked in the compulsory route.",
       "Sea-level rise is represented only by a linear K habitat pathway, not a sea-level parameter.",
-      "Low, moderate, and high change cat_freq only to .07/.10/.15; cat_repro is never silently included.",
-      "The mapping is a design analogue and not an estimated causal reversal of eradication benefits.",
+      "The primary mapping changes cat_freq only; cat_surv and cat_repro must be named separately and are not empirical effect estimates.",
+      paste(
+        "The primary mapping changes first-year survival only; established territory-holder",
+        "survival is held fixed. Egg and chick recruitment requires a separately named fecundity component,",
+        "and no effect size is an empirical estimate."
+      ),
       "env_sd affects both survival beta draws and fecundity lognormal draws."
     ),
     horizon_years = rep(75L, length(ids))
@@ -333,15 +354,15 @@ woodhen_intervention_catalog <- function() {
     woodhen_catalog_range(1, 20),
     woodhen_catalog_range(0, 1)
   )
-  fields <- list("K", c("surv", "fecund"), c("surv", "fecund"), c("release_years", "release_vec"), "cat_surv")
+  fields <- list("K", c("surv", "fecund"), c("surv", "fecund"), c("release_years", "release_vec"), c("cat_surv", "cat_repro"))
   stages <- list("not_applicable", "named_parent_stages", "named_parent_stages", 2L, "not_applicable")
   operators <- c(
     "recover_toward_locked_baseline", "recover_toward_locked_baseline",
-    "recover_named_vital_rate", "annual_release_schedule", "recover_toward_one"
+    "recover_named_vital_rate", "annual_release_schedule", "recover_toward_locked_baseline"
   )
   component_names <- c(
     "habitat_recovery", "biosecurity_recovery", "targeted_recovery",
-    "three_year_stage_2_release", "catastrophe_survival_recovery"
+    "three_year_stage_2_release", "catastrophe_recovery"
   )
   mapping <- lapply(seq_along(ids), function(i) {
     stats::setNames(list(woodhen_catalog_component(
@@ -365,7 +386,7 @@ woodhen_intervention_catalog <- function() {
       "Management reverses named predator-reinvasion effects.",
       "Management recovers an explicitly named affected survival or fecundity component.",
       "Captive-reared stage-2 female-equivalent breeding pairs are released annually for three years.",
-      "Emergency action buffers survival losses in catastrophe years."
+      "Emergency action recovers named event-year survival and breeding-output losses toward the locked future baseline."
     ),
     mapping = mapping,
     anchors = anchors,
@@ -375,21 +396,21 @@ woodhen_intervention_catalog <- function() {
     source_or_rationale = c(
       rep("Prospective pedagogical design bounds; not an empirical prescription.", 3L),
       "Release 5/10/15 stage-2 female-equivalent breeding pairs annually for three years; pedagogical design anchors, not empirical prescriptions.",
-      "Recover cat_surv from the threatened value toward 1 by .25/.50/.75; pedagogical design anchors, not an empirical prescription."
+      "Recover named cat_surv and cat_repro losses toward locked values 0.50 and 0.75 by .25/.50/.75; pedagogical design anchors, not empirical prescriptions."
     ),
     interpretation_help = c(
       "Report the fraction of threatened habitat capacity recovered.",
       "Identify the reinvasion effect being reversed.",
       "Name the targeted vital rate and affected stages.",
       "Report the stage, annual number, first release year, and three-year duration.",
-      "Interpret the setting as buffering catastrophe-year survival, not preventing cyclones."
+      "Interpret the setting as recovering named event-year survival and breeding-output losses, not preventing cyclones."
     ),
     limitation = c(
       "Recovery cannot exceed the locked baseline in the compulsory route.",
       "Full recovery means the model baseline, not proof of eradication success.",
       "Above-baseline uplift requires a separately named advanced component.",
       "The engine repeats one release vector; it does not support event-triggered or year-varying amounts.",
-      "cat_repro may be an advanced explicit component but is not silently included in cyclone presets."
+      "Recovery applies only to named cat_surv and cat_repro parent losses; cat_freq remains unchanged."
     ),
     horizon_years = rep(75L, length(ids))
   )
