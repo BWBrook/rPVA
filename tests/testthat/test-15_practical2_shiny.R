@@ -262,20 +262,67 @@ test_that("shell exposes exactly six visible stable tab values", {
   tab_values <- regmatches(
     html,
     gregexpr(
-      'data-value="(start|calibrate|investigate|compare|evidence|assessment)"',
+      'data-value="[^"]+"',
       html
     )
   )[[1L]]
+  tab_values <- gsub('^data-value="|"$', "", tab_values)
 
   expect_identical(
-    unique(gsub('^data-value="|"$', "", tab_values)),
+    unique(tab_values),
     c(
       "start", "calibrate", "investigate", "compare", "evidence",
       "assessment"
     )
   )
+  expect_identical(
+    as.integer(table(factor(tab_values, levels = unique(tab_values)))),
+    rep(2L, 6L)
+  )
   expect_match(html, ">Assessment Task<", fixed = TRUE)
   expect_match(html, 'id="project_save_bar"', fixed = TRUE)
+})
+
+test_that("root handles valid and invalid Assessment navigation events", {
+  env <- source_practical2_app()
+  navigation_event <- shiny::reactiveVal(NULL)
+  selected_tabs <- character()
+  notifications <- list()
+
+  env$assessment_server <- function(...) {
+    list(
+      navigate = shiny::reactive(navigation_event()),
+      summary = shiny::reactive(NULL)
+    )
+  }
+  env$updateNavbarPage <- function(session, inputId, selected = NULL, ...) {
+    selected_tabs <<- c(selected_tabs, selected)
+  }
+  env$showNotification <- function(ui, type = "default", ...) {
+    notifications[[length(notifications) + 1L]] <<- list(
+      message = as.character(ui),
+      type = type
+    )
+  }
+
+  shiny::testServer(env$make_practical2_server(), {
+    navigation_event(list(section = "compare", event_id = 1L))
+    session$flushReact()
+    expect_identical(selected_tabs, "compare")
+    expect_length(notifications, 0L)
+
+    navigation_event(list(section = "assessment", event_id = 2L))
+    session$flushReact()
+    expect_identical(selected_tabs, "compare")
+    expect_length(notifications, 1L)
+    expect_identical(
+      notifications[[1L]],
+      list(
+        message = "That section could not be opened.",
+        type = "warning"
+      )
+    )
+  })
 })
 
 test_that("Start controls and statuses are namespaced and accessible", {

@@ -33,6 +33,14 @@ assessment_content_text <- function() {
   ), collapse = "\n")
 }
 
+assessment_surface_text <- function(env) {
+  gsub("\\s+", " ", paste(
+    paste(as.character(env$assessment_ui("assessment")), collapse = "\n"),
+    assessment_content_text(),
+    sep = "\n"
+  ))
+}
+
 test_that("Assessment Task preserves locked ILOs and criteria exactly", {
   env <- source_assessment_module()
   expect_identical(env$assessment_ilos(), c(
@@ -53,14 +61,51 @@ test_that("Assessment Task preserves locked ILOs and criteria exactly", {
 })
 
 test_that("Assessment guidance informs without scoring or writing the report", {
-  text <- assessment_content_text()
+  env <- source_assessment_module()
+  text <- assessment_surface_text(env)
   expect_match(text, "portfolio", ignore.case = TRUE)
   expect_match(text, "dossier", ignore.case = TRUE)
   expect_match(text, "report", ignore.case = TRUE)
   expect_match(text, "three-setting sensitivity", ignore.case = TRUE)
   expect_match(text, "one named ecological factor", ignore.case = TRUE)
-  expect_match(text, "encouraged, but not required", ignore.case = TRUE)
-  expect_match(text, "not a quota", ignore.case = TRUE)
+  expect_match(
+    text,
+    "Use the portfolio as your broad working record",
+    fixed = TRUE
+  )
+  expect_match(
+    text,
+    "Adapt the structure to make your reasoning easy to follow",
+    fixed = TRUE
+  )
+  expect_match(
+    text,
+    "Treat three or four main display items, or roughly six panels, as a soft planning guide",
+    fixed = TRUE
+  )
+  expect_match(
+    text,
+    "Select enough high-quality sources to support the claims and ecological reasoning in your report",
+    fixed = TRUE
+  )
+  expect_match(
+    text,
+    "Treat uncertainty and limitations explicitly",
+    fixed = TRUE
+  )
+  expect_false(grepl(
+    paste(
+      "not a partly written report",
+      "possibilities rather than templates",
+      "not a quota",
+      "no arbitrary source quota",
+      "not from complexity for its own sake",
+      sep = "|"
+    ),
+    text,
+    ignore.case = TRUE
+  ))
+  expect_false(grepl("\\bhonest(?:ly)?\\b", text, ignore.case = TRUE))
   expect_false(grepl(
     "assessment ready|grade estimate|high distinction|pass-level|fixed headings|write this sentence",
     text,
@@ -196,6 +241,18 @@ test_that("Assessment UI exposes the approved readable hierarchy", {
   expect_match(html, 'id="assessment-go_investigate"', fixed = TRUE)
   expect_match(html, 'id="assessment-go_compare"', fixed = TRUE)
   expect_match(html, 'id="assessment-go_evidence"', fixed = TRUE)
+  for (index in seq_along(env$assessment_ilos())) {
+    expect_match(
+      html,
+      paste0('<span class="assessment-ilo-label">ILO ', index, "</span>"),
+      fixed = TRUE
+    )
+    expect_match(
+      html,
+      env$assessment_ilos()[[index]],
+      fixed = TRUE
+    )
+  }
 })
 
 test_that("Assessment server remains read-only and emits bounded navigation", {
@@ -207,6 +264,8 @@ test_that("Assessment server remains read-only and emits bounded navigation", {
     {
       expect_identical(summary()$status, "empty")
       session$setInputs(go_calibrate = 1)
+      expect_null(navigate())
+      session$setInputs(go_calibrate = 2)
       expect_identical(
         navigate(),
         list(section = "calibrate", event_id = 1L)
@@ -239,6 +298,22 @@ test_that("Assessment server remains read-only and emits bounded navigation", {
   expect_identical(serialize(project, NULL), before)
 })
 
+test_that("Assessment navigation observers explicitly ignore initial values", {
+  module_path <- testthat::test_path(
+    "..", "..", "inst", "shiny", "practical2", "modules",
+    "mod_assessment.R"
+  )
+  source_text <- paste(readLines(module_path, warn = FALSE), collapse = "\n")
+  matches <- gregexpr("ignoreInit = TRUE", source_text, fixed = TRUE)[[1L]]
+  expect_identical(
+    sum(matches > 0L),
+    1L
+  )
+  expect_identical(source_assessment_module()$assessment_navigation_targets(), c(
+    "calibrate", "investigate", "compare", "evidence"
+  ))
+})
+
 test_that("Assessment navigation accepts only working evidence tabs", {
   env <- source_assessment_module()
   for (section in c("calibrate", "investigate", "compare", "evidence")) {
@@ -258,5 +333,35 @@ test_that("Assessment navigation accepts only working evidence tabs", {
       )),
       "invalid"
     )
+  }
+  malformed <- list(
+    NULL,
+    "compare",
+    list(section = "compare"),
+    list(event_id = 1L, section = "compare"),
+    list(section = "compare", event_id = 0L),
+    list(section = "compare", event_id = 1.5),
+    list(section = c("compare", "evidence"), event_id = 1L)
+  )
+  for (event in malformed) {
+    expect_error(
+      env$validate_assessment_navigation_event(event),
+      "invalid"
+    )
+  }
+})
+
+test_that("Assessment research guidance supports selective scientific context", {
+  text <- gsub("\\s+", " ", assessment_content_text())
+  for (accepted in c(
+    "good scientific citation practice",
+    "relevant, credible scientific and management sources",
+    "Attach citations to the claims they support",
+    "population viability analysis as a quantitative tool for extinction-risk assessment and conservation decision-making",
+    "approximately 2,000-word report",
+    "concise, well-written, selective synthesis",
+    "strengthen your argument"
+  )) {
+    expect_match(text, accepted, fixed = TRUE)
   }
 })

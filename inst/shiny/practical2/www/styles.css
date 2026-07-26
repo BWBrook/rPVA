@@ -3189,7 +3189,14 @@ textarea:focus-visible,
 
 .assessment-ilo-list {
   margin: 1rem 0 1.5rem;
-  padding-left: 1.4rem;
+  padding-left: 0;
+  list-style: none;
+}
+
+.assessment-ilo-label {
+  display: inline-block;
+  min-width: 3.6rem;
+  font-weight: 700;
 }
 
 .assessment-ilo-list li + li {

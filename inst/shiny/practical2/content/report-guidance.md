@@ -1,9 +1,8 @@
 ## From evidence to conservation advice
 
-Your Evidence Portfolio is a broad working record. An evidence dossier is the
-smaller packet of plots, tables, and notes you select for later use. Your report
-is the scientific argument that you write from that evidence; the dossier is
-not a partly written report.
+Use the portfolio as your broad working record. Build an evidence dossier by
+selecting a smaller packet of plots, tables, and notes for later use. Write the
+report as the scientific argument developed from that evidence.
 
 ### Develop your investigation
 
@@ -15,23 +14,22 @@ expected, what changed, and what remains uncertain.
 
 ### Build a coherent argument
 
-A conventional scientific sequence, a decision-led sequence, or an
-evidence-led sequence can all work. These are possibilities rather than
-templates. Whatever structure you choose, make the connection between the
-question, methods, evidence, uncertainty, and advice easy to follow.
+Choose an adaptable structure that serves your argument. A conventional
+scientific sequence, a decision-led sequence, and an evidence-led sequence are
+all useful starting points. Adapt the structure to make your reasoning easy to
+follow by connecting the question, methods, evidence, uncertainty, and advice.
 
 ### Use evidence selectively
 
-A typical report may use three or four main display items. Around four main
-items or roughly six panels is a useful guide, not a quota. Every display
-should earn its place, be legible, be cited in the text, and be interpreted.
-You may use an app display directly or create a clearer synthesis from exported
-data.
+Treat three or four main display items, or roughly six panels, as a soft
+planning guide. Select the displays that best advance your argument. Make every
+display legible, cite it in the text, and interpret it. You may use an app
+display directly or create a clearer synthesis from exported data.
 
 ### Final self-check
 
-Ask whether the conservation problem and role of PVA are clear; the methods
-and stochastic processes support interpretation; comparisons are quantitative
-and like-for-like; uncertainty and limitations are treated honestly; displays
-advance the argument; and the recommendation follows from the evidence. State
-important conditions that could change your advice.
+Ask whether the conservation problem and role of PVA are clear, the methods and
+stochastic processes support interpretation, and comparisons are quantitative
+and like-for-like. Treat uncertainty and limitations explicitly. Check that
+each display advances the argument and the recommendation follows from the
+evidence. State important conditions that could change your advice.

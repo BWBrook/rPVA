@@ -133,6 +133,7 @@ assessment_criterion_questions <- function() {
 assessment_outcomes_ui <- function() {
   criteria <- assessment_criteria()
   questions <- assessment_criterion_questions()
+  ilos <- assessment_ilos()
   shiny::tags$section(
     class = "assessment-band",
     shiny::span(class = "workspace-label", "Unit and task alignment"),
@@ -143,7 +144,15 @@ assessment_outcomes_ui <- function() {
     ),
     shiny::tags$ol(
       class = "assessment-ilo-list",
-      lapply(assessment_ilos(), shiny::tags$li)
+      lapply(seq_along(ilos), function(index) {
+        shiny::tags$li(
+          shiny::span(
+            class = "assessment-ilo-label",
+            paste("ILO", index)
+          ),
+          ilos[[index]]
+        )
+      })
     ),
     shiny::div(
       class = "assessment-criteria-grid",
@@ -252,7 +261,7 @@ assessment_ui <- function(id) {
       shiny::h2("Your investigation at a glance"),
       shiny::p(
         "This summary reports what is available in the current project.",
-        "It is a reminder, not a checklist or score."
+        "Use it as a neutral reminder of your working record."
       ),
       shiny::div(
         class = "assessment-summary-region",
@@ -273,8 +282,10 @@ assessment_ui <- function(id) {
           class = "assessment-phase",
           shiny::h3("Phase 1: Reconstruct the management history"),
           shiny::p(
-            "Use the historical comparisons as a plausibility check,",
-            "not as proof that the model is independently validated."
+            "Use historical comparisons as plausibility evidence for the",
+            "model's ability to reproduce broad patterns of management",
+            "history. Assess independent model validation as a separate",
+            "evidentiary claim."
           )
         ),
         shiny::div(
@@ -433,7 +444,7 @@ assessment_server <- function(id, project = NULL) {
           next_id <- shiny::isolate(event_id()) + 1L
           event_id(next_id)
           navigate(list(section = target, event_id = next_id))
-        })
+        }, ignoreInit = TRUE)
       })
     }
     list(navigate = navigate, summary = summary)
