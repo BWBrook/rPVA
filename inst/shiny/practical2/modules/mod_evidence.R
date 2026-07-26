@@ -564,27 +564,60 @@ evidence_export_items <- function(project, evidence_ids) {
 }
 
 evidence_write_plot_png <- function(item, project, path) {
+  close_export_device <- function(device_number) {
+    if (is.null(device_number) || length(device_number) != 1L) return(invisible(NULL))
+    devices <- grDevices::dev.list()
+    if (!is.null(devices) && as.integer(device_number) %in% unname(devices)) {
+      try({
+        grDevices::dev.set(as.integer(device_number))
+        grDevices::dev.off()
+      }, silent = TRUE)
+    }
+    invisible(NULL)
+  }
+  open_export_device <- function() {
+    before <- grDevices::dev.list()
+    tryCatch(
+      grDevices::png(path, width = 1800L, height = 1200L, res = 144L),
+      error = function(error) {
+        after <- grDevices::dev.list()
+        new_devices <- setdiff(
+          if (is.null(after)) integer() else unname(after),
+          if (is.null(before)) integer() else unname(before)
+        )
+        if (length(new_devices)) close_export_device(new_devices[[1L]])
+        stop(error)
+      }
+    )
+    grDevices::dev.cur()
+  }
   plot <- NULL
+  device_state <- new.env(parent = emptyenv())
+  device_state$number <- NULL
   if (item$view_id %in% evidence_calibration_plot_views()) {
     plot <- tryCatch({
-      grDevices::png(path, width = 1800L, height = 1200L, res = 144L)
+      device_state$number <- open_export_device()
       ok <- evidence_render_calibration_plot(item, project)
-      grDevices::dev.off()
+      close_export_device(device_state$number)
+      device_state$number <- NULL
       if (isTRUE(ok)) TRUE else FALSE
     }, error = function(...) {
-      try(grDevices::dev.off(), silent = TRUE)
+      close_export_device(device_state$number)
+      device_state$number <- NULL
       FALSE
     })
   } else {
     plot <- tryCatch(evidence_preview_plot(item, project), error = function(...) NULL)
     if (!is.null(plot)) {
       plot <- tryCatch({
-        grDevices::png(path, width = 1800L, height = 1200L, res = 144L)
+        device_state$number <- open_export_device()
         print(plot)
-        grDevices::dev.off()
+        close_export_device(device_state$number)
+        device_state$number <- NULL
         TRUE
       }, error = function(...) {
-        try(grDevices::dev.off(), silent = TRUE)
+        close_export_device(device_state$number)
+        device_state$number <- NULL
         FALSE
       })
     } else {
@@ -595,9 +628,31 @@ evidence_write_plot_png <- function(item, project, path) {
   isTRUE(plot) && file.exists(path)
 }
 
-evidence_write_table_csv <- function(item, project, path) {
+evidence_reconstruct_table <- function(item, project) {
+  source_ids <- item$source_run_ids
+  if (is.null(source_ids) || length(source_ids) == 0L) {
+    return(list(ok = FALSE, table = NULL, reason = "no source runs recorded"))
+  }
+  runs <- evidence_runs_for_item(item, project)
+  if (length(runs) != length(source_ids)) {
+    return(list(ok = FALSE, table = NULL, reason = "partial or unknown source runs"))
+  }
   table <- tryCatch(evidence_preview_table(item, project), error = function(...) NULL)
-  if (!is.data.frame(table)) return(FALSE)
+  metadata <- evidence_run_metadata_table(item, project)
+  if (!is.data.frame(table) || identical(table, metadata)) {
+    return(list(ok = FALSE, table = NULL, reason = "table reconstruction failed"))
+  }
+  list(ok = TRUE, table = table, reason = "")
+}
+
+evidence_write_table_csv <- function(item, project, path, reconstruction = NULL) {
+  result <- if (is.null(reconstruction)) {
+    evidence_reconstruct_table(item, project)
+  } else {
+    reconstruction
+  }
+  if (!isTRUE(result$ok) || !is.data.frame(result$table)) return(FALSE)
+  table <- result$table
   table[] <- lapply(table, function(column) {
     if (is.character(column)) {
       vapply(column, evidence_neutralise_csv_cell, character(1))
@@ -646,25 +701,36 @@ evidence_dossier_html <- function(items, project, assets = list(), generated_at 
       }
     } else if (identical(item$kind, "plot")) {
       if (!is.null(asset$png) && nzchar(asset$png)) {
-        paste0("<p><img src=\"", evidence_html_escape(asset$png), "\" alt=\"",
-               evidence_html_escape(item$title), "\"></p>")
+        paste0(
+          "<p>",
+          as.character(shiny::tags$img(
+            src = asset$png,
+            alt = item$title
+          )),
+          "</p>"
+        )
       } else {
         "<p><strong>Evidence unavailable:</strong> This plot could not be reconstructed from the saved project evidence.</p>"
       }
     } else {
-      table <- tryCatch(evidence_preview_table(item, project), error = function(...) NULL)
+      reconstruction <- if (!is.null(asset$table_result)) {
+        asset$table_result
+      } else {
+        evidence_reconstruct_table(item, project)
+      }
+      table <- reconstruction$table
       csv_link <- if (!is.null(asset$csv) && nzchar(asset$csv)) {
         paste0("<p>Companion CSV: <code>", evidence_html_escape(asset$csv), "</code></p>")
       } else ""
-      metadata <- evidence_run_metadata_table(item, project)
-      unavailable <- is.null(table) || (
-        length(evidence_runs_for_item(item, project)) > 0L &&
-          identical(table, metadata)
-      )
+      unavailable <- !isTRUE(reconstruction$ok)
       notice <- if (unavailable) {
-        "<p><strong>Evidence unavailable:</strong> The selected table could not be reconstructed from the saved project evidence; the provenance metadata below is retained.</p>"
+        paste0(
+          "<p><strong>Evidence unavailable:</strong> The selected table could not be reconstructed from the saved project evidence (",
+          evidence_html_escape(reconstruction$reason),
+          "); no table or CSV companion is included.</p>"
+        )
       } else ""
-      paste0(csv_link, notice, evidence_html_table(table))
+      paste0(csv_link, notice, if (unavailable) "" else evidence_html_table(table))
     }
     paste0(
       "<section><h2>", index, ". ", evidence_html_escape(item$title), "</h2>",
@@ -675,7 +741,7 @@ evidence_dossier_html <- function(items, project, assets = list(), generated_at 
     )
   }, character(1))
   paste0(
-    "<!doctype html><html><head><meta charset=\"utf-8\"><title>Evidence dossier</title>",
+    "<!doctype html><html><head><meta charset=\"utf-8\">",
     "<style>body{font-family: sans-serif; line-height:1.35} section{page-break-before:always} table{border-collapse:collapse} th,td{border:1px solid #999;padding:4px;text-align:left} img{max-width:100%} code{font-family:monospace}</style>",
     "</head><body><h1>Evidence dossier</h1>",
     "<p><strong>Project:</strong> ", evidence_html_escape(project_title),
@@ -708,7 +774,14 @@ write_evidence_dossier_bundle <- function(project,
     } else if (identical(item$kind, "table")) {
       relative <- file.path("tables", paste0(base, ".csv"))
       absolute <- file.path(staging, relative)
-      if (evidence_write_table_csv(item, project, absolute)) assets[[index]] <- list(csv = relative)
+      reconstruction <- evidence_reconstruct_table(item, project)
+      if (isTRUE(reconstruction$ok) && evidence_write_table_csv(
+        item, project, absolute, reconstruction
+      )) {
+        assets[[index]] <- list(csv = relative, table_result = reconstruction)
+      } else {
+        assets[[index]] <- list(table_result = reconstruction)
+      }
     }
   }
   html_path <- file.path(staging, "evidence-dossier.html")
@@ -716,7 +789,11 @@ write_evidence_dossier_bundle <- function(project,
   docx_path <- file.path(staging, "evidence-dossier.docx")
   rmarkdown::pandoc_convert(html_path, to = "docx", output = docx_path, wd = staging)
   files <- c("evidence-dossier.docx", unlist(lapply(assets, function(asset) {
-    if (is.null(asset)) character() else unname(unlist(asset))
+    if (is.null(asset)) {
+      character()
+    } else {
+      unname(unlist(asset[c("png", "csv")], use.names = FALSE))
+    }
   }), use.names = FALSE))
   zip::zipr(
     path,

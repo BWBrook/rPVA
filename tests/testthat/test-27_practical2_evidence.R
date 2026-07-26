@@ -654,7 +654,9 @@ test_that("evidence export preserves selected order and writes the exact bundle 
   env$evidence_preview_table <- function(item, project) {
     data.frame(
       Scenario = c("A", "B"),
-      Note = c("=unsafe", "ordinary"),
+      Note = c("=unsafe", "+plus"),
+      Prefix = c("-minus", "@at"),
+      More = c("\ttab", "\rcr"),
       Value = c(1, 2),
       stringsAsFactors = FALSE
     )
@@ -682,8 +684,29 @@ test_that("evidence export preserves selected order and writes the exact bundle 
   docx_path <- file.path(extracted_dir, "evidence-dossier.docx")
   expect_identical(utils::unzip(docx_path, list = TRUE)$Name[1L], "[Content_Types].xml")
   text_dump <- system2("pandoc", c(shQuote(docx_path), "-t", "plain"), stdout = TRUE)
-  expect_match(paste(text_dump, collapse = "\n"), "My comparison note", fixed = TRUE)
-  expect_match(paste(text_dump, collapse = "\n"), "managed future retained", fixed = TRUE)
+  text_dump <- paste(text_dump, collapse = "\n")
+  expect_match(text_dump, "My comparison note", fixed = TRUE)
+  expect_match(text_dump, "managed future retained", fixed = TRUE)
+  expect_lt(
+    regexpr("My comparison note", text_dump, fixed = TRUE),
+    regexpr("Risk through time", text_dump, fixed = TRUE)
+  )
+  expect_lt(
+    regexpr("Risk through time", text_dump, fixed = TRUE),
+    regexpr("Threat and intervention comparison", text_dump, fixed = TRUE)
+  )
+  docx_check <- system2("unzip", c("-t", shQuote(docx_path)), stdout = TRUE, stderr = TRUE)
+  expect_match(paste(docx_check, collapse = "\n"), "No errors detected", fixed = TRUE)
+  docx_members <- utils::unzip(docx_path, list = TRUE)$Name
+  expect_true(any(grepl("^word/media/", docx_members)))
+  rel_dir <- tempfile("docx-rels-")
+  dir.create(rel_dir)
+  unzip(docx_path, files = "word/_rels/document.xml.rels", exdir = rel_dir)
+  rel_text <- paste(readLines(
+    file.path(rel_dir, "word", "_rels", "document.xml.rels"), warn = FALSE
+  ), collapse = "\n")
+  expect_match(rel_text, "relationships/image", fixed = TRUE)
+  expect_match(rel_text, "Target=\"media/", fixed = TRUE)
 
   csv_dir <- tempfile("evidence-csv-")
   dir.create(csv_dir)
@@ -693,7 +716,16 @@ test_that("evidence export preserves selected order and writes the exact bundle 
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
-  expect_identical(exported$Note, c("'=unsafe", "ordinary"))
+  expect_identical(exported$Note, c("'=unsafe", "'+plus"))
+  expect_identical(exported$Prefix, c("'-minus", "'@at"))
+  expect_identical(exported$More, c("'\ttab", "'\ncr"))
+  raw_csv <- rawToChar(readBin(
+    file.path(csv_dir, "tables", "003-Threat_and_intervention_comparison.csv"),
+    "raw", n = file.info(file.path(
+      csv_dir, "tables", "003-Threat_and_intervention_comparison.csv"
+    ))$size
+  ))
+  expect_match(raw_csv, "'\rcr", fixed = TRUE)
   expect_equal(exported$Value, c(1, 2))
 
   png_dir <- tempfile("evidence-png-")
@@ -715,4 +747,67 @@ test_that("failed evidence reconstruction is explicit in dossier HTML", {
   expect_match(html, "Evidence unavailable", fixed = TRUE)
   expect_match(html, "could not be reconstructed", fixed = TRUE)
   expect_false(grepl("example|representative|synthetic", html, ignore.case = TRUE))
+})
+
+test_that("table export exposes explicit reconstruction status and omits fallback metadata", {
+  env <- source_evidence_module()
+  project <- evidence_portfolio_fixture()
+  expect_true(exists("evidence_reconstruct_table", envir = env))
+  if (!exists("evidence_reconstruct_table", envir = env)) return()
+
+  zero_project <- project
+  zero_project$evidence_items[[2L]]$source_run_ids <- character()
+  zero <- env$evidence_reconstruct_table(zero_project$evidence_items[[2L]], zero_project)
+  expect_false(zero$ok)
+  expect_match(zero$reason, "source runs", ignore.case = TRUE)
+
+  partial <- project
+  partial$evidence_items[[2L]]$source_run_ids <- c("run_base", "missing")
+  partial_result <- env$evidence_reconstruct_table(partial$evidence_items[[2L]], partial)
+  expect_false(partial_result$ok)
+  expect_match(partial_result$reason, "partial|unknown|source", ignore.case = TRUE)
+
+  error_result <- env$evidence_reconstruct_table(project$evidence_items[[2L]], project)
+  expect_false(error_result$ok)
+  expect_null(error_result$table)
+})
+
+test_that("failed PNG opening preserves a pre-existing graphics device", {
+  env <- source_evidence_module()
+  project <- evidence_portfolio_fixture()
+  env$evidence_preview_plot <- function(item, project) {
+    ggplot2::ggplot(data.frame(x = 1:2, y = 2:1), ggplot2::aes(x, y)) +
+      ggplot2::geom_line()
+  }
+  pdf_path <- tempfile(fileext = ".pdf")
+  grDevices::pdf(pdf_path)
+  original <- grDevices::dev.cur()
+  on.exit({
+    if (grDevices::dev.cur() != 1L) grDevices::dev.off()
+    unlink(pdf_path)
+  }, add = TRUE)
+  bad_path <- tempfile()
+  dir.create(bad_path)
+  expect_false(env$evidence_write_plot_png(
+    project$evidence_items[[1L]], project, file.path(bad_path, "nested", "plot.png")
+  ))
+  expect_equal(unname(grDevices::dev.cur()), unname(original))
+})
+
+test_that("hostile evidence text remains inert and image attributes stay structured", {
+  env <- source_evidence_module()
+  project <- evidence_portfolio_fixture()
+  project$title <- 'Project "<unsafe> & line\nbreak'
+  project$evidence_items[[1L]]$title <- 'Plot "quoted" <b>bold</b> & next\nline'
+  project$evidence_items[[3L]]$title <- 'Table "quoted" <i>markup</i> & next\nline'
+  project$observations[[1L]]$note <- 'Note "quoted" <script>alert(1)</script> & next\nline'
+  html <- env$evidence_dossier_html(
+    project$evidence_items[c(1L, 3L)], project,
+    assets = list(list(png = 'figures/001-safe.png'), list(csv = 'tables/002-safe.csv'))
+  )
+  expect_match(html, '&lt;script&gt;alert(1)&lt;/script&gt;', fixed = TRUE)
+  expect_false(grepl('<script>', html, fixed = TRUE))
+  expect_match(html, 'src="figures/001-safe.png"', fixed = TRUE)
+  expect_false(grepl('src="[^"]*&quot;', html))
+  expect_match(html, 'Plot &quot;quoted&quot; &lt;b&gt;bold&lt;/b&gt;', fixed = TRUE)
 })
