@@ -93,6 +93,25 @@ test_that("assessment brief defines the complete evidence-led report journey", {
   ))
 })
 
+test_that("student documents limit dossier requests to the accepted review boundary", {
+  student_documents <- list(
+    brief = read_assessment_text(
+      "docs/teaching/woodhen/assessment-brief-2026.md"
+    ),
+    start_here = read_assessment_text(
+      "docs/teaching/woodhen/practical-2-start-here.md"
+    )
+  )
+
+  for (document in student_documents) {
+    expect_document_contains(document, c(
+      "The dossier is not separately marked",
+      "clarification, provenance, or academic-integrity review"
+    ))
+    expect_document_omits(document, "particular purpose")
+  }
+})
+
 test_that("marking rubric preserves locked criteria and assesses all evidence families", {
   rubric <- read_assessment_text(
     "docs/teaching/woodhen/marking-rubric-2026.md"

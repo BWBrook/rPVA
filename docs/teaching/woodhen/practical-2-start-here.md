@@ -82,8 +82,10 @@ These three records have different purposes:
   captions, references, and conservation recommendation.
 
 The report is the routine submission. Keep your project copy and dossier as
-working records, but do not submit them routinely. MyLO will state if teaching
-staff require any supporting material for a particular purpose.
+working records, but do not submit them routinely. The dossier is not
+separately marked. Teaching staff may request it only for genuine
+clarification, provenance, or academic-integrity review. Follow the
+instructions in MyLO if such a review is required.
 
 Use evidence selectively. Your report should explain what the simulation
 results show under the model assumptions, how uncertainty affects the
