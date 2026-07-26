@@ -31,12 +31,20 @@ locked_assessment_criteria <- c(
   "Translate simulation results and communicate them as conservation recommendations."
 )
 
+locked_ilos <- c(
+  "Discuss the requirements for success in effective species conservation by integrating theory and case studies.",
+  "Diagnose and solve biodiversity problems by applying fundamental principles from population and community ecology, genetics and ecosystem science.",
+  "Evaluate the causes of uncertainty and controversy in the development of strategies for species conservation.",
+  "Communicate a conservation problem to scientific peers and relevant stakeholders."
+)
+
 test_that("assessment brief defines the complete evidence-led report journey", {
   brief <- read_assessment_text(
-    "docs/teaching/woodhen/assessment-brief-2026-draft.md"
+    "docs/teaching/woodhen/assessment-brief-2026.md"
   )
 
   expect_document_contains(brief, c(
+    locked_ilos,
     "approximately 2,000 words",
     "Display items and references are excluded",
     "historical reconstruction",
@@ -52,7 +60,11 @@ test_that("assessment brief defines the complete evidence-led report journey", {
     "conventional scientific sequence",
     "decision-led sequence",
     "evidence-led sequence",
-    "soft planning guide"
+    "four to five",
+    "soft planning guide",
+    "The report is the routine submission",
+    "The evidence dossier is working material",
+    "MyLO"
   ))
   expect_document_contains(brief, locked_assessment_criteria)
   expect_document_contains(brief, c(
@@ -72,13 +84,18 @@ test_that("assessment brief defines the complete evidence-led report journey", {
     "YAML editing",
     "shell commands",
     "Suggested length",
-    "Maximum: 2000 words"
+    "Maximum: 2000 words",
+    "automatic cap",
+    "total maximum",
+    "required report headings",
+    "dossier must be submitted",
+    "three or four main display items"
   ))
 })
 
 test_that("marking rubric preserves locked criteria and assesses all evidence families", {
   rubric <- read_assessment_text(
-    "docs/teaching/woodhen/marking-rubric-2026-draft.md"
+    "docs/teaching/woodhen/marking-rubric-2026.md"
   )
 
   expect_document_contains(rubric, locked_assessment_criteria)
