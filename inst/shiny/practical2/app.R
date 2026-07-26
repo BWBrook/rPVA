@@ -1,452 +1,1073 @@
 library(shiny)
 
-catalog <- rPVA::woodhen_management_catalog()
-core_scenario_ids <- c("01_no_mgmt", "02_pig_control", "03_captive_pig", "04_rodent_eradication", "05_future_baseline")
-sensitivity_scenario_ids <- c(
-  "sensitivity_default",
-  "survival_minus_10pct",
-  "K_250",
-  "K_350",
-  "cat_freq_0.10",
-  "cat_surv_0.40",
-  "fecund_minus_20pct",
-  "juvenile_survival_minus_15pct",
-  "env_sd_0.15"
-)
-sensitivity_default_ids <- c("sensitivity_default", "survival_minus_10pct", "K_250", "cat_freq_0.10")
+practical2_app_dir <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)
 
-core_catalog <- catalog[catalog$scenario_id %in% core_scenario_ids, , drop = FALSE]
-sensitivity_catalog <- catalog[catalog$scenario_id %in% sensitivity_scenario_ids, , drop = FALSE]
+source("ui_helpers.R", local = TRUE)
+source("project_helpers.R", local = TRUE)
+source(file.path("modules", "mod_start.R"), local = TRUE)
+source(file.path("modules", "mod_calibrate.R"), local = TRUE)
+source(file.path("modules", "mod_investigate.R"), local = TRUE)
+source(file.path("modules", "mod_compare.R"), local = TRUE)
+source(file.path("modules", "mod_evidence.R"), local = TRUE)
+source(file.path("modules", "mod_assessment.R"), local = TRUE)
 
-core_choices <- stats::setNames(core_catalog$scenario_id, core_catalog$label)
-sensitivity_choices <- stats::setNames(sensitivity_catalog$scenario_id, sensitivity_catalog$label)
-student_sensitivity_choices <- stats::setNames(
-  sensitivity_catalog$scenario_id[sensitivity_catalog$scenario_id != "sensitivity_default"],
-  sensitivity_catalog$label[sensitivity_catalog$scenario_id != "sensitivity_default"]
-)
+status_value <- function(value, state = "neutral", icon = "circle-info") {
+  list(value = value, state = state, icon = icon)
+}
 
-scenario_intro_ui <- function() {
-  div(
-    class = "lab-hero",
-    div(
-      class = "lab-hero-copy",
-      span(class = "lab-kicker", "Practical 2"),
-      h1("Woodhen Management Lab"),
-      p("Use PVA evidence to compare management options for the Lord Howe Island woodhen. Your task is to turn scenario output into clear conservation advice."),
-      tags$ul(
-        tags$li("Run a core set of management scenarios."),
-        tags$li("Check one bounded sensitivity question at a time."),
-        tags$li("Save evidence and translate it into report-ready claims.")
-      )
-    ),
-    div(
-      class = "lab-hero-panel",
-      h2("Your management question"),
-      p("Which action gives the strongest support for reducing extinction risk while keeping abundance and uncertainty in view?"),
-      p(class = "muted", "Use model results as evidence. Keep assumptions visible when you make a recommendation.")
-    )
+project_content_summary <- function(candidate) {
+  run_count <- length(candidate$runs)
+  observation_count <- length(candidate$observations)
+  portfolio_count <- length(candidate$evidence_items)
+  paste0(
+    run_count,
+    if (run_count == 1L) " completed run" else " completed runs",
+    ", ",
+    observation_count,
+    if (observation_count == 1L) {
+      " saved observation"
+    } else {
+      " saved observations"
+    },
+    ", and ",
+    portfolio_count,
+    if (portfolio_count == 1L) " portfolio item" else " portfolio items"
   )
 }
 
-scenario_card_grid <- function(comparison) {
-  if (is.null(comparison) || !nrow(comparison)) {
-    return(tags$p(class = "muted", "Run a scenario set to create comparison cards."))
-  }
+should_confirm_manual_browser_save <- function(request, status) {
+  is.list(request) &&
+    identical(request$kind, "save") &&
+    identical(request$source, "manual") &&
+    is.list(status) &&
+    identical(status$status, "saved")
+}
 
-  horizon_warning <- NULL
-  if (length(unique(comparison$years)) > 1) {
-    horizon_warning <- div(
-      class = "horizon-warning",
-      strong("Compare horizons before ranking scenarios. "),
-      "These rows use different time spans, so cite each horizon with its result."
+validate_investigate_project_update_event <- function(event, current_project) {
+  expected_fields <- c(
+    "ok", "candidate", "family_id", "route", "reused", "message",
+    "base_project_fingerprint", "event_id"
+  )
+  if (!is.list(event) || is.null(names(event)) || anyDuplicated(names(event)) ||
+      !setequal(names(event), expected_fields)) {
+    stop(
+      "A successful Investigate event must contain exactly: ",
+      paste(expected_fields, collapse = ", "), ".",
+      call. = FALSE
     )
   }
+  if (!identical(event$ok, TRUE)) {
+    stop("A candidate activation requires `event$ok` to be TRUE.", call. = FALSE)
+  }
+  valid_text <- function(value) {
+    is.character(value) && length(value) == 1L && !is.na(value) && nzchar(value)
+  }
+  if (!valid_text(event$family_id) || !valid_text(event$message) ||
+      !valid_text(event$base_project_fingerprint)) {
+    stop("Investigate event identity and message fields must be non-empty text.", call. = FALSE)
+  }
+  if (!valid_text(event$route) || !event$route %in% c("sensitivity", "future") ||
+      !is.logical(event$reused) || length(event$reused) != 1L || is.na(event$reused) ||
+      !is.numeric(event$event_id) || length(event$event_id) != 1L ||
+      !is.finite(event$event_id) || event$event_id < 1L ||
+      event$event_id != as.integer(event$event_id)) {
+    stop("Investigate event route, reuse state, or event ID is invalid.", call. = FALSE)
+  }
+  rPVA::validate_woodhen_project(current_project)
+  if (!identical(
+    event$base_project_fingerprint,
+    current_project$project_fingerprint
+  )) {
+    stop(
+      "The active project changed after this Investigate action was accepted.",
+      call. = FALSE
+    )
+  }
+  rPVA::validate_woodhen_project(event$candidate)
+  if (!identical(event$candidate$project_id, current_project$project_id)) {
+    stop("An Investigate candidate cannot replace a different project ID.", call. = FALSE)
+  }
+  family_runs <- event$candidate$runs[vapply(event$candidate$runs, function(run) {
+    identical(run$family_id, event$family_id)
+  }, logical(1))]
+  expected_types <- if (identical(event$route, "sensitivity")) {
+    c("locked_baseline", "sensitivity", "sensitivity")
+  } else {
+    c("locked_baseline", "threat", "intervention")
+  }
+  scenario_types <- vapply(family_runs, `[[`, character(1), "scenario_type")
+  if (!identical(scenario_types, expected_types)) {
+    stop("The Investigate candidate does not contain the event's exact family.", call. = FALSE)
+  }
+  event$candidate
+}
 
-  tagList(
-    horizon_warning,
-    div(
-      class = "scenario-card-grid",
-      lapply(seq_len(nrow(comparison)), function(i) {
-        row <- comparison[i, , drop = FALSE]
-        pe_note <- NULL
-        if (isTRUE(row$PE == 0)) {
-          pe_note <- p(
-            class = "pe-note",
-            "PE = 0 means zero observed extinctions in this simulation, with this seed and replicate count."
+validate_investigate_observation_update_event <- function(event, current_project) {
+  expected_fields <- c(
+    "ok", "candidate", "family_id", "route", "message",
+    "base_project_fingerprint", "event_id"
+  )
+  if (!is.list(event) || is.null(names(event)) || anyDuplicated(names(event)) ||
+      !setequal(names(event), expected_fields)) {
+    stop(
+      "A successful Investigate observation event must contain exactly: ",
+      paste(expected_fields, collapse = ", "), ".",
+      call. = FALSE
+    )
+  }
+  valid_text <- function(value) {
+    is.character(value) && length(value) == 1L && !is.na(value) && nzchar(value)
+  }
+  if (!identical(event$ok, TRUE) ||
+      !valid_text(event$family_id) ||
+      !valid_text(event$route) ||
+      !event$route %in% c("sensitivity", "future") ||
+      !valid_text(event$message) ||
+      !valid_text(event$base_project_fingerprint) ||
+      !is.numeric(event$event_id) || length(event$event_id) != 1L ||
+      !is.finite(event$event_id) || event$event_id < 1L ||
+      event$event_id != as.integer(event$event_id)) {
+    stop("Investigate observation event identity is invalid.", call. = FALSE)
+  }
+  rPVA::validate_woodhen_project(current_project)
+  if (!identical(
+    event$base_project_fingerprint,
+    current_project$project_fingerprint
+  )) {
+    stop(
+      "The active project changed after this Investigate observation was accepted.",
+      call. = FALSE
+    )
+  }
+  candidate <- event$candidate
+  rPVA::validate_woodhen_project(candidate)
+  if (!identical(candidate$project_id, current_project$project_id)) {
+    stop("An Investigate observation cannot replace a different project ID.", call. = FALSE)
+  }
+  stable_fields <- setdiff(
+    names(current_project),
+    c("modified_at", "observations", "project_fingerprint")
+  )
+  if (!identical(candidate[stable_fields], current_project[stable_fields]) ||
+      length(candidate$observations) != length(current_project$observations) + 1L ||
+      !identical(
+        head(candidate$observations, -1L),
+        current_project$observations
+      )) {
+    stop("An Investigate observation event may only append one observation.", call. = FALSE)
+  }
+  family_run_ids <- vapply(
+    current_project$runs[vapply(current_project$runs, function(run) {
+      identical(run$family_id, event$family_id)
+    }, logical(1))],
+    `[[`,
+    character(1),
+    "run_id"
+  )
+  appended <- tail(candidate$observations, 1L)[[1L]]
+  if (length(family_run_ids) != 3L ||
+      !identical(sort(appended$run_ids), sort(family_run_ids))) {
+    stop(
+      "The appended observation must be linked to the event's complete three-run family.",
+      call. = FALSE
+    )
+  }
+  candidate
+}
+
+practical2_event_text <- function(value) {
+  is.character(value) && length(value) == 1L && !is.na(value) && nzchar(value)
+}
+
+practical2_event_id <- function(value) {
+  is.numeric(value) && length(value) == 1L && is.finite(value) &&
+    value >= 1L && value == as.integer(value)
+}
+
+apply_compare_portfolio_event <- function(event,
+                                          current_project,
+                                          now = Sys.time()) {
+  expected <- c(
+    "ok", "action", "kind", "source_family_id", "source_run_ids",
+    "view_id", "title", "note", "base_project_fingerprint",
+    "event_id", "message"
+  )
+  if (!is.list(event) || is.null(names(event)) || anyDuplicated(names(event)) ||
+      !setequal(names(event), expected)) {
+    stop(
+      "A Compare portfolio event must contain exactly: ",
+      paste(expected, collapse = ", "), ".",
+      call. = FALSE
+    )
+  }
+  rPVA::validate_woodhen_project(current_project)
+  if (!identical(event$ok, TRUE) || !identical(event$action, "add") ||
+      !practical2_event_text(event$kind) ||
+      !event$kind %in% c("plot", "table", "observation") ||
+      !practical2_event_text(event$source_family_id) ||
+      !practical2_event_text(event$view_id) ||
+      !practical2_event_text(event$title) ||
+      !practical2_event_text(event$message) ||
+      !practical2_event_id(event$event_id)) {
+    stop("Compare portfolio event identity is invalid.", call. = FALSE)
+  }
+  if (!identical(
+    event$base_project_fingerprint,
+    current_project$project_fingerprint
+  )) {
+    stop(
+      "The active project changed after this Compare action was accepted.",
+      call. = FALSE
+    )
+  }
+  if (!is.character(event$source_run_ids) ||
+      length(event$source_run_ids) < 1L || anyNA(event$source_run_ids) ||
+      any(!nzchar(event$source_run_ids)) ||
+      anyDuplicated(event$source_run_ids)) {
+    stop("Compare source run IDs are invalid.", call. = FALSE)
+  }
+  known_run_ids <- vapply(
+    current_project$runs,
+    `[[`,
+    character(1),
+    "run_id"
+  )
+  unknown <- setdiff(event$source_run_ids, known_run_ids)
+  if (length(unknown)) {
+    stop("Unknown run ID in Compare event: ", unknown[[1L]], call. = FALSE)
+  }
+  source_runs <- current_project$runs[
+    match(event$source_run_ids, known_run_ids)
+  ]
+  if (length(source_runs) != 3L ||
+      any(!vapply(source_runs, function(run) {
+        identical(run$family_id, event$source_family_id)
+      }, logical(1)))) {
+    stop(
+      "Compare evidence must name one complete three-run family.",
+      call. = FALSE
+    )
+  }
+  note_kind <- identical(event$kind, "observation")
+  if (note_kind && !practical2_event_text(event$note)) {
+    stop("A comparison note requires non-empty student-authored text.", call. = FALSE)
+  }
+  if (!note_kind && !is.null(event$note)) {
+    stop("Plot and table events cannot carry note text.", call. = FALSE)
+  }
+
+  candidate <- current_project
+  observation_id <- NULL
+  if (note_kind) {
+    candidate <- rPVA::add_woodhen_observation(
+      candidate,
+      list(
+        title = event$title,
+        note = event$note,
+        run_ids = event$source_run_ids
+      ),
+      now = now
+    )
+    observation_id <- tail(candidate$observations, 1L)[[1L]]$observation_id
+  }
+  rPVA::add_woodhen_evidence_item(
+    candidate,
+    list(
+      kind = event$kind,
+      source_family_id = event$source_family_id,
+      source_run_ids = event$source_run_ids,
+      view_id = event$view_id,
+      title = event$title,
+      observation_id = observation_id
+    ),
+    now = now
+  )
+}
+
+apply_evidence_portfolio_event <- function(event,
+                                           current_project,
+                                           now = Sys.time()) {
+  if (!is.list(event) || is.null(names(event)) || anyDuplicated(names(event))) {
+    stop("An Evidence Portfolio event must be one named list.", call. = FALSE)
+  }
+  action <- event$action
+  expected <- if (identical(action, "remove")) {
+    c(
+      "action", "evidence_id", "base_project_fingerprint",
+      "event_id", "message"
+    )
+  } else if (identical(action, "reorder")) {
+    c(
+      "action", "evidence_ids", "base_project_fingerprint",
+      "event_id", "message"
+    )
+  } else if (identical(action, "add_from_project")) {
+    c(
+      "action", "requests", "base_project_fingerprint",
+      "event_id", "message"
+    )
+  } else {
+    stop("Evidence Portfolio action is unsupported.", call. = FALSE)
+  }
+  if (!setequal(names(event), expected) ||
+      !practical2_event_text(event$message) ||
+      !practical2_event_id(event$event_id)) {
+    stop("Evidence Portfolio event identity is invalid.", call. = FALSE)
+  }
+  rPVA::validate_woodhen_project(current_project)
+  if (!identical(
+    event$base_project_fingerprint,
+    current_project$project_fingerprint
+  )) {
+    stop(
+      "The active project changed after this Evidence Portfolio action was accepted.",
+      call. = FALSE
+    )
+  }
+  if (identical(action, "add_from_project")) {
+    if (!is.list(event$requests) || length(event$requests) < 1L) {
+      stop("Add from project requires at least one evidence request.", call. = FALSE)
+    }
+    known_run_ids <- vapply(
+      current_project$runs,
+      `[[`,
+      character(1),
+      "run_id"
+    )
+    known_observation_ids <- vapply(
+      current_project$observations,
+      `[[`,
+      character(1),
+      "observation_id"
+    )
+    candidate <- current_project
+    for (request in event$requests) {
+      required <- c(
+        "source_run_ids", "observation_id", "view_id", "title"
+      )
+      if (!is.list(request) || is.null(names(request)) ||
+          anyDuplicated(names(request)) || !setequal(names(request), required) ||
+          !is.character(request$source_run_ids) ||
+          length(request$source_run_ids) < 1L ||
+          anyNA(request$source_run_ids) ||
+          any(!nzchar(request$source_run_ids)) ||
+          anyDuplicated(request$source_run_ids) ||
+          !practical2_event_text(request$view_id) ||
+          !practical2_event_text(request$title)) {
+        stop(
+          "An Add from project request is invalid or does not identify one run family.",
+          call. = FALSE
+        )
+      }
+      unknown <- setdiff(request$source_run_ids, known_run_ids)
+      if (length(unknown)) {
+        stop("Unknown run ID in project evidence request: ", unknown[[1L]], call. = FALSE)
+      }
+      source_runs <- current_project$runs[
+        match(request$source_run_ids, known_run_ids)
+      ]
+      family_ids <- unique(vapply(
+        source_runs,
+        `[[`,
+        character(1),
+        "family_id"
+      ))
+      if (length(family_ids) != 1L) {
+        stop("Project evidence requests cannot mix run families.", call. = FALSE)
+      }
+      note_kind <- !is.null(request$observation_id)
+      if (note_kind) {
+        if (!practical2_event_text(request$observation_id)) {
+          stop("A saved-note request requires one observation ID.", call. = FALSE)
+        }
+        if (!identical(request$view_id, "saved_observation")) {
+          stop(
+            "A saved observation must use the saved-observation evidence view.",
+            call. = FALSE
           )
         }
-        div(
-          class = "scenario-card",
-          span(class = "scenario-card-kicker", row$section),
-          h3(row$label),
-          p(class = "muted", row$change_label),
-          p(class = "muted", row$horizon_note),
-          div(
-            class = "scenario-card-metrics",
-            span(strong("PE"), ": ", sprintf("%.3f", row$PE)),
-            span(strong("Nmed"), ": ", row$Nmed),
-            span(strong("95% interval"), ": ", paste0(row$Nlo95, "-", row$Nhi95))
-          ),
-          pe_note,
-          div(
-            class = "evidence-prompt",
-            strong("Use this as evidence: "),
-            row$evidence_prompt
-          )
+        observation_index <- match(
+          request$observation_id,
+          known_observation_ids
         )
-      })
-    )
-  )
-}
-
-scenario_help_panel <- function(rows, title) {
-  div(
-    class = "scenario-help-list",
-    h4(title),
-    lapply(seq_len(nrow(rows)), function(i) {
-      row <- rows[i, , drop = FALSE]
-      div(
-        class = "scenario-help",
-        strong(if (identical(row$section, "core_management")) "What changed?" else "Why test this?"),
-        span(" ", row$label),
-        p(row$teaching_note),
-        p(class = "muted", row$choice_prompt)
+        if (is.na(observation_index)) {
+          stop("Unknown observation ID in project evidence request.", call. = FALSE)
+        }
+        if (!identical(
+          current_project$observations[[observation_index]]$run_ids,
+          request$source_run_ids
+        )) {
+          stop(
+            "Saved observation runs must match the linked evidence request.",
+            call. = FALSE
+          )
+        }
+      } else if (!request$view_id %in% c(
+        "calibration_trajectory", "calibration_risk",
+        "calibration_timing", "calibration_summary",
+        "calibration_comparison_table"
+      )) {
+        stop(
+          "Add from project only accepts saved notes or Calibrate result views.",
+          call. = FALSE
+        )
+      }
+      kind <- if (note_kind) {
+        "observation"
+      } else if (request$view_id %in% c(
+        "calibration_summary", "calibration_comparison_table"
+      )) {
+        "table"
+      } else {
+        "plot"
+      }
+      candidate <- rPVA::add_woodhen_evidence_item(
+        candidate,
+        list(
+          kind = kind,
+          source_family_id = family_ids[[1L]],
+          source_run_ids = request$source_run_ids,
+          view_id = request$view_id,
+          title = request$title,
+          observation_id = request$observation_id
+        ),
+        now = now
       )
-    })
+    }
+    return(candidate)
+  }
+  typed_ids <- vapply(
+    current_project$evidence_items,
+    `[[`,
+    character(1),
+    "evidence_id"
+  )
+  if (identical(action, "remove")) {
+    return(rPVA::remove_woodhen_evidence_item(
+      current_project,
+      event$evidence_id,
+      now = now
+    ))
+  }
+  if (!is.character(event$evidence_ids) || anyNA(event$evidence_ids) ||
+      any(!nzchar(event$evidence_ids)) || anyDuplicated(event$evidence_ids) ||
+      !setequal(event$evidence_ids, typed_ids)) {
+    stop(
+      "A portfolio reorder must contain every typed evidence ID exactly once.",
+      call. = FALSE
+    )
+  }
+  legacy_ids <- setdiff(current_project$evidence_ids, typed_ids)
+  rPVA::select_woodhen_evidence(
+    current_project,
+    c(event$evidence_ids, legacy_ids),
+    now = now
   )
 }
 
-diagnostic_panel <- function(run_set) {
-  if (is.null(run_set) || !length(run_set$runs)) {
-    return(tags$p(class = "muted", "Scenario diagnostics will appear after a run."))
-  }
+ui <- navbarPage(
+  title = "Practical 2 Woodhen Lab",
+  id = "section",
+  header = tagList(
+    tags$head(
+      tags$meta(name = "viewport", content = "width=device-width, initial-scale=1"),
+      tags$link(rel = "stylesheet", type = "text/css", href = "styles.css"),
+      tags$script(src = "project-store.js")
+    ),
+    uiOutput("project_save_bar")
+  ),
+  tabPanel("Start", value = "start", start_ui("start")),
+  tabPanel(
+    "Calibrate",
+    value = "calibrate",
+    calibrate_ui("calibrate")
+  ),
+  tabPanel(
+    "Investigate",
+    value = "investigate",
+    investigate_ui("investigate")
+  ),
+  tabPanel(
+    "Compare",
+    value = "compare",
+    compare_ui("compare")
+  ),
+  tabPanel(
+    "Evidence Studio",
+    value = "evidence",
+    evidence_ui("evidence")
+  ),
+  tabPanel(
+    "Assessment Task",
+    value = "assessment",
+    assessment_ui("assessment")
+  )
+)
 
-  rows <- do.call(
-    rbind,
-    lapply(run_set$runs, function(run) {
-      diagnostics <- run$diagnostics
-      if (!nrow(diagnostics)) {
-        return(data.frame(
-          Scenario = run$label,
-          Message = "No major diagnostic warning for this scenario. Keep assumptions visible.",
-          stringsAsFactors = FALSE
+make_practical2_server <- function(
+    calibrate_scenario_runner = rPVA::run_woodhen_investigation_scenario,
+    investigate_scenario_runner = rPVA::run_woodhen_investigation_scenario
+) {
+  function(input, output, session) {
+    project <- reactiveVal(NULL)
+    inventory <- reactiveVal(list())
+    saved_fingerprint <- reactiveVal(NULL)
+    portable_fingerprint <- reactiveVal(NULL)
+    pending_restore <- reactiveVal(NULL)
+    pending_requests <- reactiveVal(list())
+    request_counter <- reactiveVal(0L)
+
+    browser_status <- reactiveVal(status_value(
+      "No active project yet.", "neutral", "circle-info"
+    ))
+    portable_status <- reactiveVal(status_value(
+      "No project copy downloaded yet.", "neutral", "download"
+    ))
+    dirty_status <- reactiveVal(status_value(
+      "No active project yet.", "neutral", "circle-info"
+    ))
+
+    next_request_id <- function(kind) {
+      next_value <- request_counter() + 1L
+      request_counter(next_value)
+      paste0(kind, "-", next_value)
+    }
+
+    track_request <- function(request_id, request) {
+      request$request_id <- request_id
+      requests <- pending_requests()
+      requests[[request_id]] <- request
+      pending_requests(requests)
+      invisible(request_id)
+    }
+
+    forget_request <- function(request_id) {
+      requests <- pending_requests()
+      requests[[request_id]] <- NULL
+      pending_requests(requests)
+      invisible(NULL)
+    }
+
+    refresh_portable_status <- function(candidate = project()) {
+      if (is.null(candidate)) {
+        portable_status(status_value(
+          "No project copy downloaded yet.", "neutral", "download"
+        ))
+      } else if (is.null(portable_fingerprint())) {
+        portable_status(status_value(
+          "No project copy downloaded yet.", "neutral", "download"
+        ))
+      } else if (identical(portable_fingerprint(), candidate$project_fingerprint)) {
+        portable_status(status_value(
+          "Project copy download requested for current content.",
+          "current",
+          "circle-check"
+        ))
+      } else {
+        portable_status(status_value(
+          "Downloaded project copy is out of date.",
+          "warning",
+          "triangle-exclamation"
         ))
       }
-      data.frame(
-        Scenario = diagnostics$scenario,
-        Message = diagnostics$message,
-        stringsAsFactors = FALSE
+    }
+
+    refresh_dirty_status <- function(candidate = project()) {
+      if (is.null(candidate)) {
+        dirty_status(status_value("No active project yet.", "neutral", "circle-info"))
+      } else if (identical(saved_fingerprint(), candidate$project_fingerprint)) {
+        dirty_status(status_value(
+          "No material changes are waiting for browser autosave.",
+          "current",
+          "circle-check"
+        ))
+      } else {
+        dirty_status(status_value(
+          "Material changes are waiting for browser autosave.",
+          "warning",
+          "triangle-exclamation"
+        ))
+      }
+    }
+
+    queue_project_save <- function(candidate, source = "automatic") {
+      if (!source %in% c("automatic", "manual")) {
+        stop("Browser-save source must be automatic or manual.", call. = FALSE)
+      }
+      snapshot_json <- rPVA:::woodhen_project_browser_snapshot(candidate)
+      saved_at <- format(
+        as.POSIXct(Sys.time(), tz = "UTC"),
+        "%Y-%m-%dT%H:%M:%SZ",
+        tz = "UTC"
       )
-    })
-  )
-  rownames(rows) <- NULL
-  tableOutput("diagnostic_table")
-}
-
-comparison_table_for_display <- function(run_set) {
-  if (is.null(run_set)) {
-    return(data.frame())
-  }
-
-  out <- run_set$comparison
-  out[, c("scenario_id", "label", "years", "reps", "PE", "Nmed", "Nlo95", "Nhi95", "changed_parameter", "change_label", "horizon_note"), drop = FALSE]
-}
-
-comparison_table_for_export <- function(run_set) {
-  if (is.null(run_set)) {
-    return(data.frame())
-  }
-
-  out <- run_set$comparison
-  out[, c("scenario_id", "section", "label", "years", "reps", "PE", "Nmed", "Nlo95", "Nhi95", "changed_parameter", "change_label"), drop = FALSE]
-}
-
-report_bridge_ui <- function() {
-  div(
-    class = "report-bridge",
-    h2("Turn evidence into advice"),
-    p("Your report needs a claim, the evidence supporting it, and a caveat that explains the limits of the model."),
-    tags$ol(
-      tags$li(strong("Claim: "), "name the management option or assumption that matters most."),
-      tags$li(strong("Evidence: "), "quote PE, median final abundance, and the uncertainty interval from your saved comparison."),
-      tags$li(strong("Interpretation: "), "explain why the result matters biologically."),
-      tags$li(strong("Caveat: "), "state one assumption, missing process, or data limit that affects confidence.")
-    ),
-    div(
-      class = "sentence-frame",
-      "A strong sentence can follow this pattern: The strongest support for [action] is [evidence], because [biological interpretation], with [caveat] limiting confidence."
-    ),
-    uiOutput("active_report_bridge")
-  )
-}
-
-run_status <- function(run_set) {
-  if (is.null(run_set)) {
-    return("No scenarios have been run in this browser session.")
-  }
-  paste0(nrow(run_set$comparison), " scenarios ready for comparison and export.")
-}
-
-ui <- fluidPage(
-  tags$head(tags$link(rel = "stylesheet", type = "text/css", href = "styles.css")),
-  titlePanel("Woodhen Management Lab"),
-  tabsetPanel(
-    id = "practical2_tabs",
-    tabPanel(
-      "Overview",
-      scenario_intro_ui()
-    ),
-    tabPanel(
-      "Management scenarios",
-      sidebarLayout(
-        sidebarPanel(
-          h3("Core scenario set"),
-          checkboxGroupInput(
-            "core_scenarios",
-            "Choose scenarios",
-            choices = core_choices,
-            selected = core_scenario_ids
-          ),
-          actionButton("run_core_scenarios", "Run management scenarios", class = "btn-primary"),
-          p(class = "muted", "Run the full set first, then rerun a smaller set if your comparison needs focus."),
-          scenario_help_panel(core_catalog, "Scenario guide")
-        ),
-        mainPanel(
-          h2("Scenario comparison"),
-          textOutput("core_status"),
-          div(class = "compare-table", tableOutput("core_comparison_table")),
-          uiOutput("core_scenario_cards")
+      # This snapshot was generated from the validated candidate above.
+      # Browser restore and package import still perform the full untrusted-input checks.
+      record <- project_store_record_from_fresh_snapshot(
+        candidate,
+        snapshot_json,
+        saved_at,
+        portable_request_fingerprint = portable_fingerprint()
+      )
+      request_id <- next_request_id("save")
+      track_request(request_id, list(
+        kind = "save",
+        source = source,
+        record = record
+      ))
+      browser_status(status_value(
+        "Browser autosave is pending.", "pending", "clock"
+      ))
+      refresh_dirty_status(candidate)
+      session$sendCustomMessage(
+        "woodhen-project-store-save",
+        list(
+          contract_version = project_store_contract_version(),
+          request_id = request_id,
+          key = record$key,
+          record = record
         )
       )
-    ),
-    tabPanel(
-      "Bounded sensitivity",
-      sidebarLayout(
-        sidebarPanel(
-          h3("One-factor checks"),
-          checkboxGroupInput(
-            "sensitivity_scenarios",
-            "Choose sensitivity presets",
-            choices = sensitivity_choices,
-            selected = sensitivity_default_ids
-          ),
-          h3("Your sensitivity choice"),
-          selectInput(
-            "chosen_sensitivity_focus",
-            "Chosen sensitivity ID",
-            choices = student_sensitivity_choices
-          ),
-          selectInput(
-            "decision_lens",
-            "Decision lens",
-            choices = c(
-              "reduce near-term extinction risk",
-              "maximise long-term abundance",
-              "test robustness to future uncertainty",
-              "identify monitoring priorities",
-              "balance model support with implementation constraints"
+      invisible(request_id)
+    }
+
+    output$project_save_bar <- renderUI({
+      candidate <- project()
+      status <- browser_status()
+      if (is.null(candidate)) {
+        return(div(
+          class = "project-save-bar",
+          div(
+            class = "project-save-bar-inner",
+            div(
+              class = "project-save-copy",
+              strong("No active project"),
+              span("Create, resume, or import a project before saving.")
+            ),
+            actionButton(
+              "save_project",
+              "Save in this browser",
+              icon = icon("floppy-disk"),
+              class = "btn-default btn-sm",
+              disabled = "disabled",
+              `aria-disabled` = "true"
+            )
+          )
+        ))
+      }
+      div(
+        class = "project-save-bar",
+        div(
+          class = "project-save-bar-inner",
+          div(
+            class = "project-save-copy",
+            strong(paste("Active project:", candidate$title)),
+            span(
+              paste0(
+                status$value,
+                " Saves completed runs and observations already added to the",
+                " project; it does not download a file."
+              )
+            ),
+            span(
+              project_content_summary(candidate),
+              class = "project-save-content-summary"
             )
           ),
-          textAreaInput("sensitivity_reason", "Biological reason", value = "", rows = 3, width = "100%"),
-          textAreaInput("expected_direction", "Expected direction before reading the result", value = "", rows = 3, width = "100%"),
-          textAreaInput("observed_result", "Observed result", value = "", rows = 3, width = "100%"),
-          textAreaInput("confidence_change", "How this changed confidence", value = "", rows = 3, width = "100%"),
-          textAreaInput("choice_caveat", "Choice caveat", value = "", rows = 3, width = "100%"),
-          actionButton("run_sensitivity_scenarios", "Run sensitivity scenarios", class = "btn-primary"),
-          p(class = "muted", "Each preset changes one factor so the result remains interpretable."),
-          scenario_help_panel(sensitivity_catalog, "Sensitivity guide")
-        ),
-        mainPanel(
-          h2("Sensitivity comparison"),
-          textOutput("sensitivity_status"),
-          div(class = "compare-table", tableOutput("sensitivity_comparison_table")),
-          uiOutput("sensitivity_scenario_cards")
+          actionButton(
+            "save_project",
+            "Save in this browser",
+            icon = icon("floppy-disk"),
+            class = "btn-default btn-sm"
+          )
         )
       )
-    ),
-    tabPanel(
-      "Evidence pack",
-      h2("Save your evidence"),
-      p("Save the core comparison CSV, sensitivity comparison CSV, and evidence-notes Markdown after you have run both scenario sets."),
-      p(class = "muted", "This export contains core management results and bounded sensitivity results. Check both sections before writing your report."),
-      textAreaInput("woodhen_interpretation", "Draft interpretation note", value = "", rows = 5, width = "100%"),
-      div(
-        class = "download-row",
-        downloadButton("download_woodhen_core_comparison", "Download core comparison CSV"),
-        downloadButton("download_woodhen_sensitivity_comparison", "Download sensitivity comparison CSV"),
-        downloadButton("download_woodhen_evidence", "Download evidence notes")
-      ),
-      h3("Diagnostics"),
-      div(class = "compare-table", tableOutput("diagnostic_table"))
-    ),
-    tabPanel(
-      "Report bridge",
-      report_bridge_ui()
-    )
-  )
-)
-
-server <- function(input, output, session) {
-  active_run_set <- reactiveVal(NULL)
-  core_run_set <- reactiveVal(NULL)
-  sensitivity_run_set <- reactiveVal(NULL)
-
-  observeEvent(input$run_core_scenarios, {
-    req(input$core_scenarios)
-    withProgress(message = "Running Woodhen management scenarios", value = 0.2, {
-      run_set <- rPVA::run_woodhen_management_set(input$core_scenarios, keep_traj = FALSE, seed = 123, verbose = FALSE)
-      incProgress(0.8)
-      core_run_set(run_set)
-      active_run_set(run_set)
     })
-  })
 
-  observeEvent(input$run_sensitivity_scenarios, {
-    req(input$sensitivity_scenarios)
-    withProgress(message = "Running bounded sensitivity scenarios", value = 0.2, {
-      selected <- unique(c("sensitivity_default", input$sensitivity_scenarios, input$chosen_sensitivity_focus))
-      run_set <- rPVA::run_woodhen_management_set(selected, keep_traj = FALSE, seed = 123, verbose = FALSE)
-      incProgress(0.8)
-      sensitivity_run_set(run_set)
-      active_run_set(run_set)
-    })
-  })
-
-  output$core_status <- renderText(run_status(core_run_set()))
-  output$sensitivity_status <- renderText(run_status(sensitivity_run_set()))
-
-  output$core_comparison_table <- renderTable({
-    comparison_table_for_display(core_run_set())
-  }, striped = TRUE, bordered = TRUE, spacing = "s")
-
-  output$sensitivity_comparison_table <- renderTable({
-    comparison_table_for_display(sensitivity_run_set())
-  }, striped = TRUE, bordered = TRUE, spacing = "s")
-
-  output$core_scenario_cards <- renderUI({
-    run_set <- core_run_set()
-    scenario_card_grid(if (is.null(run_set)) NULL else run_set$comparison)
-  })
-
-  output$sensitivity_scenario_cards <- renderUI({
-    run_set <- sensitivity_run_set()
-    scenario_card_grid(if (is.null(run_set)) NULL else run_set$comparison)
-  })
-
-  output$diagnostic_table <- renderTable({
-    run_set <- active_run_set()
-    if (is.null(run_set)) {
-      return(data.frame(Scenario = character(), Message = character()))
-    }
-    rows <- do.call(
-      rbind,
-      lapply(run_set$runs, function(run) {
-        diagnostics <- run$diagnostics
-        if (!nrow(diagnostics)) {
-          return(data.frame(
-            Scenario = run$label,
-            Message = "No major diagnostic warning for this scenario. Keep assumptions visible.",
-            stringsAsFactors = FALSE
-          ))
-        }
-        data.frame(
-          Scenario = diagnostics$scenario,
-          Message = diagnostics$message,
-          stringsAsFactors = FALSE
+    observeEvent(input$save_project, {
+      candidate <- project()
+      if (is.null(candidate)) {
+        showNotification(
+          "Create, resume, or import a project before saving.",
+          type = "warning"
         )
-      })
-    )
-    rownames(rows) <- NULL
-    rows
-  }, striped = TRUE, bordered = TRUE, spacing = "s")
-
-  choice_note <- reactive({
-    list(
-      decision_lens = input$decision_lens,
-      chosen_sensitivity = input$chosen_sensitivity_focus,
-      biological_reason = input$sensitivity_reason,
-      expected_direction = input$expected_direction,
-      observed_result = input$observed_result,
-      confidence_change = input$confidence_change,
-      caveat = input$choice_caveat
-    )
-  })
-
-  available_run_sets <- reactive({
-    Filter(Negate(is.null), list(core_run_set(), sensitivity_run_set()))
-  })
-
-  combined_comparison <- reactive({
-    run_sets <- available_run_sets()
-    if (!length(run_sets)) {
-      return(data.frame())
-    }
-    out <- do.call(rbind, lapply(run_sets, `[[`, "comparison"))
-    rownames(out) <- NULL
-    out
-  })
-
-  evidence_export <- reactive({
-    req(length(available_run_sets()) > 0)
-    rPVA::build_woodhen_management_evidence_export(
-      available_run_sets(),
-      seed = 123,
-      interpretation = input$woodhen_interpretation,
-      choice_note = choice_note()
-    )
-  })
-
-  output$download_woodhen_core_comparison <- downloadHandler(
-    filename = function() paste0("woodhen-core-management-comparison-", Sys.Date(), ".csv"),
-    content = function(file) {
-      req(core_run_set())
-      utils::write.csv(comparison_table_for_export(core_run_set()), file, row.names = FALSE)
-    }
-  )
-
-  output$download_woodhen_sensitivity_comparison <- downloadHandler(
-    filename = function() paste0("woodhen-sensitivity-comparison-", Sys.Date(), ".csv"),
-    content = function(file) {
-      req(sensitivity_run_set())
-      utils::write.csv(comparison_table_for_export(sensitivity_run_set()), file, row.names = FALSE)
-    }
-  )
-
-  output$download_woodhen_evidence <- downloadHandler(
-    filename = function() paste0("woodhen-management-evidence-notes-", Sys.Date(), ".md"),
-    content = function(file) {
-      writeLines(evidence_export()$notes, file)
-    }
-  )
-
-  output$active_report_bridge <- renderUI({
-    comparison <- combined_comparison()
-    if (!nrow(comparison)) {
-      return(p(class = "muted", "Run the core and sensitivity scenarios before using this bridge."))
-    }
-
-    chosen <- comparison[comparison$scenario_id == input$chosen_sensitivity_focus, , drop = FALSE]
-    tagList(
-      h3("Active evidence bridge"),
-      p("Use one row as evidence: quote PE, Nmed, the 95% interval, and the horizon."),
-      if (nrow(chosen)) {
-        div(
-          class = "active-evidence-row",
-          strong(chosen$label[[1]]),
-          p(paste0(
-            "PE ", sprintf("%.3f", chosen$PE[[1]]),
-            "; Nmed ", chosen$Nmed[[1]],
-            "; 95% interval ", chosen$Nlo95[[1]], "-",
-            chosen$Nhi95[[1]],
-            "; horizon ", chosen$years[[1]], " years."
-          )),
-          p("Name the result that changed your confidence. Then state the caveat that limits that confidence.")
-        )
-      } else {
-        p(class = "muted", "Run the chosen sensitivity preset to populate this evidence row.")
+        return()
       }
+      queue_project_save(candidate, source = "manual")
+    }, ignoreInit = TRUE)
+
+    activate_project <- function(
+        candidate,
+        portable_request_fingerprint = portable_fingerprint()
+    ) {
+      rPVA::validate_woodhen_project(candidate)
+      replace_live_project(project, candidate)
+      saved_fingerprint(NULL)
+      portable_fingerprint(portable_request_fingerprint)
+      refresh_portable_status(candidate)
+      refresh_dirty_status(candidate)
+      queue_project_save(candidate)
+      invisible(candidate)
+    }
+
+    activate_investigate_update <- function(event) {
+      if (!isTRUE(event$ok)) {
+        showNotification(event$message, type = "warning")
+        return(FALSE)
+      }
+      candidate <- tryCatch(
+        validate_investigate_project_update_event(event, project()),
+        error = function(error) error
+      )
+      if (inherits(candidate, "error")) {
+        showNotification(
+          paste("Investigate update rejected:", conditionMessage(candidate)),
+          type = "warning"
+        )
+        return(FALSE)
+      }
+      activate_project(candidate)
+      showNotification(event$message, type = "message")
+      TRUE
+    }
+
+    activate_investigate_observation_update <- function(event) {
+      if (!isTRUE(event$ok)) {
+        showNotification(event$message, type = "warning")
+        return(FALSE)
+      }
+      candidate <- tryCatch(
+        validate_investigate_observation_update_event(event, project()),
+        error = function(error) error
+      )
+      if (inherits(candidate, "error")) {
+        showNotification(
+          paste("Investigate observation rejected:", conditionMessage(candidate)),
+          type = "warning"
+        )
+        return(FALSE)
+      }
+      activate_project(candidate)
+      showNotification(event$message, type = "message")
+      TRUE
+    }
+
+    events <- start_server(
+      "start",
+      project = reactive(project()),
+      inventory = reactive(inventory()),
+      browser_status = reactive(browser_status()),
+      portable_status = reactive(portable_status()),
+      dirty_status = reactive(dirty_status())
     )
-  })
+    calibrate_events <- calibrate_server(
+      "calibrate",
+      project = reactive(project()),
+      scenario_runner = calibrate_scenario_runner
+    )
+    investigate_events <- investigate_server(
+      "investigate",
+      project = reactive(project()),
+      scenario_runner = investigate_scenario_runner
+    )
+    compare_events <- compare_server(
+      "compare",
+      project = reactive(project())
+    )
+    evidence_events <- evidence_server(
+      "evidence",
+      project = reactive(project())
+    )
+    assessment_events <- assessment_server(
+      "assessment",
+      project = reactive(project())
+    )
+
+    observeEvent(calibrate_events$project_update(), {
+      event <- calibrate_events$project_update()
+      if (!isTRUE(event$ok)) {
+        showNotification(event$message, type = "warning")
+        return()
+      }
+      activate_project(event$candidate)
+      showNotification(event$message, type = "message")
+    })
+
+    observeEvent(investigate_events$project_update(), {
+      activate_investigate_update(investigate_events$project_update())
+    })
+
+    observeEvent(investigate_events$observation_update(), {
+      activate_investigate_observation_update(
+        investigate_events$observation_update()
+      )
+    })
+
+    observeEvent(compare_events$portfolio_event(), {
+      event <- compare_events$portfolio_event()
+      candidate <- tryCatch(
+        apply_compare_portfolio_event(event, project()),
+        error = function(error) error
+      )
+      if (inherits(candidate, "error")) {
+        showNotification(
+          paste("Portfolio item was not saved:", conditionMessage(candidate)),
+          type = "warning",
+          duration = 10
+        )
+        return()
+      }
+      activate_project(candidate)
+      showNotification(event$message, type = "message", duration = 7)
+    })
+
+    observeEvent(evidence_events$portfolio_event(), {
+      event <- evidence_events$portfolio_event()
+      candidate <- tryCatch(
+        apply_evidence_portfolio_event(event, project()),
+        error = function(error) error
+      )
+      if (inherits(candidate, "error")) {
+        showNotification(
+          paste("Portfolio change was not saved:", conditionMessage(candidate)),
+          type = "warning",
+          duration = 10
+        )
+        return()
+      }
+      activate_project(candidate)
+      showNotification(event$message, type = "message", duration = 7)
+    })
+
+    observeEvent(investigate_events$navigate(), {
+      event <- investigate_events$navigate()
+      if (is.null(event) || !identical(event$section, "calibrate")) return()
+      updateNavbarPage(session, "section", selected = "calibrate")
+    })
+
+    observeEvent(assessment_events$navigate(), {
+      section <- tryCatch(
+        validate_assessment_navigation_event(assessment_events$navigate()),
+        error = function(...) NULL
+      )
+      if (is.null(section)) {
+        showNotification(
+          "That section could not be opened.",
+          type = "warning"
+        )
+        return()
+      }
+      updateNavbarPage(session, "section", selected = section)
+    })
+
+    observeEvent(input$project_store_inventory, {
+      records <- tryCatch(
+        validate_project_store_inventory(input$project_store_inventory),
+        error = function(error) {
+          showNotification(
+            paste("Browser project inventory could not be read:", conditionMessage(error)),
+            type = "warning"
+          )
+          NULL
+        }
+      )
+      if (!is.null(records)) {
+        inventory(records)
+      }
+    }, ignoreInit = TRUE)
+
+    observeEvent(events$create(), {
+      event <- events$create()
+      if (!isTRUE(event$ok)) {
+        showNotification(event$message, type = "error")
+        return()
+      }
+      pending_restore(NULL)
+      activate_project(event$candidate, portable_request_fingerprint = NULL)
+      showNotification("New Woodhen investigation project created.", type = "message")
+    })
+
+    observeEvent(events$resume(), {
+      event <- events$resume()
+      if (!isTRUE(event$ok)) {
+        browser_status(status_value(event$message, "warning", "triangle-exclamation"))
+        showNotification(event$message, type = "warning")
+        return()
+      }
+      record <- event$record
+      request_id <- next_request_id("restore")
+      pending <- list(
+        request_id = request_id,
+        key = record$key,
+        project_id = record$project_id,
+        project_fingerprint = record$project_fingerprint
+      )
+      pending_restore(pending)
+      browser_status(status_value(
+        "Restoring selected project from this browser...", "pending", "clock"
+      ))
+      session$sendCustomMessage(
+        "woodhen-project-store-restore",
+        list(
+          contract_version = project_store_contract_version(),
+          request_id = request_id,
+          key = record$key,
+          schema_version = record$schema_version,
+          project_id = record$project_id,
+          project_fingerprint = record$project_fingerprint
+        )
+      )
+    })
+
+    observeEvent(input$project_store_restore, {
+      pending <- pending_restore()
+      if (is.null(pending)) {
+        showNotification("An unsolicited browser restore response was ignored.", type = "warning")
+        return()
+      }
+      response_request_id <- input$project_store_restore$request_id
+      if (!is.character(response_request_id) || length(response_request_id) != 1L ||
+          is.na(response_request_id) ||
+          !identical(response_request_id, pending$request_id)) {
+        showNotification("A stale browser restore response was ignored.", type = "warning")
+        return()
+      }
+      pending_restore(NULL)
+      candidate <- tryCatch(
+        validate_project_store_restore(input$project_store_restore, pending),
+        error = function(error) error
+      )
+      if (inherits(candidate, "error")) {
+        message <- paste("Browser project was not restored:", conditionMessage(candidate))
+        browser_status(status_value(message, "warning", "triangle-exclamation"))
+        showNotification(
+          message,
+          type = "error",
+          duration = 12
+        )
+        return()
+      }
+      portable_request_fingerprint <- input$project_store_restore$record$portable_request_fingerprint
+      activate_project(candidate, portable_request_fingerprint)
+      showNotification(
+        paste(
+          "Browser project restored:",
+          project_content_summary(candidate)
+        ),
+        type = "message",
+        duration = 10
+      )
+    }, ignoreInit = TRUE)
+
+    observeEvent(events$import(), {
+      event <- events$import()
+      if (!isTRUE(event$ok)) {
+        showNotification(
+          paste("Project copy was not imported:", event$message),
+          type = "error"
+        )
+        return()
+      }
+      pending_restore(NULL)
+      activate_project(event$candidate, portable_request_fingerprint = NULL)
+      showNotification("Project copy imported.", type = "message")
+    })
+
+    observeEvent(events$download_requested(), {
+      event <- events$download_requested()
+      candidate <- project()
+      if (is.null(event) || is.null(candidate) ||
+          !identical(event$project_id, candidate$project_id) ||
+          !identical(event$project_fingerprint, candidate$project_fingerprint)) {
+        return()
+      }
+      portable_fingerprint(candidate$project_fingerprint)
+      refresh_portable_status(candidate)
+      showNotification(
+        "Project copy downloaded. Look in your browser's Downloads folder.",
+        type = "message",
+        duration = 8
+      )
+      request_id <- next_request_id("portable")
+      record_key <- project_store_key(candidate$project_schema_version, candidate$project_id)
+      track_request(request_id, list(
+        kind = "portable",
+        record = list(
+          key = record_key,
+          project_id = candidate$project_id,
+          project_fingerprint = candidate$project_fingerprint
+        )
+      ))
+      session$sendCustomMessage(
+        "woodhen-project-store-mark-portable",
+        list(
+          contract_version = project_store_contract_version(),
+          request_id = request_id,
+          key = record_key,
+          schema_version = candidate$project_schema_version,
+          project_id = candidate$project_id,
+          project_fingerprint = candidate$project_fingerprint
+        )
+      )
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$project_store_status, {
+      request_id <- input$project_store_status$request_id
+      request <- pending_requests()[[request_id]]
+      if (is.null(request)) {
+        return()
+      }
+      status <- tryCatch(
+        validate_project_store_status(input$project_store_status, request),
+        error = function(error) error
+      )
+      if (inherits(status, "error")) {
+        showNotification(
+          paste("Browser storage acknowledgement was rejected:", conditionMessage(status)),
+          type = "warning"
+        )
+        return()
+      }
+      forget_request(request_id)
+
+      if (identical(request$kind, "save")) {
+        if (identical(status$status, "saved")) {
+          saved_fingerprint(status$project_fingerprint)
+          browser_status(status_value(
+            "Autosaved in this browser.", "current", "circle-check"
+          ))
+          refresh_dirty_status()
+          if (should_confirm_manual_browser_save(request, status)) {
+            showNotification(
+              "Project saved in this browser.",
+              type = "message",
+              duration = 6
+            )
+          }
+        } else if (identical(status$status, "superseded")) {
+          browser_status(status_value(
+            "A newer browser autosave is pending.", "pending", "clock"
+          ))
+        } else {
+          browser_status(status_value(
+            "Browser autosave is unavailable; download a project copy.",
+            "warning",
+            "triangle-exclamation"
+          ))
+          refresh_dirty_status()
+        }
+      } else if (identical(status$status, "portable_marked")) {
+        refresh_portable_status()
+      } else {
+        portable_status(status_value(
+          "Project copy download requested; browser autosave did not record it.",
+          "warning",
+          "triangle-exclamation"
+        ))
+      }
+    })
+  }
 }
+
+server <- make_practical2_server()
 
 shinyApp(ui, server)

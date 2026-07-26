@@ -69,6 +69,36 @@ normalize_pva_spec <- function(spec, stasis) {
   )
 }
 
+resolve_pva_year_spec <- function(spec, stasis, year) {
+  year <- validate_temporal_year_arg(year, "year", spec$years)
+  profiles <- spec$annual_profiles
+  year_spec <- spec
+  year_spec$annual_profiles <- NULL
+
+  if (!is.null(profiles)) {
+    scalar_fields <- intersect(
+      names(profiles),
+      c("K", "K_sd", "env_sd", "cat_freq", "cat_surv", "cat_repro")
+    )
+    stage_fields <- intersect(names(profiles), c("surv", "fecund"))
+
+    for (field in scalar_fields) {
+      year_spec[[field]] <- profiles[[field]][year]
+    }
+    for (field in stage_fields) {
+      year_spec[[field]] <- as.numeric(profiles[[field]][year, ])
+    }
+  }
+
+  env_params <- compute_env_beta_params(year_spec$surv, year_spec$env_sd)
+  list(
+    spec = year_spec,
+    stasis = stasis,
+    env_alpha = env_params$alpha,
+    env_beta = env_params$beta
+  )
+}
+
 initialize_pva_outputs <- function(years, n_stage, reps, keep_traj) {
   outputs <- list(Nend = numeric(reps), ext_prob = NULL)
 

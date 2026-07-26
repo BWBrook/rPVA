@@ -1,19 +1,31 @@
 # Practical 2 Shiny App
 
-This is the browser scaffold for the Practical 2 Woodhen Management Lab. It
-uses the public Woodhen teaching API in `R/woodhen_management_api.R` and base
-Shiny only.
+This installed six-tab app is the modular Woodhen investigation workspace.
+Start, Calibrate, Investigate, Compare, Evidence Studio, and Assessment Task are
+implemented as working modules.
 
-The app gives students bounded choices:
+Assessment Task is read-only and project-aware. Its guidance covers the
+historical reconstruction, a three-setting one-factor sensitivity family,
+matched threat-management comparison, evidence selection, report organisation,
+wider research, and final scientific review. Its neutral summary works with an
+empty project and reports only what is available in a validated current
+project. It does not score work or generate submission prose.
 
-- run the core Woodhen management scenarios,
-- run one-factor sensitivity presets,
-- save a comparison CSV and evidence-notes Markdown file,
-- turn model outputs into a short management recommendation.
+Evidence Studio keeps the Evidence Portfolio as the broad saved working record.
+A session-local selection can be ordered and exported as one project-derived
+ZIP. The ZIP contains source material only: `evidence-dossier.docx`, numbered
+PNG companions for selected plots, and numbered CSV companions for selected
+tables. Markdown and PDF are outside the dossier export contract. Students
+write all report prose, interpretations, recommendations, captions, and
+references.
 
-Students use named scenario and sensitivity presets in this app. Each result
-remains interpretable because the choices are bounded.
+The R session owns the live validated `woodhen_project`. Browser recovery uses
+an origin-specific IndexedDB snapshot and explicit Resume action; portable
+project ZIPs are the supported cross-browser and cross-host route. Failed
+restore or import validation leaves the live project unchanged.
 
-The app is designed for local classroom testing first. Hosted class release,
-access control, persistent student workspaces, and production monitoring belong
-in separate release gates.
+Focused tests cover app construction, strict project and navigation contracts,
+locked assessment wording, empty-state rendering, dossier archive contents,
+JavaScript syntax, and responsive CSS boundaries. Desktop and mobile browser
+acceptance checks cover the rendered assessment hierarchy, neutral project
+summary, navigation, dossier download, and overflow behaviour.

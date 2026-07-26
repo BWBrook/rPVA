@@ -166,11 +166,15 @@ Every student must:
 
 - choose one named ecological factor;
 - run at least three settings in total, including the locked future baseline
-  and at least two altered values;
+  and one numerically higher plus one lower altered value;
 - use the same starting population, horizon, replicate count, seed, and all
   other model settings;
 - examine the response across the selected settings; and
 - retain the settings and results for comparison and export.
+
+The permitted ranges are deliberately wide bounded exploratory assumptions so
+students can reveal model response. They are not empirical forecasts, and the
+app must not imply that every allowed value is equally realistic.
 
 The app prompts, but does not require, a research question, biological reason,
 expected direction, interpretation, and caveat before or after the run.
@@ -397,13 +401,20 @@ Every completed run returns and records:
 
 ### Primary quasi-extinction threshold
 
-The common future management threshold is **fewer than 50 breeding pairs**.
-This threshold is calculated from the model's territory-holding stages rather
-than from total birds.
+The common future management threshold is **strictly fewer than 100
+territory-holding breeding pairs**. This threshold is calculated from the
+model's territory-holding stages rather than from total birds. It is
+approximately the population scale that preceded rodent eradication, but
+historical survey totals and the modelled breeding-pair proxy are different
+measures. It is therefore not a direct conversion of a past census.
+
+The value is a working management-warning reference chosen to provide
+information before complete extinction. It is not a universal minimum viable
+population or a proven biological tipping point.
 
 The app reports:
 
-- probability of falling below 50 pairs by 2100;
+- probability of falling strictly below 100 pairs by 2100;
 - cumulative threshold-crossing probability through time;
 - the first-passage-time distribution;
 - median first-passage year among futures that cross the threshold, explicitly
@@ -411,7 +422,7 @@ The app reports:
 - an overall median time only when at least half of all simulated futures cross
   the threshold; otherwise it reports **overall median not reached**.
 
-Students may inspect a wider quasi-extinction threshold curve, but the 50-pair
+Students may inspect a wider quasi-extinction threshold curve, but the 100-pair
 result remains the shared reference metric.
 
 ## Plots And Comparison Displays
@@ -422,16 +433,18 @@ adds investigation-specific displays.
 Required plot families are:
 
 - population trajectory samples and yearly summaries;
-- cumulative extinction and 50-pair quasi-extinction risk;
+- cumulative 100-pair warning risk, with extinction retained in result tables;
 - first-passage-time distribution;
 - final abundance distribution and interval;
 - sensitivity response across settings; and
 - compact baseline-threat-intervention comparison.
 
 Plots must clearly state population units, horizon, replicate count, scenario
-identity, and whether a timing statistic is conditional. Extinction and quasi-
-extinction displays must remain meaningful when no or few simulated futures
-cross the threshold.
+identity, and whether a timing statistic is conditional. Investigate plots
+emphasize the more informative 100-pair warning risk; complete extinction
+remains available in result tables because it is generally sparse or zero under
+the bounded scenarios. Warning-risk displays must remain meaningful when no or
+few simulated futures cross the threshold.
 
 ## Project State And Portability
 
@@ -510,7 +523,7 @@ Stored evidence includes:
 - yearly trajectory summaries;
 - a bounded sample of trajectories;
 - final abundance values or a compact distribution record;
-- extinction and 50-pair first-passage evidence;
+- extinction and 100-pair first-passage evidence;
 - sensitivity response values; and
 - selected plot-ready data.
 
@@ -730,7 +743,7 @@ Test:
 - valid and invalid temporal profiles;
 - scalar/profile equivalence when no change is introduced;
 - parent-child scenario deltas;
-- 50-pair territory-holder threshold calculations;
+- 100-pair territory-holder threshold calculations;
 - conditional and overall first-passage medians; and
 - warnings for incompatible comparisons.
 
@@ -793,7 +806,7 @@ Exercise:
 
 Implementation should proceed in evidence-producing tranches:
 
-1. scientific scenario, temporal-profile, and 50-pair risk APIs;
+1. scientific scenario, temporal-profile, and 100-pair risk APIs;
 2. project schema, browser persistence, and portable package round trip;
 3. Start and Calibrate core route;
 4. sensitivity and prospective investigation workspaces;
@@ -832,7 +845,7 @@ The design is implemented when:
 - a baseline-threat-intervention family supports named, bounded, and temporal
   scenario construction;
 - advanced multi-factor work remains possible and transparent;
-- 50-pair quasi-extinction probability and timing are scientifically correct;
+- 100-pair warning probability and timing are scientifically correct;
 - browser recovery and portable cross-host project import/export work;
 - comparison and evidence selection remain usable with a substantial run
   library;

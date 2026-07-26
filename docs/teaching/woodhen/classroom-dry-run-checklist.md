@@ -1,95 +1,111 @@
 # Classroom Dry-Run Checklist
 
 Use this checklist on the teaching machine before the Woodhen road-test session.
-It is written for demonstrators who need to confirm the workflow, not diagnose
-package internals.
+It is written for demonstrators checking the student workflow.
 
 ## Before Students Arrive
 
-- Start from the repository root.
-- Run `source("bootstrap.R")` in R and confirm the ready message appears.
-- Open `practical-1-pva-foundations.md`, `practical-2-woodhen-management.md`,
-  `expected-outputs.md`, `troubleshooting.md`, and
-  `practical-1-fallback-pack.md`.
-- Open `practical-1-day-of-class-pack.md` and
-  `practical-1-go-no-go-checklist.md` for the app-led delivery decision.
-- Render the report scaffold to a temp output folder with sample staff
-  validation choices:
+- Launch the installed app with `rPVA::run_practical2_shiny()`.
+- Confirm the six tabs appear in this order: Start, Calibrate, Investigate,
+  Compare, Evidence Studio, and Assessment Task.
+- Confirm the app opens at a classroom desktop size without horizontal page
+  scrolling or clipped controls.
+- Create a fresh staff project for the empty and partial-project checks.
+- Open a representative validated project containing historical, sensitivity,
+  threat-management, note, plot, and table evidence.
+- Keep the Practical 2 student guide, expected scientific interpretation, and
+  fallback materials available.
 
-```sh
-RPVA_DECISION_LENS="classroom validation" \
-RPVA_SELECTED_SCENARIO_ID="02_pig_control" \
-RPVA_CHOSEN_SENSITIVITY_ID="K_350" \
-RPVA_SENSITIVITY_REASON="Habitat recovery may be incomplete." \
-RPVA_EXPECTED_DIRECTION="A lower habitat ceiling should reduce final abundance." \
-RPVA_ADVICE_CHANGE_CONDITION="Advice would change if lower habitat capacity sharply reduced recovery confidence." \
-quarto render docs/teaching/woodhen/report-scaffold.qmd --to docx --output-dir /tmp/rpva-teaching-report
+## Start And Project Checkpoints
 
-RPVA_DECISION_LENS="classroom validation" \
-RPVA_SELECTED_SCENARIO_ID="02_pig_control" \
-RPVA_CHOSEN_SENSITIVITY_ID="K_350" \
-RPVA_SENSITIVITY_REASON="Habitat recovery may be incomplete." \
-RPVA_EXPECTED_DIRECTION="A lower habitat ceiling should reduce final abundance." \
-RPVA_ADVICE_CHANGE_CONDITION="Advice would change if lower habitat capacity sharply reduced recovery confidence." \
-quarto render docs/teaching/woodhen/report-scaffold.qmd --to pdf --output-dir /tmp/rpva-teaching-report
-```
+- A new project can be created with a title and owner label.
+- Browser recovery and explicit Resume leave a valid project available after a
+  refresh.
+- A downloaded project ZIP can be imported in another clean session.
+- Invalid restore or import input leaves the live project unchanged and gives a
+  visible status message.
 
-If PDF fails but DOCX succeeds, keep teaching with DOCX and record the PDF tool
-error for later setup work. Render DOCX and PDF sequentially.
+## Calibrate Checkpoints
 
-## Practical 1 Checkpoints
+- Students can run the supplied historical reconstruction.
+- The historical displays distinguish model output from observations.
+- Students can explain what agreement supports, why reconstruction is a
+  plausibility check, and what independent validation would require.
+- Students can establish the common no-change future baseline.
+- Notes and relevant model-generated evidence can be saved for later use.
 
-- `run_toy_demo(keep_traj = TRUE, plot_matrix = FALSE, verbose = FALSE)` runs.
-- `toy$summary` matches `expected-outputs.md` closely:
-  - `det`, `ceiling`, `demographic_stochasticity`, and `env_sd` have `PE = 0`.
-  - `genetics` has `PE = 0.07` and `N_med = 60`.
-- A trajectory plot, summary plot, and extinction plot display or write to a PDF
-  device.
-- Students can explain why `keep_traj = TRUE` matters for trajectory/extinction
-  plots.
-- If using the Practical 1 Shiny concept lab, students can save the comparison
-  CSV and evidence-notes Markdown file from the Compare screen.
-- If Shiny is unavailable, use `practical-1-fallback-pack.md` and keep the same
-  interpretation target: extinction risk, final abundance, and uncertainty.
+## Investigate Checkpoints
 
-## Practical 2 Checkpoints
+- Students can run a three-setting one-factor sensitivity family containing the
+  no-change baseline plus one higher and one lower value for the same named
+  ecological factor.
+- The interface keeps other settings matched and makes the changed factor clear.
+- Students can run at least one matched no-change baseline, threatened future,
+  and managed threatened future comparison.
+- Students can state the threat mechanism, management response, expected
+  direction, observed effect, uncertainty, and important caveat.
 
-- `run_scenarios("woodhen", csv_out = NULL, rds_out = NULL, keep_traj = FALSE,
-  parallel = FALSE)` runs and matches the five-row reference table.
-- The `02_pig_control` diagnostic example reports:
-  - `PE = 0.566`
-  - `Nmed = 57`
-  - a `high_extinction_probability` warning.
-- The bounded sensitivity table has four rows:
-  - `baseline`
-  - `survival_minus_10pct`
-  - `K_250`
-  - `cat_freq_0.10`
-- Students can state which comparison is a management scenario and which is a
-  one-factor sensitivity check.
+## Compare Checkpoints
 
-## End-Of-Practical Evidence
+- Historical, sensitivity, and future comparison families open from saved runs.
+- Like-for-like plots and tables identify the compared family and relevant
+  horizon.
+- Abundance, extinction risk, timing, and uncertainty are readable where
+  relevant.
+- Plot, table, and student-authored note evidence can be added to the Evidence
+  Portfolio with provenance.
 
-Each group should leave with:
+## Evidence Studio Checkpoints
 
-- their command log,
-- one toy-model figure or output table,
-- the Practical 1 Shiny comparison CSV and evidence-notes file, if the browser
-  app was used,
-- one Woodhen scenario table,
-- one management-scenario plot,
-- one bounded sensitivity table,
-- checkpoint answers from both practicals,
-- a started report scaffold with one management recommendation and one caveat.
+- The Evidence Portfolio retains the broad saved working record.
+- Students can preview, reorder, and remove portfolio items.
+- **Include in this export** creates a separate session-local dossier selection.
+- Students can select and order a smaller set of source material without
+  removing omitted items from the portfolio.
+- **Export selected evidence** downloads one ZIP containing
+  `evidence-dossier.docx`, numbered PNG companions for selected plots, and
+  numbered CSV companions for selected tables.
+- The dossier preserves selected order, provenance, model-generated displays,
+  and student-authored notes.
+- The dossier remains source material; students supply the report
+  interpretation, recommendation, captions, and references.
+
+## Assessment Task Checkpoints
+
+- Confirm Assessment Task is readable with no project loaded.
+- Load the representative project and confirm the project-aware neutral summary
+  reports available evidence without readiness or completion judgements.
+- Confirm the exact ILO wording and exact C1-C4 wording and marks match the
+  approved assessment contract.
+- Confirm Assessment Task does not score work.
+- Confirm Assessment Task does not generate submission prose.
+- Confirm Assessment Task does not impose quotas.
+- Use its buttons to return to Calibrate, Investigate, Compare, and Evidence
+  Studio.
+- Confirm navigation and visiting Assessment Task leave project content
+  unchanged.
+- Confirm the MyLO reminder is visible for official administrative details.
+
+## Responsive And Accessibility Checkpoints
+
+- At the principal classroom desktop resolution, confirm all six tabs, evidence
+  controls, criteria, and navigation actions are readable.
+- At `390 x 844`, confirm the tab navigation remains usable, long ILO and C1-C4
+  wording wraps, and content does not overlap or disappear.
+- Use keyboard navigation to reach the main actions, expandable guidance, and
+  dossier controls.
+- Confirm empty-state and project-aware status messages are readable and
+  announced appropriately.
 
 ## Demonstrator Triage
 
-- If `source("bootstrap.R")` fails, use `troubleshooting.md` before continuing.
-- If plots are blank, rerun the simulation with `keep_traj = TRUE`.
-- If `PE = 0` is treated as proof of safety, redirect students to uncertainty,
-  horizon length, and unmodelled ecological processes.
-- If scenario tables differ from `expected-outputs.md`, check whether a seed,
-  scenario key, or one-factor sensitivity input was changed.
-- If app downloads fail, ask students to retry once, then switch to the
-  fallback pack rather than losing class time to browser-specific download
-  debugging.
+- If project recovery fails, use an explicitly downloaded project copy.
+- If a run fails, preserve the current project, retry once, and use the fallback
+  evidence pack if the failure persists.
+- If plots appear blank, confirm the selected comparison has completed source
+  runs before changing display settings.
+- If a student treats zero simulated extinctions as proof of safety, redirect
+  attention to simulation count, uncertainty, horizon, and unmodelled
+  ecological processes.
+- If a dossier download fails, preserve the portfolio and project copy, retry
+  once, and record the browser and visible error message for follow-up.
