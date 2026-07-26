@@ -946,7 +946,7 @@ test_that("completed simulations remain visibly busy until results are ready", {
   )
 })
 
-test_that("Investigate UI and root integration are accessible and honest", {
+test_that("Investigate UI and root integration are accessible and explicit", {
   env <- source_investigate_app()
   html <- paste(as.character(env$investigate_ui("investigate")), collapse = "\n")
   ns <- shiny::NS("investigate")

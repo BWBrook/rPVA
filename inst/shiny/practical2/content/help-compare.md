@@ -37,7 +37,7 @@ It is close to the population scale before rodent eradication and provides a
 consistent comparison point. It is not a universal minimum viable population
 or a proven biological tipping point.
 
-## Handle awkward comparisons honestly
+## Interpret awkward comparisons carefully
 
 Runs from different historical periods or projection horizons can provide
 useful context, but they are not automatically one fair experiment. When

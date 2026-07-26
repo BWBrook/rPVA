@@ -55,7 +55,7 @@ universal biological tipping point or a proven minimum viable population.
 The model begins near the observed 2024 population scale, but its starting
 stage distribution represents approximately 1,650 birds rather than an exact
 survey reconstruction. That small difference is less important than being
-honest about the distinction between an observed count and a model state.
+explicit about the distinction between an observed count and a model state.
 
 Your interpretation and caveat notes are optional. Save a note when it captures
 an idea you may want to use later in your evidence dossier.

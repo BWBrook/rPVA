@@ -376,7 +376,7 @@ test_that("only linked project observations produce student-authored text", {
   ))
 })
 
-test_that("table preview resolves source runs and falls back to honest metadata", {
+test_that("table preview resolves source runs and falls back to explicit metadata", {
   env <- source_evidence_module()
   project <- evidence_portfolio_fixture()
   item <- project$evidence_items[[2L]]
