@@ -67,3 +67,74 @@ test_that("Assessment guidance informs without scoring or writing the report", {
     ignore.case = TRUE
   ))
 })
+
+assessment_run <- function(family_id, scenario_type,
+                           scenario_id = paste(family_id, scenario_type)) {
+  list(
+    family_id = family_id,
+    scenario_type = scenario_type,
+    scenario_id = scenario_id
+  )
+}
+
+test_that("Assessment summary counts only complete comparison families", {
+  env <- source_assessment_module()
+  runs <- c(
+    list(
+      assessment_run("sens_a", "locked_baseline"),
+      assessment_run("sens_a", "sensitivity"),
+      assessment_run("sens_a", "sensitivity"),
+      assessment_run("future_a", "locked_baseline"),
+      assessment_run("future_a", "threat"),
+      assessment_run("future_a", "intervention"),
+      assessment_run("incomplete", "locked_baseline"),
+      assessment_run("incomplete", "threat")
+    ),
+    lapply(
+      c("01_no_mgmt", "02_pig_control", "03_captive_pig",
+        "04_rodent_eradication"),
+      function(id) assessment_run(id, "reference", id)
+    )
+  )
+  expect_identical(
+    env$assessment_family_counts(runs),
+    c(sensitivity = 1L, future = 1L)
+  )
+})
+
+test_that("Assessment project summary is neutral and does not mutate input", {
+  env <- source_assessment_module()
+  empty <- env$assessment_safe_project_summary(NULL)
+  expect_identical(empty$status, "empty")
+
+  project <- list(
+    title = "Woodhen advice",
+    owner_label = "Student 17",
+    runs = list(
+      assessment_run("01_no_mgmt", "reference", "01_no_mgmt"),
+      assessment_run("sens_a", "locked_baseline"),
+      assessment_run("sens_a", "sensitivity"),
+      assessment_run("sens_a", "sensitivity"),
+      assessment_run("future_a", "locked_baseline"),
+      assessment_run("future_a", "threat"),
+      assessment_run("future_a", "intervention")
+    ),
+    observations = list(list(note = "A saved observation")),
+    evidence_items = list(list(evidence_id = "evidence_1"))
+  )
+  before <- serialize(project, NULL)
+  summary <- env$assessment_safe_project_summary(project)
+
+  expect_identical(summary$status, "available")
+  expect_identical(summary$title, "Woodhen advice")
+  expect_identical(summary$owner_label, "Student 17")
+  expect_identical(summary$historical_count, 1L)
+  expect_identical(summary$sensitivity_count, 1L)
+  expect_identical(summary$future_count, 1L)
+  expect_identical(summary$observation_count, 1L)
+  expect_identical(summary$portfolio_count, 1L)
+  expect_identical(serialize(project, NULL), before)
+
+  unavailable <- env$assessment_safe_project_summary(list(title = "broken"))
+  expect_identical(unavailable$status, "unavailable")
+})
