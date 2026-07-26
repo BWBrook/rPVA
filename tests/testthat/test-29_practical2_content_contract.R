@@ -80,7 +80,17 @@ test_that("Assessment guidance informs without scoring or writing the report", {
   )
   expect_match(
     text,
-    "Treat three or four main display items, or roughly six panels, as a soft planning guide",
+    "Treat four or five principal display items as a soft planning guide",
+    fixed = TRUE
+  )
+  expect_match(
+    text,
+    "The report is the routine submission",
+    fixed = TRUE
+  )
+  expect_match(
+    text,
+    "a plausibility check rather than independent validation",
     fixed = TRUE
   )
   expect_match(

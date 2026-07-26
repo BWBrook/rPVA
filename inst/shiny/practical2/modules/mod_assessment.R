@@ -282,10 +282,10 @@ assessment_ui <- function(id) {
           class = "assessment-phase",
           shiny::h3("Phase 1: Reconstruct the management history"),
           shiny::p(
-            "Use historical comparisons as plausibility evidence for the",
+            "Use historical comparisons as a plausibility check on the",
             "model's ability to reproduce broad patterns of management",
-            "history. Assess independent model validation as a separate",
-            "evidentiary claim."
+            "history. Explain why this is a plausibility check rather than",
+            "independent validation."
           )
         ),
         shiny::div(

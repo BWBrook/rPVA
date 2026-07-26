@@ -1,8 +1,9 @@
 ## From evidence to conservation advice
 
 Use the portfolio as your broad working record. Build an evidence dossier by
-selecting a smaller packet of plots, tables, and notes for later use. Write the
-report as the scientific argument developed from that evidence.
+selecting a smaller packet of plots, tables, and notes for later use. The report
+is the routine submission. The dossier remains ungraded working material. Write
+the report as the scientific argument developed from that evidence.
 
 ### Develop your investigation
 
@@ -21,10 +22,10 @@ follow by connecting the question, methods, evidence, uncertainty, and advice.
 
 ### Use evidence selectively
 
-Treat three or four main display items, or roughly six panels, as a soft
-planning guide. Select the displays that best advance your argument. Make every
-display legible, cite it in the text, and interpret it. You may use an app
-display directly or create a clearer synthesis from exported data.
+Treat four or five principal display items as a soft planning guide. Select the
+displays that best advance your argument. Make every display legible, cite it in
+the text, and interpret it. You may use an app display directly or create a
+clearer synthesis from exported data.
 
 ### Final self-check
 
