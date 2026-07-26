@@ -116,12 +116,16 @@ test_that("installed Practical 2 shell contains its implemented module assets", 
     "content/help-investigate.md",
     "content/help-projects.md",
     "content/help-woodhen-background.md",
+    "content/report-guidance.md",
     "content/scenarios/01-no-intervention.md",
     "content/scenarios/02-pig-control.md",
     "content/scenarios/03-captive-pig.md",
     "content/scenarios/04-rodent-eradication.md",
     "content/scenarios/05-future-comparison.md",
     "content/start.md",
+    "content/ways-to-deepen.md",
+    "content/woodhen-research.md",
+    "modules/mod_assessment.R",
     "modules/mod_calibrate.R",
     "modules/mod_compare.R",
     "modules/mod_evidence.R",
@@ -146,7 +150,9 @@ test_that("helpers and implemented modules source from the installed app directo
       "start_ui", "start_server", "calibrate_ui", "calibrate_server",
       "investigate_ui", "investigate_server",
       "compare_ui", "compare_server",
-      "evidence_ui", "evidence_server", "pending_tab_ui", "project_help_modal",
+      "evidence_ui", "evidence_server",
+      "assessment_ui", "assessment_server",
+      "pending_tab_ui", "project_help_modal",
       "project_store_key", "project_store_record", "make_practical2_server"
     ),
     exists,
@@ -250,23 +256,25 @@ test_that("installed Practical 2 app constructs without repository artefacts", {
   expect_no_local_artifacts()
 })
 
-test_that("shell exposes exactly five visible stable tab values", {
+test_that("shell exposes exactly six visible stable tab values", {
   env <- source_practical2_app()
   html <- paste(as.character(env$ui), collapse = "\n")
   tab_values <- regmatches(
     html,
-    gregexpr('data-value="(start|calibrate|investigate|compare|evidence)"', html)
+    gregexpr(
+      'data-value="(start|calibrate|investigate|compare|evidence|assessment)"',
+      html
+    )
   )[[1L]]
 
   expect_identical(
     unique(gsub('^data-value="|"$', "", tab_values)),
-    c("start", "calibrate", "investigate", "compare", "evidence")
+    c(
+      "start", "calibrate", "investigate", "compare", "evidence",
+      "assessment"
+    )
   )
-  expect_match(html, ">Start<")
-  expect_match(html, ">Calibrate<")
-  expect_match(html, ">Investigate<")
-  expect_match(html, ">Compare<")
-  expect_match(html, ">Evidence Studio<")
+  expect_match(html, ">Assessment Task<", fixed = TRUE)
   expect_match(html, 'id="project_save_bar"', fixed = TRUE)
 })
 

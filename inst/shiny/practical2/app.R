@@ -9,6 +9,7 @@ source(file.path("modules", "mod_calibrate.R"), local = TRUE)
 source(file.path("modules", "mod_investigate.R"), local = TRUE)
 source(file.path("modules", "mod_compare.R"), local = TRUE)
 source(file.path("modules", "mod_evidence.R"), local = TRUE)
+source(file.path("modules", "mod_assessment.R"), local = TRUE)
 
 status_value <- function(value, state = "neutral", icon = "circle-info") {
   list(value = value, state = state, icon = icon)
@@ -495,6 +496,11 @@ ui <- navbarPage(
     "Evidence Studio",
     value = "evidence",
     evidence_ui("evidence")
+  ),
+  tabPanel(
+    "Assessment Task",
+    value = "assessment",
+    assessment_ui("assessment")
   )
 )
 
@@ -771,6 +777,10 @@ make_practical2_server <- function(
       "evidence",
       project = reactive(project())
     )
+    assessment_events <- assessment_server(
+      "assessment",
+      project = reactive(project())
+    )
 
     observeEvent(calibrate_events$project_update(), {
       event <- calibrate_events$project_update()
@@ -832,6 +842,21 @@ make_practical2_server <- function(
       event <- investigate_events$navigate()
       if (is.null(event) || !identical(event$section, "calibrate")) return()
       updateNavbarPage(session, "section", selected = "calibrate")
+    })
+
+    observeEvent(assessment_events$navigate(), {
+      section <- tryCatch(
+        validate_assessment_navigation_event(assessment_events$navigate()),
+        error = function(...) NULL
+      )
+      if (is.null(section)) {
+        showNotification(
+          "That section could not be opened.",
+          type = "warning"
+        )
+        return()
+      }
+      updateNavbarPage(session, "section", selected = section)
     })
 
     observeEvent(input$project_store_inventory, {

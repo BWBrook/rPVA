@@ -3070,3 +3070,200 @@ textarea:focus-visible,
     grid-template-columns: 1fr;
   }
 }
+
+.assessment-shell {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.assessment-header,
+.assessment-band {
+  width: 100%;
+  min-width: 0;
+}
+
+.assessment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  padding-top: 0.75rem;
+}
+
+.assessment-header > div,
+.assessment-band > p,
+.assessment-band > ol,
+.assessment-reading-width {
+  max-width: 78ch;
+}
+
+.assessment-header h1,
+.assessment-band h2 {
+  margin-top: 0.35rem;
+}
+
+.assessment-header p,
+.assessment-band p,
+.assessment-band li {
+  line-height: 1.55;
+}
+
+.assessment-mylo-reminder {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 0.6rem;
+  max-width: 25rem;
+  padding: 0.8rem 0 0.8rem 1rem;
+  border-left: 3px solid var(--gold);
+  color: var(--muted);
+}
+
+.assessment-band {
+  padding: 1.25rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.assessment-glance-band {
+  padding-top: 1.4rem;
+}
+
+.assessment-summary-region {
+  margin-top: 1rem;
+}
+
+.assessment-summary-empty {
+  max-width: 66ch;
+  padding: 0.9rem 1rem;
+  border-left: 4px solid var(--line);
+  background: var(--soft);
+}
+
+.assessment-summary-empty p {
+  margin: 0;
+}
+
+.assessment-summary-empty p + p {
+  margin-top: 0.35rem;
+}
+
+.assessment-project-identity {
+  margin-bottom: 0.85rem;
+}
+
+.assessment-status-grid,
+.assessment-phase-grid,
+.assessment-criteria-grid {
+  width: 100%;
+  max-width: none;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.assessment-status-grid .project-status-item,
+.assessment-phase,
+.assessment-criterion {
+  min-width: 0;
+}
+
+.assessment-status-grid .project-status-item {
+  min-height: 88px;
+}
+
+.assessment-navigation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.assessment-phase {
+  padding: 0.25rem 1rem 0.25rem 0;
+  border-top: 3px solid var(--teal);
+}
+
+.assessment-phase h3 {
+  margin-top: 0.75rem;
+}
+
+.assessment-ilo-list {
+  margin: 1rem 0 1.5rem;
+  padding-left: 1.4rem;
+}
+
+.assessment-ilo-list li + li {
+  margin-top: 0.65rem;
+}
+
+.assessment-criterion {
+  padding: 1rem 0;
+  border-top: 2px solid var(--line);
+}
+
+.assessment-criterion-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.assessment-criterion-heading h3 {
+  margin: 0;
+}
+
+.assessment-criterion-heading span {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.assessment-criterion details {
+  margin-top: 0.85rem;
+}
+
+.assessment-criterion summary {
+  color: var(--teal);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.assessment-criterion details p {
+  margin: 0.65rem 0 0;
+  color: var(--muted);
+}
+
+.assessment-criterion p,
+.assessment-band li {
+  overflow-wrap: anywhere;
+}
+
+.assessment-guidance-band h2 {
+  margin-bottom: 0.75rem;
+}
+
+.assessment-guidance-band h3 {
+  margin-top: 1.5rem;
+}
+
+.assessment-guidance-band h3 + p {
+  margin-top: 0.35rem;
+}
+
+@media (max-width: 780px) {
+  .assessment-status-grid,
+  .assessment-phase-grid,
+  .assessment-criteria-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .assessment-navigation-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .assessment-navigation-actions .btn {
+    width: 100%;
+  }
+}

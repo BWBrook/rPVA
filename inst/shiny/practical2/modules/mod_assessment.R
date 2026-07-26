@@ -108,3 +108,334 @@ assessment_safe_project_summary <- function(project) {
     )
   )
 }
+
+assessment_criterion_questions <- function() {
+  c(
+    C1 = paste(
+      "What conservation decision does the model help inform?",
+      "Which data, structural, scenario, and unmodelled-process limits matter?"
+    ),
+    C2 = paste(
+      "Which stochastic processes and threat mechanisms matter in your",
+      "comparisons, and which assumptions were deliberately held constant?"
+    ),
+    C3 = paste(
+      "What matched quantitative evidence shows the effect of management",
+      "relative to the same threatened future?"
+    ),
+    C4 = paste(
+      "What action does the evidence support, how confident are you,",
+      "and what information or outcome could change that advice?"
+    )
+  )
+}
+
+assessment_outcomes_ui <- function() {
+  criteria <- assessment_criteria()
+  questions <- assessment_criterion_questions()
+  shiny::tags$section(
+    class = "assessment-band",
+    shiny::span(class = "workspace-label", "Unit and task alignment"),
+    shiny::h2("What is assessed"),
+    shiny::p(
+      "The Intended Learning Outcomes describe the wider unit.",
+      "C1-C4 focus those outcomes on this assessment."
+    ),
+    shiny::tags$ol(
+      class = "assessment-ilo-list",
+      lapply(assessment_ilos(), shiny::tags$li)
+    ),
+    shiny::div(
+      class = "assessment-criteria-grid",
+      lapply(seq_len(nrow(criteria)), function(index) {
+        row <- criteria[index, , drop = FALSE]
+        shiny::tags$article(
+          class = "assessment-criterion",
+          shiny::div(
+            class = "assessment-criterion-heading",
+            shiny::h3(row$criterion),
+            shiny::span(paste(row$marks, "marks"))
+          ),
+          shiny::p(row$assessment_criteria),
+          shiny::tags$details(
+            shiny::tags$summary("Questions to ask yourself"),
+            shiny::p(unname(questions[[row$criterion]]))
+          )
+        )
+      })
+    )
+  )
+}
+
+assessment_markdown_band <- function(label, path) {
+  shiny::tags$section(
+    class = "assessment-band assessment-guidance-band",
+    shiny::span(class = "workspace-label", label),
+    shiny::div(
+      class = "assessment-reading-width",
+      render_markdown_content(file.path(
+        practical2_app_dir, "content", path
+      ))
+    )
+  )
+}
+
+assessment_report_guidance_ui <- function() {
+  assessment_markdown_band(
+    "Argument and evidence", "report-guidance.md"
+  )
+}
+
+assessment_research_ui <- function() {
+  assessment_markdown_band(
+    "Ecological context", "woodhen-research.md"
+  )
+}
+
+assessment_deepening_ui <- function() {
+  assessment_markdown_band(
+    "Optional extension", "ways-to-deepen.md"
+  )
+}
+
+assessment_navigation_ui <- function(ns) {
+  shiny::tags$nav(
+    class = "assessment-navigation-actions",
+    `aria-label` = "Open investigation workspace",
+    shiny::actionButton(
+      ns("go_calibrate"), "Open Calibrate",
+      icon = shiny::icon("clock-rotate-left"),
+      class = "btn-default btn-sm"
+    ),
+    shiny::actionButton(
+      ns("go_investigate"), "Open Investigate",
+      icon = shiny::icon("flask"),
+      class = "btn-default btn-sm"
+    ),
+    shiny::actionButton(
+      ns("go_compare"), "Open Compare",
+      icon = shiny::icon("scale-balanced"),
+      class = "btn-default btn-sm"
+    ),
+    shiny::actionButton(
+      ns("go_evidence"), "Open Evidence Studio",
+      icon = shiny::icon("folder-open"),
+      class = "btn-default btn-sm"
+    )
+  )
+}
+
+assessment_ui <- function(id) {
+  ns <- shiny::NS(id)
+  shiny::div(
+    class = "page-shell assessment-shell",
+    shiny::tags$header(
+      class = "assessment-header",
+      shiny::div(
+        shiny::span(class = "section-eyebrow", "Assessment Task"),
+        shiny::h1("Woodhen Conservation Advice"),
+        shiny::p(
+          "Develop an evidence-led recommendation as a present-day",
+          "conservation adviser. The report is approximately 2,000 words;",
+          "display items and references are excluded."
+        )
+      ),
+      shiny::div(
+        class = "assessment-mylo-reminder",
+        shiny::icon("circle-info"),
+        shiny::span("Check official submission details in MyLO")
+      )
+    ),
+    shiny::tags$section(
+      class = "assessment-band assessment-glance-band",
+      shiny::span(class = "workspace-label", "Current project"),
+      shiny::h2("Your investigation at a glance"),
+      shiny::p(
+        "This summary reports what is available in the current project.",
+        "It is a reminder, not a checklist or score."
+      ),
+      shiny::div(
+        class = "assessment-summary-region",
+        role = "status",
+        `aria-live` = "polite",
+        `aria-atomic` = "true",
+        shiny::uiOutput(ns("investigation_summary"))
+      ),
+      assessment_navigation_ui(ns)
+    ),
+    shiny::tags$section(
+      class = "assessment-band",
+      shiny::span(class = "workspace-label", "Scientific journey"),
+      shiny::h2("The investigation"),
+      shiny::div(
+        class = "assessment-phase-grid",
+        shiny::div(
+          class = "assessment-phase",
+          shiny::h3("Phase 1: Reconstruct the management history"),
+          shiny::p(
+            "Use the historical comparisons as a plausibility check,",
+            "not as proof that the model is independently validated."
+          )
+        ),
+        shiny::div(
+          class = "assessment-phase",
+          shiny::h3("Phase 2: Advise from the present"),
+          shiny::p(
+            "Use one-factor sensitivity evidence and a matched",
+            "threat-management comparison to develop prospective advice."
+          )
+        )
+      )
+    ),
+    assessment_outcomes_ui(),
+    assessment_report_guidance_ui(),
+    assessment_research_ui(),
+    assessment_deepening_ui()
+  )
+}
+
+assessment_availability <- function(
+    count,
+    singular,
+    plural = paste0(singular, "s")
+) {
+  label <- if (count == 1L) singular else plural
+  list(
+    available = count > 0L,
+    value = if (count > 0L) {
+      paste(count, label, "available")
+    } else {
+      paste("Not yet in this project:", plural)
+    }
+  )
+}
+
+assessment_summary_ui <- function(ns, summary) {
+  if (identical(summary$status, "empty")) {
+    return(shiny::div(
+      class = "assessment-summary-empty",
+      shiny::p(shiny::strong("No project is currently loaded.")),
+      shiny::p(
+        "Create, resume, or import a project on Start to show your",
+        "investigation record here. The guidance below remains available."
+      )
+    ))
+  }
+  if (identical(summary$status, "unavailable")) {
+    return(shiny::div(
+      class = "assessment-summary-empty",
+      shiny::p(shiny::strong("Project summary unavailable")),
+      shiny::p(
+        "Your assessment guidance is still available. Return to Start if",
+        "you need to resume or import the project again."
+      )
+    ))
+  }
+
+  history <- assessment_availability(
+    summary$historical_count,
+    "historical result",
+    "historical results"
+  )
+  sensitivity <- assessment_availability(
+    summary$sensitivity_count,
+    "sensitivity comparison",
+    "sensitivity comparisons"
+  )
+  future <- assessment_availability(
+    summary$future_count,
+    "threat-management comparison",
+    "threat-management comparisons"
+  )
+  record <- paste(
+    summary$observation_count,
+    if (summary$observation_count == 1L) "saved note" else "saved notes",
+    "and",
+    summary$portfolio_count,
+    if (summary$portfolio_count == 1L) {
+      "portfolio item"
+    } else {
+      "portfolio items"
+    },
+    "available"
+  )
+
+  shiny::div(
+    class = "assessment-summary",
+    shiny::p(
+      class = "assessment-project-identity",
+      shiny::strong(summary$title),
+      if (!is.null(summary$owner_label) && nzchar(summary$owner_label)) {
+        paste(" - ", summary$owner_label)
+      }
+    ),
+    shiny::div(
+      class = "assessment-status-grid",
+      project_status_ui(
+        "Historical reconstruction", history$value,
+        "neutral",
+        "clock-rotate-left"
+      ),
+      project_status_ui(
+        "Sensitivity evidence", sensitivity$value,
+        "neutral",
+        "chart-line"
+      ),
+      project_status_ui(
+        "Threat and management evidence", future$value,
+        "neutral",
+        "shield-halved"
+      ),
+      project_status_ui(
+        "Working record", record, "neutral", "folder-open"
+      )
+    )
+  )
+}
+
+assessment_navigation_targets <- function() {
+  c("calibrate", "investigate", "compare", "evidence")
+}
+
+validate_assessment_navigation_event <- function(event) {
+  if (!is.list(event) ||
+      !identical(names(event), c("section", "event_id")) ||
+      !is.character(event$section) || length(event$section) != 1L ||
+      !event$section %in% assessment_navigation_targets() ||
+      !is.numeric(event$event_id) || length(event$event_id) != 1L ||
+      !is.finite(event$event_id) || event$event_id < 1L ||
+      event$event_id != as.integer(event$event_id)) {
+    stop("Assessment navigation event is invalid.", call. = FALSE)
+  }
+  event$section
+}
+
+assessment_server <- function(id, project = NULL) {
+  shiny::moduleServer(id, function(input, output, session) {
+    navigate <- shiny::reactiveVal(NULL)
+    event_id <- shiny::reactiveVal(0L)
+    project_value <- shiny::reactive({
+      if (is.function(project)) project() else project
+    })
+    summary <- shiny::reactive({
+      assessment_safe_project_summary(project_value())
+    })
+
+    output$investigation_summary <- shiny::renderUI({
+      assessment_summary_ui(session$ns, summary())
+    })
+
+    targets <- assessment_navigation_targets()
+    for (target_value in targets) {
+      local({
+        target <- target_value
+        shiny::observeEvent(input[[paste0("go_", target)]], {
+          next_id <- shiny::isolate(event_id()) + 1L
+          event_id(next_id)
+          navigate(list(section = target, event_id = next_id))
+        })
+      })
+    }
+    list(navigate = navigate, summary = summary)
+  })
+}

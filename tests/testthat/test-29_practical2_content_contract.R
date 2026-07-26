@@ -2,7 +2,7 @@ source_assessment_module <- function() {
   app_dir <- testthat::test_path(
     "..", "..", "inst", "shiny", "practical2"
   )
-  env <- new.env(parent = globalenv())
+  env <- new.env(parent = asNamespace("shiny"))
   env$practical2_app_dir <- normalizePath(
     app_dir, winslash = "/", mustWork = TRUE
   )
@@ -170,6 +170,93 @@ test_that("Assessment summary rejects missing or empty run identities", {
     expect_identical(
       env$assessment_safe_project_summary(project)$status,
       "unavailable"
+    )
+  }
+})
+
+test_that("Assessment UI exposes the approved readable hierarchy", {
+  env <- source_assessment_module()
+  html <- paste(as.character(env$assessment_ui("assessment")), collapse = "\n")
+  for (text in c(
+    "Woodhen Conservation Advice",
+    "Your investigation at a glance",
+    "The investigation",
+    "What is assessed",
+    "Develop your investigation",
+    "Build a coherent argument",
+    "Use evidence selectively",
+    "Research the Woodhen",
+    "Ways to deepen your investigation",
+    "Final self-check"
+  )) {
+    expect_match(html, text, fixed = TRUE)
+  }
+  expect_match(html, 'id="assessment-investigation_summary"', fixed = TRUE)
+  expect_match(html, 'id="assessment-go_calibrate"', fixed = TRUE)
+  expect_match(html, 'id="assessment-go_investigate"', fixed = TRUE)
+  expect_match(html, 'id="assessment-go_compare"', fixed = TRUE)
+  expect_match(html, 'id="assessment-go_evidence"', fixed = TRUE)
+})
+
+test_that("Assessment server remains read-only and emits bounded navigation", {
+  env <- source_assessment_module()
+
+  shiny::testServer(
+    env$assessment_server,
+    args = list(project = NULL),
+    {
+      expect_identical(summary()$status, "empty")
+      session$setInputs(go_calibrate = 1)
+      expect_identical(
+        navigate(),
+        list(section = "calibrate", event_id = 1L)
+      )
+    }
+  )
+
+  project <- list(
+    title = "Project-aware assessment",
+    owner_label = "Student 17",
+    runs = list(
+      assessment_run("sens_a", "locked_baseline"),
+      assessment_run("sens_a", "sensitivity"),
+      assessment_run("sens_a", "sensitivity")
+    ),
+    observations = list(),
+    evidence_items = list()
+  )
+  before <- serialize(project, NULL)
+  live <- shiny::reactiveVal(project)
+  shiny::testServer(
+    env$assessment_server,
+    args = list(project = shiny::reactive(live())),
+    {
+      expect_identical(summary()$status, "available")
+      expect_identical(summary()$sensitivity_count, 1L)
+      expect_no_error(output$investigation_summary)
+    }
+  )
+  expect_identical(serialize(project, NULL), before)
+})
+
+test_that("Assessment navigation accepts only working evidence tabs", {
+  env <- source_assessment_module()
+  for (section in c("calibrate", "investigate", "compare", "evidence")) {
+    expect_identical(
+      env$validate_assessment_navigation_event(list(
+        section = section,
+        event_id = 1L
+      )),
+      section
+    )
+  }
+  for (section in c("start", "assessment", "unknown")) {
+    expect_error(
+      env$validate_assessment_navigation_event(list(
+        section = section,
+        event_id = 1L
+      )),
+      "invalid"
     )
   }
 })
