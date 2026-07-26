@@ -24,10 +24,14 @@ assessment_criteria <- function() {
 assessment_family_counts <- function(runs) {
   counts <- c(sensitivity = 0L, future = 0L)
   if (!is.list(runs) || length(runs) == 0L) return(counts)
+  valid_identifier <- function(value) {
+    is.character(value) && length(value) == 1L && !is.na(value) &&
+      nzchar(value)
+  }
   valid <- vapply(runs, function(run) {
     is.list(run) &&
-      is.character(run$family_id) && length(run$family_id) == 1L &&
-      is.character(run$scenario_type) && length(run$scenario_type) == 1L
+      valid_identifier(run$family_id) &&
+      valid_identifier(run$scenario_type)
   }, logical(1))
   if (!all(valid)) stop("Run identity is unavailable.", call. = FALSE)
 

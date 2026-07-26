@@ -105,7 +105,11 @@ test_that("Assessment summary counts only complete comparison families", {
 test_that("Assessment project summary is neutral and does not mutate input", {
   env <- source_assessment_module()
   empty <- env$assessment_safe_project_summary(NULL)
-  expect_identical(empty$status, "empty")
+  expect_identical(empty, list(
+    status = "empty", title = NULL, owner_label = NULL,
+    historical_count = 0L, sensitivity_count = 0L, future_count = 0L,
+    observation_count = 0L, portfolio_count = 0L
+  ))
 
   project <- list(
     title = "Woodhen advice",
@@ -136,5 +140,36 @@ test_that("Assessment project summary is neutral and does not mutate input", {
   expect_identical(serialize(project, NULL), before)
 
   unavailable <- env$assessment_safe_project_summary(list(title = "broken"))
-  expect_identical(unavailable$status, "unavailable")
+  expect_identical(unavailable, list(
+    status = "unavailable", title = NULL, owner_label = NULL,
+    historical_count = 0L, sensitivity_count = 0L, future_count = 0L,
+    observation_count = 0L, portfolio_count = 0L
+  ))
+})
+
+test_that("Assessment summary rejects missing or empty run identities", {
+  env <- source_assessment_module()
+  invalid_runs <- list(
+    list(assessment_run(NA_character_, "sensitivity")),
+    list(assessment_run("", "sensitivity")),
+    list(assessment_run("family_a", NA_character_)),
+    list(assessment_run("family_a", ""))
+  )
+  for (runs in invalid_runs) {
+    expect_error(
+      env$assessment_family_counts(runs),
+      "Run identity is unavailable."
+    )
+    project <- list(
+      title = "Woodhen advice",
+      owner_label = "Student 17",
+      runs = runs,
+      observations = list(),
+      evidence_items = list()
+    )
+    expect_identical(
+      env$assessment_safe_project_summary(project)$status,
+      "unavailable"
+    )
+  }
 })
