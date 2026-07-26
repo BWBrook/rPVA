@@ -4,52 +4,210 @@ read_assessment_text <- function(path) {
   paste(readLines(file.path(repo_root(), path), warn = FALSE), collapse = "\n")
 }
 
-test_that("Assessment brief requires an individual analytical choice", {
-  brief <- read_assessment_text("docs/teaching/woodhen/assessment-brief-2026-draft.md")
+normalize_document_text <- function(text) {
+  gsub("[[:space:]]+", " ", text)
+}
 
-  expect_true(grepl("Individual analytical choice", brief, fixed = TRUE))
-  expect_true(grepl("Decision lens", brief, fixed = TRUE))
-  expect_true(grepl("selected focal scenario", brief, fixed = TRUE))
-  expect_true(grepl("chosen sensitivity ID", brief, fixed = TRUE))
-  expect_true(grepl("expected direction", brief, fixed = TRUE))
-  expect_true(grepl("condition that would change your advice", brief, fixed = TRUE))
-  expect_true(grepl("full core Woodhen scenario comparison", brief, fixed = TRUE))
+expect_document_contains <- function(text, required) {
+  text <- normalize_document_text(text)
+  for (phrase in required) {
+    expect_match(text, normalize_document_text(phrase), fixed = TRUE)
+  }
+}
+
+expect_document_omits <- function(text, obsolete) {
+  text <- tolower(normalize_document_text(text))
+  for (phrase in obsolete) {
+    expect_false(grepl(
+      tolower(normalize_document_text(phrase)), text, fixed = TRUE
+    ))
+  }
+}
+
+locked_assessment_criteria <- c(
+  "Describe the uses and limitations of simulation modelling in conservation decision-making.",
+  "Model stochastic processes and causes of threat.",
+  "Undertake scenario testing to compare the relative effectiveness of alternative management options.",
+  "Translate simulation results and communicate them as conservation recommendations."
+)
+
+test_that("assessment brief defines the complete evidence-led report journey", {
+  brief <- read_assessment_text(
+    "docs/teaching/woodhen/assessment-brief-2026-draft.md"
+  )
+
+  expect_document_contains(brief, c(
+    "approximately 2,000 words",
+    "Display items and references are excluded",
+    "historical reconstruction",
+    "three-setting one-factor sensitivity",
+    "no-change baseline",
+    "threatened future",
+    "managed threatened future",
+    "Evidence Portfolio",
+    "evidence dossier",
+    "student-authored report",
+    "MyLO",
+    "Wider Woodhen research",
+    "conventional scientific sequence",
+    "decision-led sequence",
+    "evidence-led sequence",
+    "soft planning guide"
+  ))
+  expect_document_contains(brief, locked_assessment_criteria)
+  expect_document_contains(brief, c(
+    "| C1 | 5 |",
+    "| C2 | 6 |",
+    "| C3 | 8 |",
+    "| C4 | 6 |"
+  ))
+  expect_document_omits(brief, c(
+    "Individual analytical choice",
+    "selected focal scenario",
+    "chosen sensitivity ID",
+    "full core Woodhen scenario comparison",
+    "one bounded student-chosen sensitivity, threat, or intervention test",
+    "report scaffold",
+    "R commands",
+    "YAML editing",
+    "shell commands",
+    "Suggested length",
+    "Maximum: 2000 words"
+  ))
 })
 
-test_that("Report scaffold requires explicit student choices before rendering", {
-  scaffold <- read_assessment_text("docs/teaching/woodhen/report-scaffold.qmd")
+test_that("marking rubric preserves locked criteria and assesses all evidence families", {
+  rubric <- read_assessment_text(
+    "docs/teaching/woodhen/marking-rubric-2026-draft.md"
+  )
 
-  expect_true(grepl("assert_student_choices", scaffold, fixed = TRUE))
-  expect_true(grepl('decision_lens <- Sys.getenv("RPVA_DECISION_LENS"', scaffold, fixed = TRUE))
-  expect_true(grepl('selected_scenario_id <- Sys.getenv("RPVA_SELECTED_SCENARIO_ID"', scaffold, fixed = TRUE))
-  expect_true(grepl('chosen_sensitivity_id <- Sys.getenv("RPVA_CHOSEN_SENSITIVITY_ID"', scaffold, fixed = TRUE))
-  expect_true(grepl("choose_one_core_scenario", scaffold, fixed = TRUE))
-  expect_true(grepl("choose_one_sensitivity", scaffold, fixed = TRUE))
-  expect_true(grepl("sensitivity_default", scaffold, fixed = TRUE))
-  expect_true(grepl("run_woodhen_management_scenario(selected_scenario_id", scaffold, fixed = TRUE))
-  expect_match(scaffold, 'run_woodhen_management_set\\(\\s*c\\("sensitivity_default", chosen_sensitivity_id\\)')
-  expect_false(grepl('selected_run <- run_woodhen_management_scenario("02_pig_control"', scaffold, fixed = TRUE))
-  expect_false(grepl('c("sensitivity_default", "K_250")', scaffold, fixed = TRUE))
+  expect_document_contains(rubric, locked_assessment_criteria)
+  expect_document_contains(rubric, c(
+    "| C1 | 5 |",
+    "| C2 | 6 |",
+    "| C3 | 8 |",
+    "| C4 | 6 |",
+    "approximately 2,000 words",
+    "Display items and references are excluded",
+    "historical reconstruction",
+    "three-setting one-factor sensitivity",
+    "no-change baseline",
+    "threatened future",
+    "managed threatened future",
+    "The report is the assessed synthesis",
+    "Evidence Portfolio",
+    "evidence dossier"
+  ))
+  expect_document_omits(rubric, c(
+    "all core Woodhen scenarios",
+    "sensitivity, threat, or intervention test",
+    "mechanical use of the scaffold",
+    "total maximum 17/25",
+    "approved sensitivity ID",
+    "optional artefacts"
+  ))
 })
 
-test_that("Rubric and feedback identify mechanical scaffold use", {
-  rubric <- read_assessment_text("docs/teaching/woodhen/marking-rubric-2026-draft.md")
-  feedback <- read_assessment_text("docs/teaching/woodhen/feedback-template-2026-draft.md")
-  crosswalk <- read_assessment_text("docs/teaching/woodhen/assessment-design-crosswalk-2026.md")
+test_that("assessment crosswalk records the six-tab evidence journey", {
+  crosswalk <- read_assessment_text(
+    "docs/teaching/woodhen/assessment-design-crosswalk-2026.md"
+  )
 
-  expect_true(grepl("mechanical use of the scaffold", rubric, fixed = TRUE))
-  expect_true(grepl("total maximum 17/25", rubric, fixed = TRUE))
-  expect_true(grepl("individual analytical choice", feedback, fixed = TRUE))
-  expect_true(grepl("decision lens", feedback, fixed = TRUE))
-  expect_true(grepl("fixed common evidence", crosswalk, fixed = TRUE))
-  expect_true(grepl("declared controlled choice", crosswalk, fixed = TRUE))
+  expect_document_contains(crosswalk, locked_assessment_criteria)
+  expect_document_contains(crosswalk, c(
+    "| C1 | 5 |",
+    "| C2 | 6 |",
+    "| C3 | 8 |",
+    "| C4 | 6 |",
+    "Start",
+    "Calibrate",
+    "Investigate",
+    "Compare",
+    "Evidence Studio",
+    "Assessment Task",
+    "historical reconstruction",
+    "three-setting one-factor sensitivity",
+    "no-change baseline",
+    "threatened future",
+    "managed threatened future",
+    "Evidence Portfolio",
+    "evidence dossier",
+    "student-authored report",
+    "evidence-dossier.docx",
+    "numbered PNG",
+    "numbered CSV"
+  ))
+  expect_document_omits(crosswalk, c(
+    "edit YAML",
+    "shell-command requirement",
+    "all five core scenarios",
+    "sensitivity, threat, or intervention test",
+    "comparison CSV and evidence-notes exports",
+    "If Shiny is introduced later"
+  ))
 })
 
-test_that("Practical 2 launch page tells students what to save before export", {
-  launch <- read_assessment_text("docs/teaching/woodhen/practical-2-student-launch-page.md")
+test_that("classroom checklist exercises the implemented student route", {
+  checklist <- read_assessment_text(
+    "docs/teaching/woodhen/classroom-dry-run-checklist.md"
+  )
 
-  expect_true(grepl("Before you export", launch, fixed = TRUE))
-  expect_true(grepl("core comparison CSV", launch, fixed = TRUE))
-  expect_true(grepl("sensitivity comparison CSV", launch, fixed = TRUE))
-  expect_true(grepl("student choice note", launch, fixed = TRUE))
+  expect_document_contains(checklist, c(
+    "six tabs",
+    "Assessment Task",
+    "no project",
+    "project-aware neutral summary",
+    "exact ILO",
+    "C1-C4",
+    "does not score",
+    "does not generate submission prose",
+    "does not impose quotas",
+    "Calibrate",
+    "Investigate",
+    "Compare",
+    "Evidence Studio",
+    "MyLO",
+    "evidence-dossier.docx",
+    "numbered PNG",
+    "numbered CSV"
+  ))
+  expect_document_omits(checklist, c(
+    "run_scenarios(",
+    "five-row reference table",
+    "command log",
+    "report scaffold",
+    "RPVA_DECISION_LENS",
+    "quarto render",
+    "one management-scenario plot",
+    "one bounded sensitivity table"
+  ))
+})
+
+test_that("Practical 2 README describes the working app and dossier bundle", {
+  readme <- read_assessment_text("inst/shiny/practical2/README.md")
+
+  expect_document_contains(readme, c(
+    "Start",
+    "Calibrate",
+    "Investigate",
+    "Compare",
+    "Evidence Studio",
+    "Assessment Task",
+    "six-tab",
+    "read-only",
+    "project-aware",
+    "evidence-dossier.docx",
+    "numbered PNG",
+    "numbered CSV",
+    "selected plots",
+    "selected tables",
+    "empty-state",
+    "browser",
+    "The ZIP contains source material only",
+    "Markdown and PDF are outside the dossier export contract",
+    paste(
+      "Students write all report prose, interpretations, recommendations,",
+      "captions, and references"
+    )
+  ))
 })
