@@ -413,7 +413,7 @@ test_that("Evidence Portfolio UI separates library from export selection", {
     "evidence-clear_export",
     "evidence-export_order",
     "evidence-export_preview",
-    "evidence-export_files"
+    "evidence-export_control"
   )) {
     expect_match(html, paste0('id="', id, '"'), fixed = TRUE)
   }
@@ -425,8 +425,7 @@ test_that("Evidence Portfolio UI separates library from export selection", {
     "Items not included in this export remain in your project portfolio",
     fixed = TRUE
   )
-  expect_match(html, "connected in the next output gate", fixed = TRUE)
-  expect_match(html, 'aria-disabled="true"', fixed = TRUE)
+  expect_false(grepl("evidence-dossier.docx", html, fixed = TRUE))
   expect_false(grepl(
     "sparse|focused|excessive|report-ready|dossier preview",
     html,
@@ -476,6 +475,30 @@ test_that("export selection is session-local and independent of portfolio order"
       session$setInputs(clear_export = 1)
       expect_identical(export_ids(), character())
       expect_identical(portfolio_ids(), c("ev_plot", "ev_note", "ev_table"))
+    }
+  )
+})
+
+test_that("evidence dossier control is disabled until a selection exists", {
+  env <- source_evidence_module()
+  live <- shiny::reactiveVal(evidence_portfolio_fixture())
+
+  shiny::testServer(
+    env$evidence_server,
+    args = list(project = shiny::reactive(live())),
+    {
+      session$flushReact()
+      empty_html <- paste(as.character(output$export_control), collapse = "\n")
+      expect_match(empty_html, 'id="proxy1-export_files"', fixed = TRUE)
+      expect_match(empty_html, 'aria-disabled="true', fixed = TRUE)
+      expect_match(empty_html, "Select at least one", fixed = TRUE)
+
+      session$setInputs(include_ev_note = TRUE)
+      enabled_html <- paste(as.character(output$export_control), collapse = "\n")
+      expect_match(enabled_html, 'id="proxy1-export_files"', fixed = TRUE)
+      expect_false(grepl('disabled="disabled"', enabled_html, fixed = TRUE))
+      expect_match(enabled_html, "evidence-dossier.docx", fixed = TRUE)
+      expect_match(enabled_html, "source material for", fixed = TRUE)
     }
   )
 })
@@ -572,4 +595,124 @@ test_that("help describes portfolio operations without report-quality advice", {
     text,
     ignore.case = TRUE
   ))
+})
+
+test_that("evidence export slugs are safe, bounded, and deterministic", {
+  env <- source_evidence_module()
+  expect_true(exists("evidence_export_slug", envir = env))
+  if (!exists("evidence_export_slug", envir = env)) return()
+
+  expect_identical(
+    env$evidence_export_slug("Rat return / <stress> #1", max_chars = 20L),
+    "Rat_return_stress_1"
+  )
+  expect_identical(env$evidence_export_slug("", fallback = "item"), "item")
+  expect_false(grepl("[^A-Za-z0-9_.-]", env$evidence_export_slug("x/y")))
+  expect_lte(nchar(env$evidence_export_slug(strrep("x", 200L), max_chars = 12L)), 12L)
+})
+
+test_that("table export neutralises spreadsheet formula prefixes only in text cells", {
+  env <- source_evidence_module()
+  expect_true(exists("evidence_neutralise_csv_cell", envir = env))
+  if (!exists("evidence_neutralise_csv_cell", envir = env)) return()
+
+  expect_identical(env$evidence_neutralise_csv_cell("=SUM(A1)"), "'=SUM(A1)")
+  expect_identical(env$evidence_neutralise_csv_cell("+student note"), "'+student note")
+  expect_identical(env$evidence_neutralise_csv_cell("ordinary text"), "ordinary text")
+  expect_identical(env$evidence_neutralise_csv_cell(12.5), 12.5)
+  expect_identical(env$evidence_neutralise_csv_cell(-2), -2)
+})
+
+test_that("evidence export selection validates empty, duplicate, unknown, and over-limit IDs", {
+  env <- source_evidence_module()
+  expect_true(exists("evidence_export_items", envir = env))
+  if (!exists("evidence_export_items", envir = env)) return()
+  project <- evidence_portfolio_fixture()
+
+  expect_error(env$evidence_export_items(project, character()), "select")
+  expect_error(env$evidence_export_items(project, c("ev_plot", "ev_plot")), "unique|duplicate")
+  expect_error(env$evidence_export_items(project, "missing"), "unknown")
+  many <- paste0("ev_", seq_len(101L))
+  project$evidence_items <- lapply(many, function(id) {
+    item <- project$evidence_items[[1L]]
+    item$evidence_id <- id
+    item
+  })
+  expect_error(env$evidence_export_items(project, many), "maximum|limit")
+})
+
+test_that("evidence export preserves selected order and writes the exact bundle contract", {
+  env <- source_evidence_module()
+  expect_true(exists("write_evidence_dossier_bundle", envir = env))
+  if (!exists("write_evidence_dossier_bundle", envir = env)) return()
+  skip_if_not_installed("ggplot2")
+  project <- evidence_portfolio_fixture()
+  env$evidence_preview_plot <- function(item, project) {
+    ggplot2::ggplot(data.frame(x = 1:3, y = 3:1), ggplot2::aes(x, y)) +
+      ggplot2::geom_line()
+  }
+  env$evidence_preview_table <- function(item, project) {
+    data.frame(
+      Scenario = c("A", "B"),
+      Note = c("=unsafe", "ordinary"),
+      Value = c(1, 2),
+      stringsAsFactors = FALSE
+    )
+  }
+  zip_path <- tempfile(fileext = ".zip")
+  on.exit(unlink(zip_path), add = TRUE)
+
+  env$write_evidence_dossier_bundle(
+    project,
+    c("ev_note", "ev_plot", "ev_table"),
+    zip_path,
+    generated_at = as.POSIXct("2026-07-26 00:00:00", tz = "UTC")
+  )
+  expect_true(file.exists(zip_path))
+  members <- unzip(zip_path, list = TRUE)$Name
+  expect_identical(
+    members,
+    c("evidence-dossier.docx", "figures/002-Risk_through_time.png", "tables/003-Threat_and_intervention_comparison.csv")
+  )
+  archive_check <- system2("unzip", c("-t", shQuote(zip_path)), stdout = TRUE, stderr = TRUE)
+  expect_match(paste(archive_check, collapse = "\n"), "No errors detected", fixed = TRUE)
+  extracted_dir <- tempfile("evidence-docx-")
+  dir.create(extracted_dir)
+  unzip(zip_path, files = "evidence-dossier.docx", exdir = extracted_dir)
+  docx_path <- file.path(extracted_dir, "evidence-dossier.docx")
+  expect_identical(utils::unzip(docx_path, list = TRUE)$Name[1L], "[Content_Types].xml")
+  text_dump <- system2("pandoc", c(shQuote(docx_path), "-t", "plain"), stdout = TRUE)
+  expect_match(paste(text_dump, collapse = "\n"), "My comparison note", fixed = TRUE)
+  expect_match(paste(text_dump, collapse = "\n"), "managed future retained", fixed = TRUE)
+
+  csv_dir <- tempfile("evidence-csv-")
+  dir.create(csv_dir)
+  unzip(zip_path, files = "tables/003-Threat_and_intervention_comparison.csv", exdir = csv_dir)
+  exported <- utils::read.csv(
+    file.path(csv_dir, "tables", "003-Threat_and_intervention_comparison.csv"),
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+  expect_identical(exported$Note, c("'=unsafe", "ordinary"))
+  expect_equal(exported$Value, c(1, 2))
+
+  png_dir <- tempfile("evidence-png-")
+  dir.create(png_dir)
+  unzip(zip_path, files = "figures/002-Risk_through_time.png", exdir = png_dir)
+  png_path <- file.path(png_dir, "figures", "002-Risk_through_time.png")
+  expect_gt(file.info(png_path)$size, 1000)
+  png_bytes <- readBin(png_path, "raw", n = 32L)
+  png_width <- sum(as.integer(png_bytes[17:20]) * 256^(3:0))
+  expect_identical(png_width, 1800)
+})
+
+test_that("failed evidence reconstruction is explicit in dossier HTML", {
+  env <- source_evidence_module()
+  project <- evidence_portfolio_fixture()
+  project$runs <- list()
+  items <- project$evidence_items[1:2]
+  html <- env$evidence_dossier_html(items, project, assets = list(list(), list()))
+  expect_match(html, "Evidence unavailable", fixed = TRUE)
+  expect_match(html, "could not be reconstructed", fixed = TRUE)
+  expect_false(grepl("example|representative|synthetic", html, ignore.case = TRUE))
 })

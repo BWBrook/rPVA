@@ -39,8 +39,13 @@ or **Clear export selection** when helpful, then arrange the selected items in
 the order you want to preview them.
 
 Items omitted from one export remain in your project portfolio. Export
-selection is session-local in this first Evidence Portfolio gate; file output
-is connected in the next output gate.
+selection is session-local. When at least one item is selected, **Export
+selected evidence** downloads one ZIP containing `evidence-dossier.docx`, plus
+numbered PNG companions for plots and numbered CSV companions for tables. The
+dossier keeps your chosen order, source/run provenance, and any saved
+student-authored notes. It is source material for your own report; it does not
+write report prose, interpretations, recommendations, captions, references,
+Markdown, or PDF.
 
 ## Read provenance
 

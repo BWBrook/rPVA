@@ -1,9 +1,11 @@
 # Practical 2 Shiny App
 
 This installed app is the modular Woodhen investigation workspace. Start,
-Calibrate, Investigate, and Compare are implemented as working modules.
-Evidence Studio remains a quiet pending band until its implementation gate
-lands.
+Calibrate, Investigate, Compare, and the Evidence Studio portfolio are
+implemented as working modules. Evidence Studio exports selected source
+material as one project-derived ZIP containing a DOCX dossier and numbered
+plot/table companions; the export is session-local and does not alter the
+portfolio.
 
 The R session owns the live validated `woodhen_project`. Browser recovery uses
 an origin-specific IndexedDB snapshot and explicit Resume action; portable ZIP

@@ -506,6 +506,228 @@ evidence_preview_plot <- function(item, project) {
   attempt(evidence_plot_from_comparison(item$view_id, comparison))
 }
 
+evidence_export_max_items <- 100L
+
+evidence_export_slug <- function(value,
+                                  fallback = "evidence",
+                                  max_chars = 60L) {
+  text <- if (is.null(value) || length(value) == 0L || is.na(value[[1L]])) {
+    ""
+  } else {
+    as.character(value[[1L]])
+  }
+  text <- iconv(text, from = "", to = "ASCII//TRANSLIT", sub = "")
+  text <- gsub("[^A-Za-z0-9_.-]+", "_", text)
+  text <- gsub("^[_ .-]+|[_ .-]+$", "", text)
+  if (!nzchar(text)) text <- fallback
+  max_chars <- max(1L, as.integer(max_chars[[1L]]))
+  substr(text, 1L, max_chars)
+}
+
+evidence_neutralise_csv_cell <- function(value) {
+  if (!is.character(value) || length(value) != 1L || is.na(value)) {
+    return(value)
+  }
+  if (substr(value, 1L, 1L) %in% c("=", "+", "-", "@", "\t", "\r")) {
+    paste0("'", value)
+  } else {
+    value
+  }
+}
+
+evidence_export_items <- function(project, evidence_ids) {
+  if (!is.character(evidence_ids) || length(evidence_ids) == 0L) {
+    stop("select at least one evidence item before downloading.", call. = FALSE)
+  }
+  if (length(evidence_ids) > evidence_export_max_items) {
+    stop(
+      paste0("maximum export size is ", evidence_export_max_items, " items."),
+      call. = FALSE
+    )
+  }
+  if (anyNA(evidence_ids) || any(!nzchar(evidence_ids))) {
+    stop("Evidence IDs must be non-empty text.", call. = FALSE)
+  }
+  if (anyDuplicated(evidence_ids)) {
+    stop("Evidence IDs in an export must be unique.", call. = FALSE)
+  }
+  items <- evidence_project_items(project)
+  known <- evidence_item_ids(items)
+  unknown <- setdiff(evidence_ids, known)
+  if (length(unknown)) {
+    stop(
+      paste0("unknown evidence ID: ", paste(unknown, collapse = ", ")),
+      call. = FALSE
+    )
+  }
+  items[match(evidence_ids, known)]
+}
+
+evidence_write_plot_png <- function(item, project, path) {
+  plot <- NULL
+  if (item$view_id %in% evidence_calibration_plot_views()) {
+    plot <- tryCatch({
+      grDevices::png(path, width = 1800L, height = 1200L, res = 144L)
+      ok <- evidence_render_calibration_plot(item, project)
+      grDevices::dev.off()
+      if (isTRUE(ok)) TRUE else FALSE
+    }, error = function(...) {
+      try(grDevices::dev.off(), silent = TRUE)
+      FALSE
+    })
+  } else {
+    plot <- tryCatch(evidence_preview_plot(item, project), error = function(...) NULL)
+    if (!is.null(plot)) {
+      plot <- tryCatch({
+        grDevices::png(path, width = 1800L, height = 1200L, res = 144L)
+        print(plot)
+        grDevices::dev.off()
+        TRUE
+      }, error = function(...) {
+        try(grDevices::dev.off(), silent = TRUE)
+        FALSE
+      })
+    } else {
+      FALSE
+    }
+  }
+  if (!isTRUE(plot) && file.exists(path)) unlink(path)
+  isTRUE(plot) && file.exists(path)
+}
+
+evidence_write_table_csv <- function(item, project, path) {
+  table <- tryCatch(evidence_preview_table(item, project), error = function(...) NULL)
+  if (!is.data.frame(table)) return(FALSE)
+  table[] <- lapply(table, function(column) {
+    if (is.character(column)) {
+      vapply(column, evidence_neutralise_csv_cell, character(1))
+    } else {
+      column
+    }
+  })
+  utils::write.csv(table, path, row.names = FALSE, na = "", fileEncoding = "UTF-8")
+  file.exists(path)
+}
+
+evidence_html_escape <- function(value) {
+  htmltools::htmlEscape(if (is.null(value)) "" else as.character(value))
+}
+
+evidence_html_table <- function(table) {
+  if (!is.data.frame(table) || ncol(table) == 0L) return("<p>Table unavailable.</p>")
+  headers <- paste0("<th>", vapply(names(table), evidence_html_escape, character(1)), "</th>")
+  rows <- if (nrow(table)) vapply(seq_len(nrow(table)), function(index) {
+    cells <- vapply(table[index, , drop = TRUE], function(value) {
+      paste0("<td>", evidence_html_escape(value), "</td>")
+    }, character(1))
+    paste0("<tr>", paste(cells, collapse = ""), "</tr>")
+  }, character(1)) else character()
+  paste0(
+    "<table><thead><tr>", paste(headers, collapse = ""),
+    "</tr></thead><tbody>", paste(rows, collapse = ""), "</tbody></table>"
+  )
+}
+
+evidence_dossier_html <- function(items, project, assets = list(), generated_at = Sys.time()) {
+  project_title <- if (is.null(project$title) || !nzchar(as.character(project$title))) {
+    "Untitled project"
+  } else as.character(project$title)
+  item_blocks <- vapply(seq_along(items), function(index) {
+    item <- items[[index]]
+    asset <- if (length(assets) >= index) assets[[index]] else list()
+    provenance <- evidence_run_metadata_table(item, project)
+    provenance_html <- evidence_html_table(provenance)
+    content <- if (identical(item$kind, "observation")) {
+      observation <- evidence_observation_for_item(item, project)
+      if (is.null(observation)) {
+        "<p><strong>Evidence unavailable:</strong> The linked student note is unavailable in the active project.</p>"
+      } else {
+        paste0("<p class=\"student-note\">", evidence_html_escape(observation$note), "</p>")
+      }
+    } else if (identical(item$kind, "plot")) {
+      if (!is.null(asset$png) && nzchar(asset$png)) {
+        paste0("<p><img src=\"", evidence_html_escape(asset$png), "\" alt=\"",
+               evidence_html_escape(item$title), "\"></p>")
+      } else {
+        "<p><strong>Evidence unavailable:</strong> This plot could not be reconstructed from the saved project evidence.</p>"
+      }
+    } else {
+      table <- tryCatch(evidence_preview_table(item, project), error = function(...) NULL)
+      csv_link <- if (!is.null(asset$csv) && nzchar(asset$csv)) {
+        paste0("<p>Companion CSV: <code>", evidence_html_escape(asset$csv), "</code></p>")
+      } else ""
+      metadata <- evidence_run_metadata_table(item, project)
+      unavailable <- is.null(table) || (
+        length(evidence_runs_for_item(item, project)) > 0L &&
+          identical(table, metadata)
+      )
+      notice <- if (unavailable) {
+        "<p><strong>Evidence unavailable:</strong> The selected table could not be reconstructed from the saved project evidence; the provenance metadata below is retained.</p>"
+      } else ""
+      paste0(csv_link, notice, evidence_html_table(table))
+    }
+    paste0(
+      "<section><h2>", index, ". ", evidence_html_escape(item$title), "</h2>",
+      "<p><strong>Evidence type:</strong> ", evidence_html_escape(evidence_kind_label(item$kind)),
+      "<br><strong>Source:</strong> ", evidence_html_escape(evidence_family_label(item, project)),
+      "<br><strong>Saved view:</strong> ", evidence_html_escape(evidence_view_label(item$view_id)),
+      "</p><h3>Relevant run provenance</h3>", provenance_html, content, "</section>"
+    )
+  }, character(1))
+  paste0(
+    "<!doctype html><html><head><meta charset=\"utf-8\"><title>Evidence dossier</title>",
+    "<style>body{font-family: sans-serif; line-height:1.35} section{page-break-before:always} table{border-collapse:collapse} th,td{border:1px solid #999;padding:4px;text-align:left} img{max-width:100%} code{font-family:monospace}</style>",
+    "</head><body><h1>Evidence dossier</h1>",
+    "<p><strong>Project:</strong> ", evidence_html_escape(project_title),
+    "<br><strong>Generated:</strong> ", evidence_html_escape(format(generated_at, tz = "UTC", usetz = TRUE)),
+    "<br>This dossier contains selected source material and student notes with their saved scientific provenance. It does not generate assessment interpretations or recommendations.</p>",
+    paste(item_blocks, collapse = ""), "</body></html>"
+  )
+}
+
+write_evidence_dossier_bundle <- function(project,
+                                          evidence_ids,
+                                          path,
+                                          generated_at = Sys.time()) {
+  items <- evidence_export_items(project, evidence_ids)
+  staging <- tempfile("evidence-export-")
+  dir.create(staging, recursive = TRUE, showWarnings = FALSE)
+  Sys.chmod(staging, mode = "0700")
+  on.exit(unlink(staging, recursive = TRUE, force = TRUE), add = TRUE)
+  dir.create(file.path(staging, "figures"), mode = "0700")
+  dir.create(file.path(staging, "tables"), mode = "0700")
+  Sys.chmod(c(file.path(staging, "figures"), file.path(staging, "tables")), mode = "0700")
+  assets <- vector("list", length(items))
+  for (index in seq_along(items)) {
+    item <- items[[index]]
+    base <- paste0(sprintf("%03d", index), "-", evidence_export_slug(item$title))
+    if (identical(item$kind, "plot")) {
+      relative <- file.path("figures", paste0(base, ".png"))
+      absolute <- file.path(staging, relative)
+      if (evidence_write_plot_png(item, project, absolute)) assets[[index]] <- list(png = relative)
+    } else if (identical(item$kind, "table")) {
+      relative <- file.path("tables", paste0(base, ".csv"))
+      absolute <- file.path(staging, relative)
+      if (evidence_write_table_csv(item, project, absolute)) assets[[index]] <- list(csv = relative)
+    }
+  }
+  html_path <- file.path(staging, "evidence-dossier.html")
+  writeLines(evidence_dossier_html(items, project, assets, generated_at), html_path, useBytes = TRUE)
+  docx_path <- file.path(staging, "evidence-dossier.docx")
+  rmarkdown::pandoc_convert(html_path, to = "docx", output = docx_path, wd = staging)
+  files <- c("evidence-dossier.docx", unlist(lapply(assets, function(asset) {
+    if (is.null(asset)) character() else unname(unlist(asset))
+  }), use.names = FALSE))
+  zip::zipr(
+    path,
+    files = files,
+    root = staging,
+    include_directories = FALSE,
+    mode = "mirror"
+  )
+  invisible(path)
+}
+
 evidence_help_modal <- function() {
   shiny::modalDialog(
     title = "Using your Evidence Portfolio",
@@ -622,22 +844,7 @@ evidence_ui <- function(id) {
         ),
         shiny::uiOutput(ns("export_order")),
         shiny::uiOutput(ns("export_preview")),
-        shiny::div(
-          class = "evidence-export-band",
-          shiny::tags$button(
-            id = ns("export_files"),
-            type = "button",
-            class = "btn btn-primary",
-            disabled = "disabled",
-            `aria-disabled` = "true",
-            shiny::icon("file-export"),
-            shiny::span("Export selected evidence")
-          ),
-          shiny::p(
-            "File output is connected in the next output gate. Your portfolio",
-            "and this session's export selection are shown separately here."
-          )
-        )
+        shiny::uiOutput(ns("export_control"))
       )
     )
   )
@@ -1244,6 +1451,53 @@ evidence_server <- function(id, project = NULL) {
         )
       )
     })
+
+    output$export_control <- shiny::renderUI({
+      ids <- export_ids()
+      enabled <- length(ids) > 0L
+      shiny::div(
+        class = "evidence-export-band",
+        shiny::downloadButton(
+          session$ns("export_files"),
+          "Export selected evidence",
+          icon = shiny::icon("file-export"),
+          class = "btn-primary",
+          disabled = if (enabled) NULL else "disabled"
+        ),
+        shiny::p(
+          if (enabled) {
+            paste(
+              "The ZIP contains evidence-dossier.docx plus numbered PNG and CSV",
+              "companions for the selected items. Use it as source material for",
+              "your own report."
+            )
+          } else {
+            "Select at least one saved item to enable the evidence dossier download."
+          }
+        )
+      )
+    })
+
+    output$export_files <- shiny::downloadHandler(
+      filename = function() {
+        project_snapshot <- project_value()
+        project_slug <- evidence_export_slug(
+          if (is.null(project_snapshot)) NULL else project_snapshot$title,
+          fallback = "project",
+          max_chars = 40L
+        )
+        paste0(project_slug, "-evidence-dossier.zip")
+      },
+      contentType = "application/zip",
+      content = function(path) {
+        project_snapshot <- project_value()
+        ids_snapshot <- export_ids()
+        if (is.null(project_snapshot)) {
+          stop("An active project is required for an evidence export.", call. = FALSE)
+        }
+        write_evidence_dossier_bundle(project_snapshot, ids_snapshot, path)
+      }
+    )
 
     output$preview_table <- shiny::renderTable({
       item <- active_item()
