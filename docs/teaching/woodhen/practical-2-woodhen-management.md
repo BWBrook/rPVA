@@ -43,8 +43,8 @@ Expected baseline comparison values:
 - `woodhen_no_intervention`: PE=0.666, Nmed=16
 - `woodhen_pig_control`: PE=0.566, Nmed=57
 - `woodhen_captive_pig`: PE=0.082, Nmed=119
-- `woodhen_rat_eradication`: PE=0.000, Nmed=832
-- `woodhen_future_baseline`: PE=0.000, Nmed=1510
+- `woodhen_rat_eradication`: PE=0.000, Nmed=996
+- `woodhen_future_baseline`: PE=0.000, Nmed=1082
 
 Checkpoint 1:
 

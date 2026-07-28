@@ -40,8 +40,8 @@ Reference table:
 | woodhen_no_intervention  | 40 | 1000 | 0.666 | 16 | 1 | 31 |
 | woodhen_pig_control      | 40 | 1000 | 0.566 | 57 | 2 | 184 |
 | woodhen_captive_pig     | 40 | 1000 | 0.082 | 119 | 4 | 199 |
-| woodhen_rat_eradication  | 5 | 1000 | 0.000 | 832 | 340 | 1386 |
-| woodhen_future_baseline  | 75 | 1000 | 0.000 | 1510 | 1109 | 1957 |
+| woodhen_rat_eradication  | 5 | 1000 | 0.000 | 996 | 466 | 1404 |
+| woodhen_future_baseline  | 75 | 1000 | 0.000 | 1082 | 790 | 1442 |
 
 ## Sensitivity check reference (bounded, seeded example)
 
