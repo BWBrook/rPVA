@@ -1,0 +1,2 @@
+# renv 1.2.3 emits its managed activation script with trailing spaces.
+renv/activate.R whitespace=-blank-at-eol
