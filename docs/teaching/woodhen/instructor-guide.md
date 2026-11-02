@@ -45,7 +45,7 @@ source("bootstrap.R")
 - Ask Practical 2 students to open:
   - `docs/teaching/woodhen/practical-2-student-launch-page.md`
   - `docs/teaching/woodhen/practical-2-woodhen-management.md`
-- Assessment materials are held with the unit on MyLO and are not part of this repository.
+- The assessment brief and marking rubric are in this folder (`assessment-brief-2026.md`, `marking-rubric-2026.md`). Marking guidance, calibration and feedback templates are held with the unit on MyLO and are not part of this repository.
 
 ## Three-hour class timing
 

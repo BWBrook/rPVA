@@ -108,7 +108,7 @@ readiness. Before asking Barry to roleplay a Practical 1 student, use
 `practical-1-roleplay-go-no-go.md`, and
 `practical-1-dual-route-go-no-go.md`.
 
-Assessment materials for the unit's first assessment (brief, rubric, marking guidance) are held with the unit on MyLO and are not part of this repository.
+The 2026 assessment brief and marking rubric are here: [assessment-brief-2026.md](assessment-brief-2026.md) and [marking-rubric-2026.md](marking-rubric-2026.md). Marking guidance for staff is held with the unit on MyLO and is not part of this repository.
 The report scaffold is `report-scaffold.qmd` and now uses the Practical 2
 Woodhen teaching API directly.
 

@@ -13,7 +13,7 @@ Before class:
 - open the approved app link supplied through MyLO;
 - have your Practical 1 notes available, especially your notes on extinction
   probability, abundance, uncertainty, and one-factor comparisons; and
-- read the assessment brief and marking rubric supplied through MyLO.
+- read the [assessment brief](assessment-brief-2026.md) and [marking rubric](marking-rubric-2026.md) (also supplied through MyLO).
 
 Use only the current app link from MyLO so that your work matches the version
 used in class.
