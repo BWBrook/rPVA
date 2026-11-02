@@ -31,12 +31,7 @@ Target students: ecology, conservation, or applied modelling classes.
 - `troubleshooting.md`
 - `practical-1-fallback-pack.md`
 - `report-scaffold.qmd`
-- `marking-rubric.md`
 - `classroom-dry-run-checklist.md`
-- `assessment-brief-2026-draft.md`
-- `marking-rubric-2026-draft.md`
-- `feedback-template-2026-draft.md`
-- `assessment-design-crosswalk-2026.md`
 
 ## Quick start for students
 
@@ -113,9 +108,7 @@ readiness. Before asking Barry to roleplay a Practical 1 student, use
 `practical-1-roleplay-go-no-go.md`, and
 `practical-1-dual-route-go-no-go.md`.
 
-Draft 2026 AT1 assessment materials are provided as review documents in this
-folder. The student-facing starting point is `assessment-brief-2026-draft.md`;
-the instructor-facing rationale is `assessment-design-crosswalk-2026.md`.
+Assessment materials for the unit's first assessment (brief, rubric, marking guidance) are held with the unit on MyLO and are not part of this repository.
 The report scaffold is `report-scaffold.qmd` and now uses the Practical 2
 Woodhen teaching API directly.
 

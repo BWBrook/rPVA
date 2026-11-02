@@ -45,11 +45,7 @@ source("bootstrap.R")
 - Ask Practical 2 students to open:
   - `docs/teaching/woodhen/practical-2-student-launch-page.md`
   - `docs/teaching/woodhen/practical-2-woodhen-management.md`
-- For assessment design review, read:
-  - `docs/teaching/woodhen/assessment-brief-2026-draft.md`
-  - `docs/teaching/woodhen/marking-rubric-2026-draft.md`
-  - `docs/teaching/woodhen/feedback-template-2026-draft.md`
-  - `docs/teaching/woodhen/assessment-design-crosswalk-2026.md`
+- Assessment materials are held with the unit on MyLO and are not part of this repository.
 
 ## Three-hour class timing
 

@@ -78,3 +78,22 @@ _targets/**             # but ignore any new/changed files
 .vscode/
 .idea/
 .worktrees/
+
+# KPZ308 AT1 assessment materials: withheld from the public repository while the
+# unit is live; kept on disk locally, not versioned.
+docs/teaching/intake-2026-06-02-legacy-assessment-materials/
+docs/goals/010-woodhen-at1-assessment-redesign/
+docs/goals/050-platinum-pedagogy-assessment-audit/
+docs/goals/051-platinum-choice-architecture-assessment-pass/
+docs/teaching/woodhen/ai-assisted-marking-protocol-2026.md
+docs/teaching/woodhen/assessment-brief-2026*.md
+docs/teaching/woodhen/assessment-design-crosswalk-2026.md
+docs/teaching/woodhen/feedback-template-2026*.md
+docs/teaching/woodhen/marker-calibration-guide-2026.md
+docs/teaching/woodhen/marking-rubric*.md
+docs/superpowers/plans/2026-07-26-woodhen-assessment-support-suite.md
+docs/superpowers/specs/2026-07-26-woodhen-assessment-support-suite-design.md
+docs/superpowers/plans/2026-07-26-practical2-assessment-task-tab.md
+docs/superpowers/specs/2026-07-26-practical2-assessment-task-tab-design.md
+.superpowers/sdd/2026-07-26-woodhen-assessment-support-suite/
+tests/testthat/test-30_woodhen_assessment_support_suite.R

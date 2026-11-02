@@ -13,8 +13,7 @@ Before class:
 - open the approved app link supplied through MyLO;
 - have your Practical 1 notes available, especially your notes on extinction
   probability, abundance, uncertainty, and one-factor comparisons; and
-- read the [assessment brief](assessment-brief-2026.md) and
-  [marking rubric](marking-rubric-2026.md).
+- read the assessment brief and marking rubric supplied through MyLO.
 
 Use only the current app link from MyLO so that your work matches the version
 used in class.
@@ -123,10 +122,8 @@ stochastic variation.
 
 Use these sources together:
 
-- the [assessment brief](assessment-brief-2026.md) for the scientific task and
-  submission relationship;
-- the [marking rubric](marking-rubric-2026.md) for the criteria and best-fit
-  performance descriptors;
+- the assessment brief and marking rubric on MyLO for the scientific task,
+  submission relationship, criteria and performance descriptors;
 - the in-app **Assessment Task** guidance for project-aware prompts; and
 - MyLO for the approved app link, due date, submission link, accepted formats,
   academic-integrity and generative-AI requirements, extensions, and teaching
